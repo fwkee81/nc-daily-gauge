@@ -209,23 +209,6 @@ export function DailyReportClient({
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold">Upcoming birthdays (next 3 days)</h2>
-        <div className="mt-2 space-y-1">
-          {birthdays.length === 0 && (
-            <p className="text-sm text-muted-foreground">No birthdays in the next 3 days.</p>
-          )}
-          {birthdays.map((b) => (
-            <div key={b.customer_id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
-              <span>{b.name}</span>
-              <span className="text-muted-foreground">
-                {format(parseISO(b.dob), "d MMM")} · {b.days_until === 0 ? "today" : `in ${b.days_until}d`}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div>
         <h2 className="text-lg font-semibold">Check-ins on this day</h2>
         <div className="mt-2 overflow-x-auto rounded-md border">
           <Table>
@@ -302,6 +285,23 @@ export function DailyReportClient({
               )}
             </TableBody>
           </Table>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold">Upcoming birthdays (next 3 days)</h2>
+        <div className="mt-2 space-y-1">
+          {birthdays.length === 0 && (
+            <p className="text-sm text-muted-foreground">No birthdays in the next 3 days.</p>
+          )}
+          {birthdays.map((b) => (
+            <div key={b.customer_id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+              <span>{b.name}</span>
+              <span className="text-muted-foreground">
+                {format(parseISO(b.dob), "d MMM")} · {b.days_until === 0 ? "today" : `in ${b.days_until}d`}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
