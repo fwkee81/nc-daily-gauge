@@ -35,3 +35,13 @@ export const CUP_COUNTING_MEMBER_TYPES: MemberType[] = ["MB", "SC", "SB"];
 export const CONSUMPTION_TYPES: ConsumptionType[] = ["Dine-in", "Take-away"];
 
 export const RENEWAL_REMINDER_THRESHOLD = 4;
+
+// ASSUMPTION: an NC level's day-count maps 1:1 to cups added on renewal
+// (e.g. renewing a "10-day" card adds 10 cups). Editable in the renew
+// dialog in case a customer's actual package differs.
+export const NC_LEVEL_CUPS: Record<CustomerNcLevel, number> = {
+  "5-day": 5,
+  "10-day": 10,
+  "20-day": 20,
+  "30-day": 30,
+};

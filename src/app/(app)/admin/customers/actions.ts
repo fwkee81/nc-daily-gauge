@@ -86,6 +86,25 @@ export async function updateCustomer(id: string, input: CustomerFormInput) {
   return { success: true };
 }
 
+export async function renewCustomer(id: string, ncLevel: CustomerNcLevel, cupsAdded: number) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) {
+    return { error: "Not authorized." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("renew_customer", {
+    p_customer_id: id,
+    p_nc_level: ncLevel,
+    p_cups_added: cupsAdded,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/customers");
+  return { success: true };
+}
+
 // Soft delete: checkins reference customers, so "removing" a customer sets
 // active = false instead of deleting the row. This keeps historical reports
 // (Daily Report, NC Metrics) intact and hides them from check-in search.

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { CustomerForm } from "./customer-form";
+import { RenewDialog } from "./renew-dialog";
 import { deactivateCustomer } from "./actions";
 import type {
   CustomerGender,
@@ -72,6 +73,7 @@ export function CustomersClient({
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerRow | null>(null);
+  const [renewing, setRenewing] = useState<CustomerRow | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -172,6 +174,9 @@ export function CustomersClient({
                   {c.member_id ? `${c.member_id} (${c.member_type ?? "—"})` : "—"}
                 </TableCell>
                 <TableCell className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setRenewing(c)}>
+                    Renew
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
@@ -216,6 +221,18 @@ export function CustomersClient({
           </TableBody>
         </Table>
       </div>
+
+      {renewing && (
+        <RenewDialog
+          customer={renewing}
+          open={!!renewing}
+          onOpenChange={(open) => !open && setRenewing(null)}
+          onDone={() => {
+            setRenewing(null);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

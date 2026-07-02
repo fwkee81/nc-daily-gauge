@@ -100,6 +100,17 @@ export type CheckinEdit = {
   created_at: string;
 };
 
+export type CustomerRenewal = {
+  id: string;
+  customer_id: string;
+  renewed_by: string;
+  nc_level: CustomerNcLevel;
+  cups_added: number;
+  previous_balance: number;
+  new_balance: number;
+  created_at: string;
+};
+
 export type DailyTotalsRow = {
   total_cups: number;
   plugin_cups: number;
@@ -152,6 +163,11 @@ export type Database = {
         Insert: Partial<CheckinEdit>;
         Update: Partial<CheckinEdit>;
       } & NoRelationships;
+      customer_renewals: {
+        Row: CustomerRenewal;
+        Insert: Partial<CustomerRenewal>;
+        Update: Partial<CustomerRenewal>;
+      } & NoRelationships;
     };
     Views: Record<string, never>;
     Enums: Record<string, never>;
@@ -178,6 +194,10 @@ export type Database = {
       void_checkin: {
         Args: { p_checkin_id: string; p_reason: string };
         Returns: void;
+      };
+      renew_customer: {
+        Args: { p_customer_id: string; p_nc_level: CustomerNcLevel; p_cups_added: number };
+        Returns: Customer;
       };
       daily_totals: {
         Args: { p_date: string; p_club_id?: string | null };
