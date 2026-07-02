@@ -51,7 +51,15 @@ export default async function DailyReportPage({
       clubName={clubRes.data?.name ?? null}
       viewingBranch={viewingBranch}
       isAdmin={coach.is_admin && !viewingBranch}
-      totals={totalsRes.data?.[0] ?? { total_cups: 0, plugin_cups: 0 }}
+      totals={
+        totalsRes.data?.[0] ?? {
+          total_cups: 0,
+          plugin_cups: 0,
+          coach_cup_total: 0,
+          dine_in_cups: 0,
+          takeaway_cups: 0,
+        }
+      }
       coachCups={coachCupsRes.data ?? []}
       birthdays={birthdaysRes.data ?? []}
       checkins={(checkinsRes.data ?? []) as unknown as CheckinRow[]}

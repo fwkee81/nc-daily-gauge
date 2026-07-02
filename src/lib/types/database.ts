@@ -115,6 +115,9 @@ export type CustomerRenewal = {
 export type DailyTotalsRow = {
   total_cups: number;
   plugin_cups: number;
+  coach_cup_total: number;
+  dine_in_cups: number;
+  takeaway_cups: number;
 };
 
 export type DailyCoachCupsRow = {

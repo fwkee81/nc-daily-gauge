@@ -97,7 +97,13 @@ export function DailyReportClient({
   clubName: string | null;
   viewingBranch: boolean;
   isAdmin: boolean;
-  totals: { total_cups: number; plugin_cups: number };
+  totals: {
+    total_cups: number;
+    plugin_cups: number;
+    coach_cup_total: number;
+    dine_in_cups: number;
+    takeaway_cups: number;
+  };
   coachCups: CoachCupRow[];
   birthdays: BirthdayRow[];
   checkins: CheckinRow[];
@@ -146,16 +152,37 @@ export function DailyReportClient({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
+        <Card className="border-2 border-primary bg-primary/5">
           <CardHeader>
             <CardDescription>Total NC Cups</CardDescription>
-            <CardTitle className="text-3xl">{totals.total_cups}</CardTitle>
+            <CardTitle className="text-5xl">{totals.total_cups}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="border-2 border-secondary bg-secondary/10">
+          <CardHeader>
+            <CardDescription>Coach&apos;s Cup</CardDescription>
+            <CardTitle className="text-5xl">{totals.coach_cup_total}</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardDescription>Plug-in Cups</CardDescription>
+            <CardTitle className="text-2xl">{totals.plugin_cups}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Plug-in Cups</CardDescription>
-            <CardTitle className="text-3xl">{totals.plugin_cups}</CardTitle>
+            <CardDescription>Dine-in Cups</CardDescription>
+            <CardTitle className="text-2xl">{totals.dine_in_cups}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Take-away Cups</CardDescription>
+            <CardTitle className="text-2xl">{totals.takeaway_cups}</CardTitle>
           </CardHeader>
         </Card>
       </div>

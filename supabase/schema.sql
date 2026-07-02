@@ -531,7 +531,13 @@ grant execute on function renew_customer(uuid, customer_nc_level, integer) to au
 -- across branches, so numbers are always attributable to one specific club.
 
 create or replace function daily_totals(p_date date, p_club_id uuid default null)
-returns table (total_cups bigint, plugin_cups bigint)
+returns table (
+  total_cups bigint,
+  plugin_cups bigint,
+  coach_cup_total bigint,
+  dine_in_cups bigint,
+  takeaway_cups bigint
+)
 language sql
 stable
 security definer
@@ -539,7 +545,15 @@ set search_path = public
 as $$
   select
     coalesce(sum(ci.cups), 0) as total_cups,
-    coalesce(sum(ci.cups) filter (where cu.invited_by_type = 'plugin'), 0) as plugin_cups
+    coalesce(sum(ci.cups) filter (where cu.invited_by_type = 'plugin'), 0) as plugin_cups,
+    -- Mirrors the daily_coach_cups() eligibility rule (coach assigned, member
+    -- type not SP/WT/AWT/TAB), summed across every coach for this club/date.
+    coalesce(sum(ci.cups) filter (
+      where cu.coach_id is not null
+        and (cu.member_type is null or cu.member_type not in ('SP', 'WT', 'AWT', 'TAB'))
+    ), 0) as coach_cup_total,
+    coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Dine-in'), 0) as dine_in_cups,
+    coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Take-away'), 0) as takeaway_cups
   from checkins ci
   join customers cu on cu.id = ci.customer_id
   where ci.checkin_date = p_date
