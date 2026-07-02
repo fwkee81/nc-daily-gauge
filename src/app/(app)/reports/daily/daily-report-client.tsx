@@ -151,20 +151,12 @@ export function DailyReportClient({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="border-2 border-primary bg-primary/5">
-          <CardHeader>
-            <CardDescription>Total NC Cups</CardDescription>
-            <CardTitle className="text-5xl">{totals.total_cups}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="border-2 border-secondary bg-secondary/10">
-          <CardHeader>
-            <CardDescription>Coach&apos;s Cup</CardDescription>
-            <CardTitle className="text-5xl">{totals.coach_cup_total}</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
+      <Card className="border-2 border-primary bg-primary/5 sm:max-w-xs">
+        <CardHeader>
+          <CardDescription>Total NC Cups</CardDescription>
+          <CardTitle className="text-5xl">{totals.total_cups}</CardTitle>
+        </CardHeader>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
