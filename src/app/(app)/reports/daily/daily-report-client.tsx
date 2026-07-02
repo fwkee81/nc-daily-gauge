@@ -59,6 +59,17 @@ export interface CheckinRow {
   customer: { name: string } | null;
 }
 
+export interface RenewalRow {
+  id: string;
+  nc_level: string;
+  cups_added: number;
+  previous_balance: number;
+  new_balance: number;
+  created_at: string;
+  customer: { name: string } | null;
+  renewed_by_coach: { name: string } | null;
+}
+
 interface HistoryEntry {
   id: string;
   field_changed: string;
@@ -79,6 +90,7 @@ export function DailyReportClient({
   coachCups,
   birthdays,
   checkins,
+  renewals,
 }: {
   date: string;
   clubId: string;
@@ -89,6 +101,7 @@ export function DailyReportClient({
   coachCups: CoachCupRow[];
   birthdays: BirthdayRow[];
   checkins: CheckinRow[];
+  renewals: RenewalRow[];
 }) {
   const router = useRouter();
 
@@ -226,6 +239,45 @@ export function DailyReportClient({
                 <TableRow>
                   <TableCell colSpan={isAdmin ? 6 : 5} className="text-center text-muted-foreground">
                     No check-ins on this day.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold">Renewals on this day</h2>
+        <div className="mt-2 overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>NC Level</TableHead>
+                <TableHead>Cups added</TableHead>
+                <TableHead>Balance</TableHead>
+                <TableHead>Renewed by</TableHead>
+                <TableHead>Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {renewals.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>{r.customer?.name ?? "—"}</TableCell>
+                  <TableCell>{r.nc_level}</TableCell>
+                  <TableCell>+{r.cups_added}</TableCell>
+                  <TableCell>
+                    {r.previous_balance} → {r.new_balance}
+                  </TableCell>
+                  <TableCell>{r.renewed_by_coach?.name ?? "—"}</TableCell>
+                  <TableCell>{format(new Date(r.created_at), "p")}</TableCell>
+                </TableRow>
+              ))}
+              {renewals.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    No renewals on this day.
                   </TableCell>
                 </TableRow>
               )}

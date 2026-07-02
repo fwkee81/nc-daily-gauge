@@ -18,6 +18,9 @@ import type { CustomerNcLevel } from "@/lib/types/database";
 import { renewCustomer } from "./actions";
 import type { CustomerRow } from "./customers-client";
 
+const CUSTOM = "Custom" as const;
+type LevelOption = CustomerNcLevel | typeof CUSTOM;
+
 export function RenewDialog({
   customer,
   open,
@@ -29,14 +32,14 @@ export function RenewDialog({
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
-  const [ncLevel, setNcLevel] = useState<CustomerNcLevel>(customer.nc_level);
+  const [levelOption, setLevelOption] = useState<LevelOption>(customer.nc_level);
   const [cupsAdded, setCupsAdded] = useState(String(NC_LEVEL_CUPS[customer.nc_level]));
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function handleLevelChange(level: CustomerNcLevel) {
-    setNcLevel(level);
-    setCupsAdded(String(NC_LEVEL_CUPS[level]));
+  function handleLevelChange(option: LevelOption) {
+    setLevelOption(option);
+    setCupsAdded(option === CUSTOM ? "" : String(NC_LEVEL_CUPS[option]));
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -48,6 +51,10 @@ export function RenewDialog({
       setError("Cups to add must be a positive number.");
       return;
     }
+
+    // "Custom" isn't a real NC level — it just unlocks manual cup entry.
+    // The customer's actual package level stays whatever it already was.
+    const ncLevel = levelOption === CUSTOM ? customer.nc_level : levelOption;
 
     setIsPending(true);
     const result = await renewCustomer(customer.id, ncLevel, cups);
@@ -79,7 +86,7 @@ export function RenewDialog({
 
           <div className="space-y-1">
             <Label>NC Level</Label>
-            <Select value={ncLevel} onValueChange={(v) => handleLevelChange(v as CustomerNcLevel)}>
+            <Select value={levelOption} onValueChange={(v) => handleLevelChange(v as LevelOption)}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -89,6 +96,7 @@ export function RenewDialog({
                     {l}
                   </SelectItem>
                 ))}
+                <SelectItem value={CUSTOM}>Custom</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -100,6 +108,7 @@ export function RenewDialog({
               min={1}
               value={cupsAdded}
               onChange={(e) => setCupsAdded(e.target.value)}
+              placeholder={levelOption === CUSTOM ? "Enter cups manually" : undefined}
               required
             />
           </div>
