@@ -49,6 +49,10 @@ create table coaches (
   nc_club_id uuid references nc_clubs (id),
   nc_position nc_position not null,
   is_admin boolean generated always as (nc_position in ('Owner', 'Internship')) stored,
+  -- Soft delete, same rationale as customers.active: coaches are referenced by
+  -- customers (invited_by_coach_id, created_by), checkins (recorded_by),
+  -- checkin_edits (edited_by), and other coaches (sponsor_id).
+  active boolean not null default true,
   created_at timestamptz not null default now()
 );
 
@@ -201,8 +205,11 @@ create policy "nc_clubs_insert" on nc_clubs
   for insert to authenticated with check (true);
 
 -- coaches: readable by any signed-in coach (needed to populate sponsor /
--- invited-by pickers, including across clubs). Each coach may only create or
--- edit their own profile row.
+-- invited-by pickers, including across clubs). A coach may create/edit their
+-- own row; an admin may also edit any coach within their own club (e.g. to
+-- fix a level/position/sponsor, or deactivate someone who left). The
+-- restrict_coach_self_update trigger below stops a non-admin from using their
+-- own-row update rights to promote themselves or hop clubs.
 create policy "coaches_select" on coaches
   for select to authenticated using (true);
 create policy "coaches_insert_self" on coaches
@@ -210,6 +217,48 @@ create policy "coaches_insert_self" on coaches
 create policy "coaches_update_self" on coaches
   for update to authenticated using (auth_user_id = auth.uid())
   with check (auth_user_id = auth.uid());
+create policy "coaches_update_admin" on coaches
+  for update to authenticated
+  using (
+    is_current_coach_admin()
+    and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
+  )
+  with check (
+    is_current_coach_admin()
+    and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
+  );
+
+-- A non-admin can update their own coaches row (per coaches_update_self
+-- above), but must not be able to use that to promote themselves to admin,
+-- change their level/sponsor, hop to another club, or edit their member ID.
+-- Only admins (via coaches_update_admin) may change those fields.
+create or replace function restrict_coach_self_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if is_current_coach_admin() then
+    return new;
+  end if;
+
+  if new.nc_position is distinct from old.nc_position
+    or new.level is distinct from old.level
+    or new.sponsor_id is distinct from old.sponsor_id
+    or new.nc_club_id is distinct from old.nc_club_id
+    or new.member_id is distinct from old.member_id
+    or new.active is distinct from old.active then
+    raise exception 'Only an admin can change position, level, sponsor, club, member ID, or active status';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger coaches_restrict_self_update
+before update on coaches
+for each row execute function restrict_coach_self_update();
 
 -- customers: visible across visible clubs (own + sponsored branches); only
 -- admins (Owner/Internship) may write, and only within their own club.

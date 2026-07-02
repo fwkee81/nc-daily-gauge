@@ -52,6 +52,7 @@ export type Coach = {
   nc_club_id: string | null;
   nc_position: NcPosition;
   is_admin: boolean;
+  active: boolean;
   created_at: string;
 };
 

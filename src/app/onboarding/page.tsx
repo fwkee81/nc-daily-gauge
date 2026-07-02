@@ -19,7 +19,7 @@ export default async function OnboardingPage() {
   }
 
   const [{ data: coaches }, { data: clubs }] = await Promise.all([
-    supabase.from("coaches").select("id, name, nc_position").order("name"),
+    supabase.from("coaches").select("id, name, nc_position").eq("active", true).order("name"),
     supabase.from("nc_clubs").select("id, name").order("name"),
   ]);
 

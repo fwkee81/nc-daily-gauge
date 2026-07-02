@@ -12,7 +12,12 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
     { href: "/checkin", label: "Check-in" },
     { href: "/reports/daily", label: "Daily Report" },
     { href: "/reports/metrics", label: "NC Metrics" },
-    ...(isAdmin ? [{ href: "/admin/customers", label: "Customers" }] : []),
+    ...(isAdmin
+      ? [
+          { href: "/admin/customers", label: "Customers" },
+          { href: "/admin/coaches", label: "Coaches" },
+        ]
+      : []),
   ];
 
   return (
