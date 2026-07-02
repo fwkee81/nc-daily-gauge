@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -70,6 +71,9 @@ interface HistoryEntry {
 
 export function DailyReportClient({
   date,
+  clubId,
+  clubName,
+  viewingBranch,
   isAdmin,
   totals,
   coachCups,
@@ -77,6 +81,9 @@ export function DailyReportClient({
   checkins,
 }: {
   date: string;
+  clubId: string;
+  clubName: string | null;
+  viewingBranch: boolean;
   isAdmin: boolean;
   totals: { total_cups: number; plugin_cups: number };
   coachCups: CoachCupRow[];
@@ -86,15 +93,29 @@ export function DailyReportClient({
   const router = useRouter();
 
   function goToDate(d: string) {
-    router.push(`/reports/daily?date=${d}`);
+    const clubQuery = viewingBranch ? `&club=${clubId}` : "";
+    router.push(`/reports/daily?date=${d}${clubQuery}`);
   }
 
   const parsedDate = parseISO(date);
 
   return (
     <div className="space-y-6">
+      {viewingBranch && (
+        <div className="flex items-center justify-between rounded-md border bg-secondary/15 px-4 py-2 text-sm">
+          <span>
+            Viewing branch <strong>{clubName}</strong> — not merged with your own club.
+          </span>
+          <Link href="/reports/daily" className="underline underline-offset-4">
+            Back to my club
+          </Link>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Daily Report — {format(parsedDate, "EEEE, d MMM yyyy")}</h1>
+        <h1 className="text-2xl font-semibold">
+          Daily Report{clubName ? ` — ${clubName}` : ""} · {format(parsedDate, "EEEE, d MMM yyyy")}
+        </h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => goToDate(format(addDays(parsedDate, -1), "yyyy-MM-dd"))}>
             ← Prev day

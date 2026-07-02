@@ -16,6 +16,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
       ? [
           { href: "/admin/customers", label: "Customers" },
           { href: "/admin/coaches", label: "Coaches" },
+          { href: "/branches", label: "Branches" },
         ]
       : []),
   ];

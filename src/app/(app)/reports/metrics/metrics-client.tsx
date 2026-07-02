@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addMonths, format, parse } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -23,10 +24,16 @@ interface CoachCupRow {
 
 export function MetricsClient({
   month,
+  clubId,
+  clubName,
+  viewingBranch,
   totals,
   coachCups,
 }: {
   month: string;
+  clubId: string;
+  clubName: string | null;
+  viewingBranch: boolean;
   totals: { total_cups: number; days_in_period: number; avg_daily_cups: number };
   coachCups: CoachCupRow[];
 }) {
@@ -34,13 +41,27 @@ export function MetricsClient({
   const parsedMonth = parse(month, "yyyy-MM", new Date());
 
   function goToMonth(m: string) {
-    router.push(`/reports/metrics?month=${m}`);
+    const clubQuery = viewingBranch ? `&club=${clubId}` : "";
+    router.push(`/reports/metrics?month=${m}${clubQuery}`);
   }
 
   return (
     <div className="space-y-6">
+      {viewingBranch && (
+        <div className="flex items-center justify-between rounded-md border bg-secondary/15 px-4 py-2 text-sm">
+          <span>
+            Viewing branch <strong>{clubName}</strong> — not merged with your own club.
+          </span>
+          <Link href="/reports/metrics" className="underline underline-offset-4">
+            Back to my club
+          </Link>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">NC Metrics — {format(parsedMonth, "MMMM yyyy")}</h1>
+        <h1 className="text-2xl font-semibold">
+          NC Metrics{clubName ? ` — ${clubName}` : ""} · {format(parsedMonth, "MMMM yyyy")}
+        </h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => goToMonth(format(addMonths(parsedMonth, -1), "yyyy-MM"))}>
             ← Prev month

@@ -444,7 +444,14 @@ grant execute on function void_checkin(uuid, text) to authenticated;
 -- REPORTING RPCs
 -- =========================================================================
 
-create or replace function daily_totals(p_date date)
+-- All reporting RPCs take an optional p_club_id. When omitted, they default
+-- to the caller's own club. When given, they're still authorized against
+-- visible_club_ids() — a coach can only ever look at their own club or a
+-- branch club whose Owner named them as sponsor (see list_branch_clubs()
+-- below and the /branches page). Reports are per-club, not auto-merged
+-- across branches, so numbers are always attributable to one specific club.
+
+create or replace function daily_totals(p_date date, p_club_id uuid default null)
 returns table (total_cups bigint, plugin_cups bigint)
 language sql
 stable
@@ -458,6 +465,7 @@ as $$
   join customers cu on cu.id = ci.customer_id
   where ci.checkin_date = p_date
     and not ci.voided
+    and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()));
 $$;
 
@@ -465,7 +473,7 @@ $$;
 -- originally invited by (their sponsor), matching "categories by same
 -- sponsor" in the spec. Only counts customers with a non-null member_id and
 -- member_type in (MB, SC, SB), per spec.
-create or replace function daily_coach_cups(p_date date)
+create or replace function daily_coach_cups(p_date date, p_club_id uuid default null)
 returns table (coach_id uuid, coach_name text, cups bigint)
 language sql
 stable
@@ -481,6 +489,7 @@ as $$
   join coaches co on co.id = cu.invited_by_coach_id
   where ci.checkin_date = p_date
     and not ci.voided
+    and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()))
     and cu.member_id is not null
     and cu.member_type in ('MB', 'SC', 'SB')
@@ -491,7 +500,7 @@ $$;
 -- ASSUMPTION: "next 3 days" birthdays are relative to real today, independent
 -- of whatever date is selected on the Daily Report page. Feb 29 birthdays in
 -- a non-leap upcoming year are skipped rather than shifted.
-create or replace function upcoming_birthdays()
+create or replace function upcoming_birthdays(p_club_id uuid default null)
 returns table (customer_id uuid, name text, dob date, days_until int)
 language sql
 stable
@@ -512,7 +521,8 @@ as $$
         ) - current_date
       )::int as days_until
     from customers cu
-    where cu.nc_club_id in (select visible_club_ids(current_coach_id()))
+    where cu.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
+      and cu.nc_club_id in (select visible_club_ids(current_coach_id()))
       and not (extract(month from cu.dob) = 2 and extract(day from cu.dob) = 29)
   )
   select * from next_bday where days_until between 0 and 3 order by days_until;
@@ -522,7 +532,7 @@ $$;
 -- cups / days elapsed so far (for the current month) or / total days in the
 -- month (for a past month) — not divided by 30 flat, and not skipping
 -- zero-checkin days.
-create or replace function monthly_totals(p_month date)
+create or replace function monthly_totals(p_month date, p_club_id uuid default null)
 returns table (total_cups bigint, days_in_period int, avg_daily_cups numeric)
 language sql
 stable
@@ -549,10 +559,11 @@ as $$
   cross join bounds b
   where ci.checkin_date between b.month_start and b.month_end
     and not ci.voided
+    and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()));
 $$;
 
-create or replace function monthly_coach_cups(p_month date)
+create or replace function monthly_coach_cups(p_month date, p_club_id uuid default null)
 returns table (coach_id uuid, coach_name text, total_cups bigint, avg_daily_cups numeric)
 language sql
 stable
@@ -582,6 +593,7 @@ as $$
   cross join bounds b
   where ci.checkin_date between b.month_start and b.month_end
     and not ci.voided
+    and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()))
     and cu.member_id is not null
     and cu.member_type in ('MB', 'SC', 'SB')
@@ -589,8 +601,27 @@ as $$
   order by total_cups desc;
 $$;
 
-grant execute on function daily_totals(date) to authenticated;
-grant execute on function daily_coach_cups(date) to authenticated;
-grant execute on function upcoming_birthdays() to authenticated;
-grant execute on function monthly_totals(date) to authenticated;
-grant execute on function monthly_coach_cups(date) to authenticated;
+-- Downline branch clubs: any club whose Owner traces back to the caller
+-- through the sponsor chain, excluding the caller's own club. Powers the
+-- /branches page — clicking one opens that club's Daily Report / NC Metrics
+-- on its own, never merged with the caller's own numbers.
+create or replace function list_branch_clubs()
+returns table (club_id uuid, club_name text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select nc.id as club_id, nc.name as club_name
+  from nc_clubs nc
+  where nc.id in (select visible_club_ids(current_coach_id()))
+    and nc.id <> (select nc_club_id from coaches where auth_user_id = auth.uid())
+  order by nc.name;
+$$;
+
+grant execute on function daily_totals(date, uuid) to authenticated;
+grant execute on function daily_coach_cups(date, uuid) to authenticated;
+grant execute on function upcoming_birthdays(uuid) to authenticated;
+grant execute on function monthly_totals(date, uuid) to authenticated;
+grant execute on function monthly_coach_cups(date, uuid) to authenticated;
+grant execute on function list_branch_clubs() to authenticated;

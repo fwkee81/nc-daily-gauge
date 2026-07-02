@@ -131,6 +131,11 @@ export type MonthlyCoachCupsRow = {
   avg_daily_cups: number;
 };
 
+export type BranchClubRow = {
+  club_id: string;
+  club_name: string;
+};
+
 type NoRelationships = {
   Relationships: [];
 };
@@ -174,11 +179,27 @@ export type Database = {
         Args: { p_checkin_id: string; p_reason: string };
         Returns: void;
       };
-      daily_totals: { Args: { p_date: string }; Returns: DailyTotalsRow[] };
-      daily_coach_cups: { Args: { p_date: string }; Returns: DailyCoachCupsRow[] };
-      upcoming_birthdays: { Args: Record<string, never>; Returns: UpcomingBirthdayRow[] };
-      monthly_totals: { Args: { p_month: string }; Returns: MonthlyTotalsRow[] };
-      monthly_coach_cups: { Args: { p_month: string }; Returns: MonthlyCoachCupsRow[] };
+      daily_totals: {
+        Args: { p_date: string; p_club_id?: string | null };
+        Returns: DailyTotalsRow[];
+      };
+      daily_coach_cups: {
+        Args: { p_date: string; p_club_id?: string | null };
+        Returns: DailyCoachCupsRow[];
+      };
+      upcoming_birthdays: {
+        Args: { p_club_id?: string | null };
+        Returns: UpcomingBirthdayRow[];
+      };
+      monthly_totals: {
+        Args: { p_month: string; p_club_id?: string | null };
+        Returns: MonthlyTotalsRow[];
+      };
+      monthly_coach_cups: {
+        Args: { p_month: string; p_club_id?: string | null };
+        Returns: MonthlyCoachCupsRow[];
+      };
+      list_branch_clubs: { Args: Record<string, never>; Returns: BranchClubRow[] };
     };
   };
 };
