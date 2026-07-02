@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Combobox, type ComboboxOption } from "@/components/combobox";
-import { COACH_LEVELS, NC_POSITIONS } from "@/lib/constants";
+import { COACH_LEVELS, NC_CLUBS, NC_POSITIONS } from "@/lib/constants";
 import { completeOnboarding } from "./actions";
 import type { CoachLevel, NcPosition } from "@/lib/types/database";
 
@@ -23,18 +23,11 @@ interface CoachOption {
   nc_position: string;
 }
 
-interface ClubOption {
-  id: string;
-  name: string;
-}
-
 export function OnboardingForm({
   coaches,
-  clubs,
   isFirstCoach,
 }: {
   coaches: CoachOption[];
-  clubs: ClubOption[];
   isFirstCoach: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -47,8 +40,7 @@ export function OnboardingForm({
   const [sponsorId, setSponsorId] = useState<string | null>(null);
   const [memberId, setMemberId] = useState("");
   const [level, setLevel] = useState<CoachLevel | "">("");
-  const [clubName, setClubName] = useState("");
-  const [clubId, setClubId] = useState<string | null>(null);
+  const [clubName, setClubName] = useState<(typeof NC_CLUBS)[number] | "">("");
   const [ncPosition, setNcPosition] = useState<NcPosition | "">("");
 
   const sponsorOptions: ComboboxOption[] = coaches.map((c) => ({
@@ -56,8 +48,6 @@ export function OnboardingForm({
     label: c.name,
     description: c.nc_position,
   }));
-
-  const clubOptions: ComboboxOption[] = clubs.map((c) => ({ value: c.id, label: c.name }));
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -71,8 +61,8 @@ export function OnboardingForm({
       setError("Please choose a sponsor, or mark yourself as the founding coach.");
       return;
     }
-    if (!clubName.trim()) {
-      setError("Please choose or enter your nutrition club.");
+    if (!clubName) {
+      setError("Please choose your nutrition club.");
       return;
     }
 
@@ -168,27 +158,18 @@ export function OnboardingForm({
 
       <div className="space-y-1">
         <Label>Nutrition Club *</Label>
-        <Combobox
-          options={clubOptions}
-          value={clubId}
-          onChange={(v) => {
-            setClubId(v);
-            setClubName(clubOptions.find((o) => o.value === v)?.label ?? "");
-          }}
-          placeholder="Select or create your club"
-          searchPlaceholder="Search clubs..."
-          emptyText="No clubs yet."
-          allowCreate
-          onCreate={(label) => {
-            setClubId(null);
-            setClubName(label);
-          }}
-        />
-        {clubName && !clubId && (
-          <p className="text-xs text-muted-foreground">
-            Will create new club &quot;{clubName}&quot;.
-          </p>
-        )}
+        <Select value={clubName} onValueChange={(v) => setClubName(v as (typeof NC_CLUBS)[number])}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select your club" />
+          </SelectTrigger>
+          <SelectContent>
+            {NC_CLUBS.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-1">

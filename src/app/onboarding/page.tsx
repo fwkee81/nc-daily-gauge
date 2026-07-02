@@ -18,10 +18,11 @@ export default async function OnboardingPage() {
     redirect("/dashboard");
   }
 
-  const [{ data: coaches }, { data: clubs }] = await Promise.all([
-    supabase.from("coaches").select("id, name, nc_position").eq("active", true).order("name"),
-    supabase.from("nc_clubs").select("id, name").order("name"),
-  ]);
+  const { data: coaches } = await supabase
+    .from("coaches")
+    .select("id, name, nc_position")
+    .eq("active", true)
+    .order("name");
 
   return (
     <div className="mx-auto w-full max-w-xl px-4 py-10">
@@ -30,11 +31,7 @@ export default async function OnboardingPage() {
         This is a one-time setup so we can attach your check-ins, customers, and reports to the
         right nutrition club.
       </p>
-      <OnboardingForm
-        coaches={coaches ?? []}
-        clubs={clubs ?? []}
-        isFirstCoach={(coaches ?? []).length === 0}
-      />
+      <OnboardingForm coaches={coaches ?? []} isFirstCoach={(coaches ?? []).length === 0} />
     </div>
   );
 }

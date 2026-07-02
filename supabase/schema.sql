@@ -33,6 +33,18 @@ create table nc_clubs (
   created_at timestamptz not null default now()
 );
 
+-- Fixed set of branches a coach can register under (see NC_CLUBS in
+-- src/lib/constants.ts, which the onboarding form's Select is limited to).
+insert into nc_clubs (name)
+values
+  ('Wellness Plus+'),
+  ('Wellness Garden'),
+  ('Wellness Seed'),
+  ('Wellness Talk'),
+  ('Wellness Star'),
+  ('Wellness Hub')
+on conflict (name) do nothing;
+
 -- ASSUMPTION: sponsor_id is nullable to allow the very first ("founding") coach
 -- to register with no sponsor. The UI still requires a choice ("no sponsor" vs
 -- pick a coach) so the intent of "required" is preserved for every coach after
