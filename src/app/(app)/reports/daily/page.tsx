@@ -47,6 +47,7 @@ export default async function DailyReportPage({
   return (
     <DailyReportClient
       date={date}
+      hasExplicitDate={Boolean(dateParam)}
       clubId={clubId}
       clubName={clubRes.data?.name ?? null}
       viewingBranch={viewingBranch}

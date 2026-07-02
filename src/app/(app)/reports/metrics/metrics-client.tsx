@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addMonths, format, parse } from "date-fns";
@@ -24,6 +25,7 @@ interface CoachCupRow {
 
 export function MetricsClient({
   month,
+  hasExplicitMonth,
   clubId,
   clubName,
   viewingBranch,
@@ -31,6 +33,7 @@ export function MetricsClient({
   coachCups,
 }: {
   month: string;
+  hasExplicitMonth: boolean;
   clubId: string;
   clubName: string | null;
   viewingBranch: boolean;
@@ -39,6 +42,18 @@ export function MetricsClient({
 }) {
   const router = useRouter();
   const parsedMonth = parse(month, "yyyy-MM", new Date());
+
+  // Same "server thinks it's UTC" issue as Daily Report: self-correct to the
+  // browser's local month if none was explicitly requested.
+  useEffect(() => {
+    if (hasExplicitMonth) return;
+    const clientMonth = format(new Date(), "yyyy-MM");
+    if (clientMonth !== month) {
+      const clubQuery = viewingBranch ? `&club=${clubId}` : "";
+      router.replace(`/reports/metrics?month=${clientMonth}${clubQuery}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function goToMonth(m: string) {
     const clubQuery = viewingBranch ? `&club=${clubId}` : "";

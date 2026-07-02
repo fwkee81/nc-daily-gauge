@@ -82,6 +82,7 @@ interface HistoryEntry {
 
 export function DailyReportClient({
   date,
+  hasExplicitDate,
   clubId,
   clubName,
   viewingBranch,
@@ -93,6 +94,7 @@ export function DailyReportClient({
   renewals,
 }: {
   date: string;
+  hasExplicitDate: boolean;
   clubId: string;
   clubName: string | null;
   viewingBranch: boolean;
@@ -110,6 +112,20 @@ export function DailyReportClient({
   renewals: RenewalRow[];
 }) {
   const router = useRouter();
+
+  // The server defaults "today" using its own clock (Vercel runs in UTC),
+  // which can be a day off from the club's actual local date for several
+  // hours a day. If no date was explicitly requested, self-correct to the
+  // browser's local today right after hydration.
+  useEffect(() => {
+    if (hasExplicitDate) return;
+    const clientToday = format(new Date(), "yyyy-MM-dd");
+    if (clientToday !== date) {
+      const clubQuery = viewingBranch ? `&club=${clubId}` : "";
+      router.replace(`/reports/daily?date=${clientToday}${clubQuery}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function goToDate(d: string) {
     const clubQuery = viewingBranch ? `&club=${clubId}` : "";

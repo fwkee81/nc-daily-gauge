@@ -28,6 +28,7 @@ export default async function MetricsPage({
   return (
     <MetricsClient
       month={month}
+      hasExplicitMonth={Boolean(monthParam)}
       clubId={clubId}
       clubName={clubRes.data?.name ?? null}
       viewingBranch={viewingBranch}
