@@ -28,7 +28,7 @@ export const CUSTOMER_GENDERS: CustomerGender[] = ["Male", "Female", "Couple", "
 
 export const CUSTOMER_NC_LEVELS: CustomerNcLevel[] = ["5-day", "10-day", "20-day", "30-day"];
 
-export const MEMBER_TYPES: MemberType[] = ["MB", "SC", "SB", "SP", "WT", "AWT", "GET"];
+export const MEMBER_TYPES: MemberType[] = ["MB", "SC", "SB", "SP", "WT", "AWT", "TAB"];
 
 export const CUP_COUNTING_MEMBER_TYPES: MemberType[] = ["MB", "SC", "SB"];
 

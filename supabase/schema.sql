@@ -17,7 +17,7 @@ create type customer_gender as enum ('Male', 'Female', 'Couple', 'Family', 'Othe
 
 create type customer_nc_level as enum ('5-day', '10-day', '20-day', '30-day');
 
-create type member_type as enum ('MB', 'SC', 'SB', 'SP', 'WT', 'AWT', 'GET');
+create type member_type as enum ('MB', 'SC', 'SB', 'SP', 'WT', 'AWT', 'TAB');
 
 create type consumption_type as enum ('Dine-in', 'Take-away');
 
