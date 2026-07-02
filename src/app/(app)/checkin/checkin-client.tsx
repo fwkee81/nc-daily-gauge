@@ -94,7 +94,9 @@ export function CheckinClient({ customers }: { customers: CustomerOption[] }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div>
-        <h1 className="text-2xl font-semibold">Check-in</h1>
+        <h1 className="text-2xl font-semibold">
+          Check-in — {format(new Date(), "EEEE, d MMM yyyy")}
+        </h1>
         <Input
           className="mt-4"
           placeholder="Search by name or last 4 digits of contact..."
@@ -108,40 +110,46 @@ export function CheckinClient({ customers }: { customers: CustomerOption[] }) {
               <summary className="cursor-pointer select-none bg-muted/50 px-3 py-2 text-sm font-semibold">
                 {letter} <span className="text-muted-foreground">({members.length})</span>
               </summary>
-              <ul className="divide-y">
+              <div className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 md:grid-cols-5">
                 {members.map((c) => {
                   const isSelected = selectedId === c.id;
                   return (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        onClick={() => handleSelect(c.id)}
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => handleSelect(c.id)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-center transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "hover:bg-accent"
+                      )}
+                    >
+                      <span className="text-sm font-semibold leading-tight">{c.name}</span>
+                      <span
                         className={cn(
-                          "flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent",
-                          isSelected && "bg-accent"
+                          "text-xs",
+                          isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
                         )}
                       >
-                        <span>
-                          {c.name}{" "}
-                          <span className="text-xs text-muted-foreground">
-                            ···{lastFourDigits(c.contact)}
-                          </span>
+                        ···{lastFourDigits(c.contact)}
+                      </span>
+                      <Badge
+                        variant={
+                          c.consumption_balance < RENEWAL_REMINDER_THRESHOLD ? "destructive" : "secondary"
+                        }
+                      >
+                        {c.consumption_balance} left
+                      </Badge>
+                      {isSelected && (
+                        <span className="text-xs font-medium">
+                          {cups} cup{cups > 1 ? "s" : ""}
                         </span>
-                        <span className="flex items-center gap-2">
-                          {isSelected && <Badge>{cups} cup{cups > 1 ? "s" : ""}</Badge>}
-                          <Badge
-                            variant={
-                              c.consumption_balance < RENEWAL_REMINDER_THRESHOLD ? "destructive" : "secondary"
-                            }
-                          >
-                            {c.consumption_balance} left
-                          </Badge>
-                        </span>
-                      </button>
-                    </li>
+                      )}
+                    </button>
                   );
                 })}
-              </ul>
+              </div>
             </details>
           ))}
           {groups.length === 0 && (
