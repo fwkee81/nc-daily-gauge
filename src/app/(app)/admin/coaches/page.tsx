@@ -16,7 +16,7 @@ export default async function AdminCoachesPage() {
 
   const supabase = await createClient();
 
-  const [{ data: clubCoaches }, { data: allCoaches }] = await Promise.all([
+  const [{ data: clubCoaches }, { data: allCoaches }, { data: club }] = await Promise.all([
     supabase
       .from("coaches")
       .select("id, name, contact, dob, sponsor_id, member_id, level, nc_position, nc_club_id, active")
@@ -24,11 +24,15 @@ export default async function AdminCoachesPage() {
       .eq("active", true)
       .order("name"),
     supabase.from("coaches").select("id, name").eq("active", true).order("name"),
+    coach.nc_club_id
+      ? supabase.from("nc_clubs").select("name").eq("id", coach.nc_club_id).single()
+      : Promise.resolve({ data: null }),
   ]);
 
   return (
     <CoachesClient
       currentCoachId={coach.id}
+      clubName={club?.name ?? null}
       coaches={clubCoaches ?? []}
       sponsorOptions={allCoaches ?? []}
     />

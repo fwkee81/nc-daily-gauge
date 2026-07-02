@@ -50,10 +50,12 @@ interface SponsorOption {
 
 export function CoachesClient({
   currentCoachId,
+  clubName,
   coaches,
   sponsorOptions,
 }: {
   currentCoachId: string;
+  clubName: string | null;
   coaches: CoachRow[];
   sponsorOptions: SponsorOption[];
 }) {
@@ -83,7 +85,9 @@ export function CoachesClient({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Coaches</h1>
+      <h1 className="text-2xl font-semibold">
+        Coaches {clubName && <span className="text-muted-foreground">— {clubName}</span>}
+      </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Coaches register themselves — this is for fixing details or removing someone who left.
       </p>
