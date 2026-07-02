@@ -543,10 +543,10 @@ as $$
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()));
 $$;
 
--- ASSUMPTION: "Coach's Cup" is grouped by the coach the customer was
--- originally invited by (their sponsor), matching "categories by same
--- sponsor" in the spec. Only counts customers with a non-null member_id and
--- member_type in (MB, SC, SB), per spec.
+-- "Coach's Cup" is grouped by the coach the customer was originally invited
+-- by (their sponsor), matching "categories by same sponsor" in the spec.
+-- Counts any customer with a coach as their inviter, EXCEPT member types
+-- SP, WT, AWT, TAB (a null/unset member_type still counts).
 create or replace function daily_coach_cups(p_date date, p_club_id uuid default null)
 returns table (coach_id uuid, coach_name text, cups bigint)
 language sql
@@ -565,8 +565,7 @@ as $$
     and not ci.voided
     and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()))
-    and cu.member_id is not null
-    and cu.member_type in ('MB', 'SC', 'SB')
+    and (cu.member_type is null or cu.member_type not in ('SP', 'WT', 'AWT', 'TAB'))
   group by co.id, co.name
   order by cups desc;
 $$;
@@ -669,8 +668,7 @@ as $$
     and not ci.voided
     and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()))
-    and cu.member_id is not null
-    and cu.member_type in ('MB', 'SC', 'SB')
+    and (cu.member_type is null or cu.member_type not in ('SP', 'WT', 'AWT', 'TAB'))
   group by co.id, co.name
   order by total_cups desc;
 $$;

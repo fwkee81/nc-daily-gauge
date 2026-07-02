@@ -30,7 +30,11 @@ export const CUSTOMER_NC_LEVELS: CustomerNcLevel[] = ["5-day", "10-day", "20-day
 
 export const MEMBER_TYPES: MemberType[] = ["MB", "SC", "SB", "SP", "WT", "AWT", "TAB"];
 
-export const CUP_COUNTING_MEMBER_TYPES: MemberType[] = ["MB", "SC", "SB"];
+// Coach's Cup counts any customer with an inviting coach EXCEPT these member
+// types (a null/unset member_type still counts). Mirrors the WHERE clause in
+// daily_coach_cups / monthly_coach_cups in supabase/schema.sql — not read by
+// the app directly, kept here for reference.
+export const COACH_CUP_EXCLUDED_MEMBER_TYPES: MemberType[] = ["SP", "WT", "AWT", "TAB"];
 
 export const CONSUMPTION_TYPES: ConsumptionType[] = ["Dine-in", "Take-away"];
 
