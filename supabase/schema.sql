@@ -69,6 +69,10 @@ create table customers (
   invited_by_type invited_by_type not null,
   invited_by_coach_id uuid references coaches (id),
   invited_by_customer_id uuid references customers (id),
+  -- Separate from invited_by: the coach this customer is "under" for
+  -- Coach's Cup attribution. Invited by can be a coach, another customer, or
+  -- Plug-in, but Coach's Cup should still be assignable to a coach either way.
+  coach_id uuid references coaches (id),
   member_id text,
   member_type member_type,
   created_by uuid references coaches (id),
@@ -129,6 +133,7 @@ create table customer_renewals (
 create index idx_customers_nc_club on customers (nc_club_id);
 create index idx_customers_invited_by_coach on customers (invited_by_coach_id);
 create index idx_customers_invited_by_customer on customers (invited_by_customer_id);
+create index idx_customers_coach on customers (coach_id);
 create index idx_customers_name on customers (name);
 create index idx_coaches_sponsor on coaches (sponsor_id);
 create index idx_checkins_customer on checkins (customer_id);
@@ -543,10 +548,11 @@ as $$
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()));
 $$;
 
--- "Coach's Cup" is grouped by the coach the customer was originally invited
--- by (their sponsor), matching "categories by same sponsor" in the spec.
--- Counts any customer with a coach as their inviter, EXCEPT member types
--- SP, WT, AWT, TAB (a null/unset member_type still counts).
+-- "Coach's Cup" is grouped by the customer's assigned coach_id (separate
+-- from invited_by — a customer can be invited by another customer or
+-- Plug-in and still be "under" a coach for cup attribution). Counts any
+-- customer with a coach assigned, EXCEPT member types SP, WT, AWT, TAB (a
+-- null/unset member_type still counts).
 create or replace function daily_coach_cups(p_date date, p_club_id uuid default null)
 returns table (coach_id uuid, coach_name text, cups bigint)
 language sql
@@ -560,7 +566,7 @@ as $$
     coalesce(sum(ci.cups), 0) as cups
   from checkins ci
   join customers cu on cu.id = ci.customer_id
-  join coaches co on co.id = cu.invited_by_coach_id
+  join coaches co on co.id = cu.coach_id
   where ci.checkin_date = p_date
     and not ci.voided
     and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
@@ -662,7 +668,7 @@ as $$
     round(coalesce(sum(ci.cups), 0)::numeric / nullif((select n from days), 0), 2) as avg_daily_cups
   from checkins ci
   join customers cu on cu.id = ci.customer_id
-  join coaches co on co.id = cu.invited_by_coach_id
+  join coaches co on co.id = cu.coach_id
   cross join bounds b
   where ci.checkin_date between b.month_start and b.month_end
     and not ci.voided

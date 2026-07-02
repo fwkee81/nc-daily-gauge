@@ -69,6 +69,7 @@ export type Customer = {
   invited_by_type: InvitedByType;
   invited_by_coach_id: string | null;
   invited_by_customer_id: string | null;
+  coach_id: string | null;
   member_id: string | null;
   member_type: MemberType | null;
   created_by: string | null;

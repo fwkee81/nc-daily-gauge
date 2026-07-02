@@ -62,6 +62,7 @@ export function CustomerForm({
     editing ? String(editing.consumption_balance) : "0"
   );
   const [invitedBy, setInvitedBy] = useState<string>(invitedByValue(editing));
+  const [coachId, setCoachId] = useState<string | null>(editing?.coach_id ?? null);
   const [memberId, setMemberId] = useState(editing?.member_id ?? "");
   const [memberType, setMemberType] = useState<MemberType | "">(editing?.member_type ?? "");
   const [isPending, setIsPending] = useState(false);
@@ -80,6 +81,11 @@ export function CustomerForm({
     }
     return options;
   }, [coaches, customers, editing]);
+
+  const coachOptions: ComboboxOption[] = useMemo(
+    () => coaches.map((c) => ({ value: c.id, label: c.name })),
+    [coaches]
+  );
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -105,6 +111,7 @@ export function CustomerForm({
       invitedByType: invitedBy === PLUGIN_VALUE ? "plugin" : invitedBy.startsWith("coach:") ? "coach" : "customer",
       invitedByCoachId: invitedBy.startsWith("coach:") ? invitedBy.slice("coach:".length) : null,
       invitedByCustomerId: invitedBy.startsWith("customer:") ? invitedBy.slice("customer:".length) : null,
+      coachId,
       memberId: memberId.trim() || null,
       memberType: memberType || null,
     };
@@ -218,6 +225,21 @@ export function CustomerForm({
           placeholder="Choose coach, customer, or Plug-in"
           searchPlaceholder="Search coaches or customers..."
         />
+      </div>
+
+      <div className="space-y-1">
+        <Label>Coach</Label>
+        <Combobox
+          options={coachOptions}
+          value={coachId}
+          onChange={setCoachId}
+          placeholder="Choose coach"
+          searchPlaceholder="Search coaches..."
+          emptyText="No coaches found."
+        />
+        <p className="text-xs text-muted-foreground">
+          Who this customer counts toward in Coach&apos;s Cup — separate from who invited them.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

@@ -21,6 +21,7 @@ export interface CustomerFormInput {
   invitedByType: InvitedByType;
   invitedByCoachId: string | null;
   invitedByCustomerId: string | null;
+  coachId: string | null;
   memberId: string | null;
   memberType: MemberType | null;
 }
@@ -44,6 +45,7 @@ export async function createCustomer(input: CustomerFormInput) {
     invited_by_type: input.invitedByType,
     invited_by_coach_id: input.invitedByCoachId,
     invited_by_customer_id: input.invitedByCustomerId,
+    coach_id: input.coachId,
     member_id: input.memberId,
     member_type: input.memberType,
     created_by: coach.id,
@@ -75,6 +77,7 @@ export async function updateCustomer(id: string, input: CustomerFormInput) {
       invited_by_type: input.invitedByType,
       invited_by_coach_id: input.invitedByCoachId,
       invited_by_customer_id: input.invitedByCustomerId,
+      coach_id: input.coachId,
       member_id: input.memberId,
       member_type: input.memberType,
     })

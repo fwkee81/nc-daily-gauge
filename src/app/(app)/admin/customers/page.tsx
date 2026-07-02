@@ -26,7 +26,9 @@ export default async function AdminCustomersPage() {
     // the same result set, since it already contains every customer.
     supabase
       .from("customers")
-      .select("*, invited_by_coach:coaches!customers_invited_by_coach_id_fkey(id,name)")
+      .select(
+        "*, invited_by_coach:coaches!customers_invited_by_coach_id_fkey(id,name), coach:coaches!customers_coach_id_fkey(id,name)"
+      )
       .eq("nc_club_id", coach.nc_club_id ?? "")
       .eq("active", true)
       .order("name"),

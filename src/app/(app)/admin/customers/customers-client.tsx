@@ -51,10 +51,12 @@ export interface CustomerRow {
   invited_by_type: InvitedByType;
   invited_by_coach_id: string | null;
   invited_by_customer_id: string | null;
+  coach_id: string | null;
   member_id: string | null;
   member_type: MemberType | null;
   invited_by_coach?: { id: string; name: string } | null;
   invited_by_customer?: { id: string; name: string } | null;
+  coach?: { id: string; name: string } | null;
 }
 
 interface CoachOption {
@@ -152,6 +154,7 @@ export function CustomersClient({
               <TableHead>NC Level</TableHead>
               <TableHead>Balance</TableHead>
               <TableHead>Invited by</TableHead>
+              <TableHead>Coach</TableHead>
               <TableHead>Member</TableHead>
               <TableHead />
             </TableRow>
@@ -170,6 +173,7 @@ export function CustomersClient({
                   </Badge>
                 </TableCell>
                 <TableCell>{invitedByLabel(c)}</TableCell>
+                <TableCell>{c.coach?.name ?? "—"}</TableCell>
                 <TableCell>
                   {c.member_id ? `${c.member_id} (${c.member_type ?? "—"})` : "—"}
                 </TableCell>
@@ -213,7 +217,7 @@ export function CustomersClient({
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
+                <TableCell colSpan={10} className="text-center text-muted-foreground">
                   No customers found.
                 </TableCell>
               </TableRow>
