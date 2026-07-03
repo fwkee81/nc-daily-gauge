@@ -153,7 +153,11 @@ export function CoachForm({
         <Label>Nutrition Club *</Label>
         <Select value={ncClubId ?? undefined} onValueChange={setNcClubId}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Choose nutrition club" />
+            <SelectValue placeholder="Choose nutrition club">
+              {(value: string | null) =>
+                clubOptions.find((c) => c.id === value)?.name ?? "Choose nutrition club"
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {clubOptions.map((c) => (
