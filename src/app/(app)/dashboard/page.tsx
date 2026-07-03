@@ -3,9 +3,21 @@ import { Coffee, CalendarDays, TrendingUp, type LucideIcon } from "lucide-react"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getCurrentCoach } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
   const coach = await getCurrentCoach();
+
+  let clubName: string | null = null;
+  if (coach?.nc_club_id) {
+    const supabase = await createClient();
+    const { data: club } = await supabase
+      .from("nc_clubs")
+      .select("name")
+      .eq("id", coach.nc_club_id)
+      .maybeSingle();
+    clubName = club?.name ?? null;
+  }
 
   const tiles: {
     href: string;
@@ -42,6 +54,7 @@ export default async function DashboardPage() {
       <h1 className="text-2xl">Welcome, {coach?.name}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {coach?.nc_position} · {coach?.level}
+        {clubName && <> · {clubName}</>}
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
