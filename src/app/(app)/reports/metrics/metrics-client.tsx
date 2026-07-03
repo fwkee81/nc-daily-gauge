@@ -102,7 +102,10 @@ export function MetricsClient({
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Average NC Cups / day ({totals.days_in_period} days)</CardDescription>
+            <CardDescription>
+              Average NC Cups / operating day ({totals.days_in_period} operating day
+              {totals.days_in_period === 1 ? "" : "s"})
+            </CardDescription>
             <CardTitle className="text-3xl">{totals.avg_daily_cups}</CardTitle>
           </CardHeader>
         </Card>
@@ -116,7 +119,7 @@ export function MetricsClient({
               <TableRow>
                 <TableHead>Coach</TableHead>
                 <TableHead className="text-right">Total cups</TableHead>
-                <TableHead className="text-right">Avg / day</TableHead>
+                <TableHead className="text-right">Avg / operating day</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -103,9 +103,10 @@ report pages default to on load.
   or consumption type on a check-in, or void it entirely, and every change is
   logged to `checkin_edits` with who/what/why. Corrections adjust the
   customer's balance accordingly.
-- **"Average NC Cups" / "Average Coach Cups"** = total cups ÷ days elapsed so
-  far in the month (for the current month) or ÷ full days in the month (for a
-  past month) — not divided by a flat 30.
+- **"Average NC Cups" / "Average Coach Cups"** = total cups ÷ operating days
+  (distinct calendar days in the month with at least one non-voided
+  check-in) — a day the club didn't open isn't counted, so it doesn't drag
+  the average down.
 - **Coach's Cup grouping** ("categories by same sponsor" in the spec) groups
   by the coach the customer was originally invited by, counting only
   customers with a non-null Member ID and Member Type in (MB, SC, SB), per
