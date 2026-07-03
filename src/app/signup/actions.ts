@@ -29,19 +29,3 @@ export async function signUpWithPassword(formData: FormData) {
 
   redirect("/login?notice=" + encodeURIComponent("Check your email to confirm your account, then log in."));
 }
-
-export async function signUpWithGoogle() {
-  const supabase = await createClient();
-  const origin = (await headers()).get("origin");
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: `${origin}/auth/callback?next=/onboarding` },
-  });
-
-  if (error || !data.url) {
-    redirect(`/signup?error=${encodeURIComponent(error?.message ?? "Google sign-in failed")}`);
-  }
-
-  redirect(data.url);
-}

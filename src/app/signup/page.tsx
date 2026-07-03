@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/logo";
-import { signUpWithPassword, signUpWithGoogle } from "./actions";
+import { GoogleAuthButton } from "@/components/google-auth-button";
+import { signUpWithPassword } from "./actions";
 
 export default async function SignupPage({
   searchParams,
@@ -28,11 +29,7 @@ export default async function SignupPage({
             <p className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">{error}</p>
           )}
 
-          <form action={signUpWithGoogle}>
-            <Button type="submit" variant="outline" className="w-full">
-              Continue with Google
-            </Button>
-          </form>
+          <GoogleAuthButton next="/onboarding" />
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <div className="h-px flex-1 bg-border" />
