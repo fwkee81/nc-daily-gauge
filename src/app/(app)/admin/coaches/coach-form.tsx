@@ -23,13 +23,20 @@ interface SponsorOption {
   name: string;
 }
 
+interface ClubOption {
+  id: string;
+  name: string;
+}
+
 export function CoachForm({
   coach,
   sponsorOptions,
+  clubOptions,
   onDone,
 }: {
   coach: CoachRow;
   sponsorOptions: SponsorOption[];
+  clubOptions: ClubOption[];
   onDone: () => void;
 }) {
   const [name, setName] = useState(coach.name);
@@ -40,6 +47,7 @@ export function CoachForm({
   const [memberId, setMemberId] = useState(coach.member_id);
   const [level, setLevel] = useState<CoachLevel>(coach.level);
   const [ncPosition, setNcPosition] = useState<NcPosition>(coach.nc_position);
+  const [ncClubId, setNcClubId] = useState<string | null>(coach.nc_club_id);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +63,7 @@ export function CoachForm({
     e.preventDefault();
     setError(null);
 
-    if (!name || !contact || !dob || !memberId) {
+    if (!name || !contact || !dob || !memberId || !ncClubId) {
       setError("Please fill in all required fields.");
       return;
     }
@@ -72,6 +80,7 @@ export function CoachForm({
       memberId,
       level,
       ncPosition,
+      ncClubId,
     };
 
     setIsPending(true);
@@ -138,6 +147,22 @@ export function CoachForm({
       <div className="space-y-1">
         <Label>Member ID *</Label>
         <Input value={memberId} onChange={(e) => setMemberId(e.target.value)} required />
+      </div>
+
+      <div className="space-y-1">
+        <Label>Nutrition Club *</Label>
+        <Select value={ncClubId ?? undefined} onValueChange={setNcClubId}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Choose nutrition club" />
+          </SelectTrigger>
+          <SelectContent>
+            {clubOptions.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

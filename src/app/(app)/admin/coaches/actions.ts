@@ -14,6 +14,7 @@ export interface CoachFormInput {
   memberId: string;
   level: CoachLevel;
   ncPosition: NcPosition;
+  ncClubId: string;
 }
 
 // RLS already enforces this (coaches_update_admin requires is_super_admin()),
@@ -43,6 +44,7 @@ export async function updateCoach(id: string, input: CoachFormInput) {
       member_id: input.memberId,
       level: input.level,
       nc_position: input.ncPosition,
+      nc_club_id: input.ncClubId,
     })
     .eq("id", id);
 

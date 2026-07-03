@@ -49,16 +49,23 @@ interface SponsorOption {
   name: string;
 }
 
+interface ClubOption {
+  id: string;
+  name: string;
+}
+
 export function CoachesClient({
   currentCoachId,
   isSuperAdmin,
   coaches,
   sponsorOptions,
+  clubOptions,
 }: {
   currentCoachId: string;
   isSuperAdmin: boolean;
   coaches: CoachRow[];
   sponsorOptions: SponsorOption[];
+  clubOptions: ClubOption[];
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -186,6 +193,7 @@ export function CoachesClient({
               <CoachForm
                 coach={editing}
                 sponsorOptions={sponsorOptions}
+                clubOptions={clubOptions}
                 onDone={() => {
                   setEditing(null);
                   router.refresh();

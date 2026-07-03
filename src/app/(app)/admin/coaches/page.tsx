@@ -25,7 +25,7 @@ export default async function AdminCoachesPage() {
   });
   const clubIds = (visibleClubRows ?? []).map((row) => row.club_id);
 
-  const [{ data: networkCoaches }, { data: allCoaches }] = await Promise.all([
+  const [{ data: networkCoaches }, { data: allCoaches }, { data: clubs }] = await Promise.all([
     supabase
       .from("coaches")
       .select(
@@ -35,6 +35,7 @@ export default async function AdminCoachesPage() {
       .eq("active", true)
       .order("name"),
     supabase.from("coaches").select("id, name").eq("active", true).order("name"),
+    supabase.from("nc_clubs").select("id, name").order("name"),
   ]);
 
   return (
@@ -43,6 +44,7 @@ export default async function AdminCoachesPage() {
       isSuperAdmin={isSuperAdmin}
       coaches={(networkCoaches ?? []) as unknown as CoachRow[]}
       sponsorOptions={allCoaches ?? []}
+      clubOptions={clubs ?? []}
     />
   );
 }
