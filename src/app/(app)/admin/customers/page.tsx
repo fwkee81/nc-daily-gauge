@@ -30,7 +30,6 @@ export default async function AdminCustomersPage() {
         "*, invited_by_coach:coaches!customers_invited_by_coach_id_fkey(id,name), coach:coaches!customers_coach_id_fkey(id,name)"
       )
       .eq("nc_club_id", coach.nc_club_id ?? "")
-      .eq("active", true)
       .order("name"),
     supabase.from("coaches").select("id, name").eq("active", true).order("name"),
   ]);

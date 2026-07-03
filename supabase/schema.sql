@@ -15,7 +15,7 @@ create type nc_position as enum ('Owner', 'Internship', 'NC Partner', 'Junior Co
 
 create type customer_gender as enum ('Male', 'Female', 'Couple', 'Family', 'Others');
 
-create type customer_nc_level as enum ('5-day', '10-day', '20-day', '30-day');
+create type customer_nc_level as enum ('5-day', '10-day', '20-day', '30-day', 'Ala Carte');
 
 create type member_type as enum ('MB', 'SC', 'SB', 'SP', 'WT', 'AWT', 'TAB');
 
@@ -74,7 +74,10 @@ create table customers (
   name text not null,
   gender customer_gender not null,
   contact text not null,
-  dob date not null,
+  -- Nullable: walk-in/Ala Carte customers are captured with just a name,
+  -- contact, and who invited them — DOB can be filled in later if they
+  -- become a regular member.
+  dob date,
   age_override integer,
   nc_level customer_nc_level not null,
   consumption_balance integer not null default 0,
@@ -390,6 +393,66 @@ begin
 end;
 $$;
 
+-- Creates a one-time "Ala Carte" walk-in customer, checks them in for a
+-- single cup, and immediately deactivates them (they won't show up in the
+-- Customers list or check-in search again). Admin-only. If they come back
+-- to start a real package, an admin can reactivate + edit their profile
+-- from the Customers page instead of creating a duplicate record.
+create or replace function record_walkin_checkin(
+  p_name text,
+  p_contact text,
+  p_invited_by_type invited_by_type,
+  p_invited_by_coach_id uuid,
+  p_invited_by_customer_id uuid,
+  p_consumption_type consumption_type,
+  p_checkin_date date
+)
+returns checkins
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_coach_id uuid := current_coach_id();
+  v_club_id uuid;
+  v_customer_id uuid;
+  v_result checkins;
+begin
+  if v_coach_id is null or not is_current_coach_admin() then
+    raise exception 'Only admins can add a walk-in customer';
+  end if;
+  if p_name is null or btrim(p_name) = '' then
+    raise exception 'Name is required';
+  end if;
+  if p_contact is null or btrim(p_contact) = '' then
+    raise exception 'Contact is required';
+  end if;
+
+  select nc_club_id into v_club_id from coaches where id = v_coach_id;
+
+  insert into customers (
+    nc_club_id, name, gender, contact, dob, nc_level, consumption_balance,
+    invited_by_type, invited_by_coach_id, invited_by_customer_id, coach_id,
+    created_by, active
+  )
+  values (
+    v_club_id, p_name, 'Others', p_contact, null, 'Ala Carte', 1,
+    p_invited_by_type, p_invited_by_coach_id, p_invited_by_customer_id,
+    case when p_invited_by_type = 'coach' then p_invited_by_coach_id else null end,
+    v_coach_id, true
+  )
+  returning id into v_customer_id;
+
+  insert into checkins (customer_id, nc_club_id, cups, consumption_type, checkin_date, recorded_by)
+  values (v_customer_id, v_club_id, 1, p_consumption_type, p_checkin_date, v_coach_id)
+  returning * into v_result;
+
+  update customers set consumption_balance = 0, active = false where id = v_customer_id;
+
+  return v_result;
+end;
+$$;
+
 create or replace function correct_checkin(
   p_checkin_id uuid,
   p_new_cups integer,
@@ -531,6 +594,7 @@ grant execute on function record_checkin(uuid, integer, consumption_type, date) 
 grant execute on function correct_checkin(uuid, integer, consumption_type, text) to authenticated;
 grant execute on function void_checkin(uuid, text) to authenticated;
 grant execute on function renew_customer(uuid, customer_nc_level, integer) to authenticated;
+grant execute on function record_walkin_checkin(text, text, invited_by_type, uuid, uuid, consumption_type, date) to authenticated;
 
 -- =========================================================================
 -- REPORTING RPCs
@@ -629,6 +693,7 @@ as $$
     from customers cu
     where cu.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
       and cu.nc_club_id in (select visible_club_ids(current_coach_id()))
+      and cu.dob is not null
       and not (extract(month from cu.dob) = 2 and extract(day from cu.dob) = 29)
   )
   select * from next_bday where days_until between 0 and 3 order by days_until;

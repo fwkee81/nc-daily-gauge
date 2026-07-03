@@ -38,7 +38,13 @@ export const ADMIN_POSITIONS: NcPosition[] = ["Owner", "Internship"];
 
 export const CUSTOMER_GENDERS: CustomerGender[] = ["Male", "Female", "Couple", "Family", "Others"];
 
-export const CUSTOMER_NC_LEVELS: CustomerNcLevel[] = ["5-day", "10-day", "20-day", "30-day"];
+export const CUSTOMER_NC_LEVELS: CustomerNcLevel[] = [
+  "5-day",
+  "10-day",
+  "20-day",
+  "30-day",
+  "Ala Carte",
+];
 
 export const MEMBER_TYPES: MemberType[] = ["MB", "SC", "SB", "SP", "WT", "AWT", "TAB"];
 
@@ -60,4 +66,5 @@ export const NC_LEVEL_CUPS: Record<CustomerNcLevel, number> = {
   "10-day": 10,
   "20-day": 20,
   "30-day": 30,
+  "Ala Carte": 1,
 };

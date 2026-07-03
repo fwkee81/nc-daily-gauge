@@ -26,7 +26,7 @@ export type NcPosition = "Owner" | "Internship" | "NC Partner" | "Junior Coach";
 
 export type CustomerGender = "Male" | "Female" | "Couple" | "Family" | "Others";
 
-export type CustomerNcLevel = "5-day" | "10-day" | "20-day" | "30-day";
+export type CustomerNcLevel = "5-day" | "10-day" | "20-day" | "30-day" | "Ala Carte";
 
 export type MemberType = "MB" | "SC" | "SB" | "SP" | "WT" | "AWT" | "TAB";
 
@@ -62,7 +62,7 @@ export type Customer = {
   name: string;
   gender: CustomerGender;
   contact: string;
-  dob: string;
+  dob: string | null;
   age_override: number | null;
   nc_level: CustomerNcLevel;
   consumption_balance: number;
@@ -203,6 +203,18 @@ export type Database = {
       renew_customer: {
         Args: { p_customer_id: string; p_nc_level: CustomerNcLevel; p_cups_added: number };
         Returns: Customer;
+      };
+      record_walkin_checkin: {
+        Args: {
+          p_name: string;
+          p_contact: string;
+          p_invited_by_type: InvitedByType;
+          p_invited_by_coach_id: string | null;
+          p_invited_by_customer_id: string | null;
+          p_consumption_type: ConsumptionType;
+          p_checkin_date: string;
+        };
+        Returns: Checkin;
       };
       daily_totals: {
         Args: { p_date: string; p_club_id?: string | null };

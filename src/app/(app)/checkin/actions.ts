@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import type { ConsumptionType } from "@/lib/types/database";
+import type { ConsumptionType, InvitedByType } from "@/lib/types/database";
 
 export async function submitCheckin(
   customerId: string,
@@ -32,4 +32,31 @@ export async function submitCheckin(
   }
 
   return { success: true, checkin: data, name: customer.name, balance: customer.consumption_balance };
+}
+
+export async function submitWalkinCheckin(input: {
+  name: string;
+  contact: string;
+  invitedByType: InvitedByType;
+  invitedByCoachId: string | null;
+  invitedByCustomerId: string | null;
+  consumptionType: ConsumptionType;
+  checkinDate: string;
+}) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("record_walkin_checkin", {
+    p_name: input.name,
+    p_contact: input.contact,
+    p_invited_by_type: input.invitedByType,
+    p_invited_by_coach_id: input.invitedByCoachId,
+    p_invited_by_customer_id: input.invitedByCustomerId,
+    p_consumption_type: input.consumptionType,
+    p_checkin_date: input.checkinDate,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true, name: input.name, balance: 0 };
 }

@@ -128,3 +128,21 @@ export async function deactivateCustomer(id: string) {
   revalidatePath("/admin/customers");
   return { success: true };
 }
+
+// Undo a deactivation — e.g. a walk-in Ala Carte customer comes back to
+// start a real package. Reactivating and editing keeps their existing
+// record (and check-in history) instead of creating a duplicate.
+export async function reactivateCustomer(id: string) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) {
+    return { error: "Not authorized." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("customers").update({ active: true }).eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/customers");
+  return { success: true };
+}

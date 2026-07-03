@@ -14,20 +14,34 @@ import { playChime } from "@/lib/chime";
 import { CONSUMPTION_TYPES, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
 import type { ConsumptionType } from "@/lib/types/database";
 import { submitCheckin } from "./actions";
+import { WalkinDialog } from "./walkin-dialog";
 
 interface CustomerOption {
   id: string;
   name: string;
   contact: string;
-  dob: string;
+  dob: string | null;
   consumption_balance: number;
+}
+
+interface CoachOption {
+  id: string;
+  name: string;
 }
 
 function lastFourDigits(contact: string) {
   return contact.replace(/\D/g, "").slice(-4);
 }
 
-export function CheckinClient({ customers }: { customers: CustomerOption[] }) {
+export function CheckinClient({
+  customers,
+  coaches,
+  isAdmin,
+}: {
+  customers: CustomerOption[];
+  coaches: CoachOption[];
+  isAdmin: boolean;
+}) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -35,6 +49,7 @@ export function CheckinClient({ customers }: { customers: CustomerOption[] }) {
   const [consumptionType, setConsumptionType] = useState<ConsumptionType>(CONSUMPTION_TYPES[0]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ name: string; balance: number } | null>(null);
+  const [walkinOpen, setWalkinOpen] = useState(false);
 
   const selected = customers.find((c) => c.id === selectedId) ?? null;
 
@@ -91,12 +106,25 @@ export function CheckinClient({ customers }: { customers: CustomerOption[] }) {
     router.refresh();
   }
 
+  function handleWalkinDone(walkinResult: { name: string; balance: number }) {
+    playChime();
+    setResult(walkinResult);
+    router.refresh();
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div>
-        <h1 className="text-2xl font-semibold">
-          Check-in — {format(new Date(), "EEEE, d MMM yyyy")}
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold">
+            Check-in — {format(new Date(), "EEEE, d MMM yyyy")}
+          </h1>
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setWalkinOpen(true)}>
+              Walk-in (Ala Carte)
+            </Button>
+          )}
+        </div>
         <Input
           className="mt-4"
           placeholder="Search by name or last 4 digits of contact..."
@@ -211,6 +239,16 @@ export function CheckinClient({ customers }: { customers: CustomerOption[] }) {
           </div>
         )}
       </div>
+
+      {isAdmin && (
+        <WalkinDialog
+          open={walkinOpen}
+          onOpenChange={setWalkinOpen}
+          coaches={coaches}
+          customers={customers}
+          onDone={handleWalkinDone}
+        />
+      )}
     </div>
   );
 }

@@ -29,7 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CustomerForm } from "./customer-form";
 import { RenewDialog } from "./renew-dialog";
-import { deactivateCustomer } from "./actions";
+import { deactivateCustomer, reactivateCustomer } from "./actions";
 import type {
   CustomerGender,
   CustomerNcLevel,
@@ -44,7 +44,7 @@ export interface CustomerRow {
   name: string;
   gender: CustomerGender;
   contact: string;
-  dob: string;
+  dob: string | null;
   age_override: number | null;
   nc_level: CustomerNcLevel;
   consumption_balance: number;
@@ -55,6 +55,7 @@ export interface CustomerRow {
   member_id: string | null;
   member_type: MemberType | null;
   remark: string | null;
+  active: boolean;
   invited_by_coach?: { id: string; name: string } | null;
   invited_by_customer?: { id: string; name: string } | null;
   coach?: { id: string; name: string } | null;
@@ -74,17 +75,19 @@ export function CustomersClient({
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerRow | null>(null);
   const [renewing, setRenewing] = useState<CustomerRow | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return initialCustomers;
-    return initialCustomers.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.contact.toLowerCase().includes(q)
-    );
-  }, [initialCustomers, search]);
+    return initialCustomers.filter((c) => {
+      if (!showInactive && !c.active) return false;
+      if (!q) return true;
+      return c.name.toLowerCase().includes(q) || c.contact.toLowerCase().includes(q);
+    });
+  }, [initialCustomers, search, showInactive]);
 
   function invitedByLabel(c: CustomerRow) {
     if (c.invited_by_type === "plugin") return "Plug-in";
@@ -93,7 +96,9 @@ export function CustomersClient({
   }
 
   function ageOf(c: CustomerRow) {
-    return c.age_override ?? differenceInYears(new Date(), new Date(c.dob));
+    if (c.age_override != null) return c.age_override;
+    if (!c.dob) return null;
+    return differenceInYears(new Date(), new Date(c.dob));
   }
 
   async function handleDelete(id: string) {
@@ -102,6 +107,16 @@ export function CustomersClient({
       toast.error(result.error);
     } else {
       toast.success("Customer removed.");
+      router.refresh();
+    }
+  }
+
+  async function handleReactivate(id: string) {
+    const result = await reactivateCustomer(id);
+    if (result?.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Customer reactivated.");
       router.refresh();
     }
   }
@@ -137,12 +152,22 @@ export function CustomersClient({
         </Dialog>
       </div>
 
-      <Input
-        className="mt-4 max-w-sm"
-        placeholder="Search by name or contact..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        <Input
+          className="max-w-sm"
+          placeholder="Search by name or contact..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+          />
+          Show inactive customers
+        </label>
+      </div>
 
       <div className="mt-4 overflow-x-auto rounded-md border">
         <Table>
@@ -158,16 +183,17 @@ export function CustomersClient({
               <TableHead>Coach</TableHead>
               <TableHead>Member</TableHead>
               <TableHead>Remark</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((c) => (
-              <TableRow key={c.id}>
+              <TableRow key={c.id} className={c.active ? undefined : "opacity-60"}>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell>{c.gender}</TableCell>
                 <TableCell>{c.contact}</TableCell>
-                <TableCell>{ageOf(c)}</TableCell>
+                <TableCell>{ageOf(c) ?? "—"}</TableCell>
                 <TableCell>{c.nc_level}</TableCell>
                 <TableCell>
                   <Badge variant={c.consumption_balance < RENEWAL_REMINDER_THRESHOLD ? "destructive" : "secondary"}>
@@ -182,7 +208,19 @@ export function CustomersClient({
                 <TableCell className="max-w-[200px] truncate" title={c.remark ?? undefined}>
                   {c.remark || "—"}
                 </TableCell>
+                <TableCell>
+                  {c.active ? (
+                    <Badge variant="secondary">Active</Badge>
+                  ) : (
+                    <Badge variant="destructive">Inactive</Badge>
+                  )}
+                </TableCell>
                 <TableCell className="flex gap-2">
+                  {!c.active && (
+                    <Button size="sm" variant="outline" onClick={() => handleReactivate(c.id)}>
+                      Reactivate
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" onClick={() => setRenewing(c)}>
                     Renew
                   </Button>
@@ -196,6 +234,7 @@ export function CustomersClient({
                   >
                     Edit
                   </Button>
+                  {c.active && (
                   <AlertDialog>
                     <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>
                       Remove
@@ -217,12 +256,13 @@ export function CustomersClient({
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={11} className="text-center text-muted-foreground">
+                <TableCell colSpan={12} className="text-center text-muted-foreground">
                   No customers found.
                 </TableCell>
               </TableRow>
