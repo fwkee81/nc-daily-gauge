@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +57,75 @@ export interface CheckinRow {
   consumption_type: ConsumptionType;
   voided: boolean;
   created_at: string;
-  customer: { name: string } | null;
+  customer: {
+    name: string;
+    nc_level: string;
+    consumption_balance: number;
+    coach: { name: string } | null;
+  } | null;
+}
+
+type CheckinSortKey =
+  | "customer"
+  | "coach"
+  | "nc_level"
+  | "cups"
+  | "consumption_type"
+  | "balance"
+  | "time"
+  | "status";
+
+function checkinSortValue(c: CheckinRow, key: CheckinSortKey): string | number {
+  switch (key) {
+    case "customer":
+      return c.customer?.name ?? "";
+    case "coach":
+      return c.customer?.coach?.name ?? "";
+    case "nc_level":
+      return c.customer?.nc_level ?? "";
+    case "cups":
+      return c.cups;
+    case "consumption_type":
+      return c.consumption_type;
+    case "balance":
+      return c.customer?.consumption_balance ?? 0;
+    case "time":
+      return c.created_at;
+    case "status":
+      return c.voided ? 1 : 0;
+  }
+}
+
+function SortableHead({
+  label,
+  active,
+  direction,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  direction: "asc" | "desc";
+  onClick: () => void;
+}) {
+  return (
+    <TableHead
+      className="cursor-pointer select-none whitespace-nowrap hover:text-foreground"
+      onClick={onClick}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active ? (
+          direction === "asc" ? (
+            <ArrowUp className="size-3" />
+          ) : (
+            <ArrowDown className="size-3" />
+          )
+        ) : (
+          <ArrowUpDown className="size-3 opacity-30" />
+        )}
+      </span>
+    </TableHead>
+  );
 }
 
 export interface RenewalRow {
@@ -112,6 +181,31 @@ export function DailyReportClient({
   renewals: RenewalRow[];
 }) {
   const router = useRouter();
+  const [checkinSort, setCheckinSort] = useState<{ key: CheckinSortKey; dir: "asc" | "desc" } | null>(
+    null
+  );
+
+  const sortedCheckins = useMemo(() => {
+    if (!checkinSort) return checkins;
+    const { key, dir } = checkinSort;
+    const sorted = [...checkins].sort((a, b) => {
+      const av = checkinSortValue(a, key);
+      const bv = checkinSortValue(b, key);
+      if (av < bv) return -1;
+      if (av > bv) return 1;
+      return 0;
+    });
+    return dir === "asc" ? sorted : sorted.reverse();
+  }, [checkins, checkinSort]);
+
+  function toggleCheckinSort(key: CheckinSortKey) {
+    setCheckinSort((current) => {
+      if (current?.key === key) {
+        return { key, dir: current.dir === "asc" ? "desc" : "asc" };
+      }
+      return { key, dir: "asc" };
+    });
+  }
 
   // The server defaults "today" using its own clock (Vercel runs in UTC),
   // which can be a day off from the club's actual local date for several
@@ -170,7 +264,7 @@ export function DailyReportClient({
       <Card className="border-2 border-primary bg-primary/5 sm:max-w-xs">
         <CardHeader>
           <CardDescription>Total NC Cups</CardDescription>
-          <CardTitle className="text-5xl">{totals.total_cups}</CardTitle>
+          <CardTitle className="text-2xl">{totals.total_cups}</CardTitle>
         </CardHeader>
       </Card>
 
@@ -230,20 +324,66 @@ export function DailyReportClient({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Cups</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Status</TableHead>
+                <SortableHead
+                  label="Customer"
+                  active={checkinSort?.key === "customer"}
+                  direction={checkinSort?.dir ?? "asc"}
+                  onClick={() => toggleCheckinSort("customer")}
+                />
+                <SortableHead
+                  label="Coach"
+                  active={checkinSort?.key === "coach"}
+                  direction={checkinSort?.dir ?? "asc"}
+                  onClick={() => toggleCheckinSort("coach")}
+                />
+                <SortableHead
+                  label="NC Level"
+                  active={checkinSort?.key === "nc_level"}
+                  direction={checkinSort?.dir ?? "asc"}
+                  onClick={() => toggleCheckinSort("nc_level")}
+                />
+                <SortableHead
+                  label="Cups"
+                  active={checkinSort?.key === "cups"}
+                  direction={checkinSort?.dir ?? "asc"}
+                  onClick={() => toggleCheckinSort("cups")}
+                />
+                <SortableHead
+                  label="Type"
+                  active={checkinSort?.key === "consumption_type"}
+                  direction={checkinSort?.dir ?? "asc"}
+                  onClick={() => toggleCheckinSort("consumption_type")}
+                />
+                <SortableHead
+                  label="Consumption left"
+                  active={checkinSort?.key === "balance"}
+                  direction={checkinSort?.dir ?? "asc"}
+                  onClick={() => toggleCheckinSort("balance")}
+                />
+                <SortableHead
+                  label="Time"
+                  active={checkinSort?.key === "time"}
+                  direction={checkinSort?.dir ?? "asc"}
+                  onClick={() => toggleCheckinSort("time")}
+                />
+                <SortableHead
+                  label="Status"
+                  active={checkinSort?.key === "status"}
+                  direction={checkinSort?.dir ?? "asc"}
+                  onClick={() => toggleCheckinSort("status")}
+                />
                 {isAdmin && <TableHead />}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {checkins.map((c) => (
+              {sortedCheckins.map((c) => (
                 <TableRow key={c.id} className={c.voided ? "opacity-50" : undefined}>
                   <TableCell>{c.customer?.name ?? "—"}</TableCell>
+                  <TableCell>{c.customer?.coach?.name ?? "—"}</TableCell>
+                  <TableCell>{c.customer?.nc_level ?? "—"}</TableCell>
                   <TableCell>{c.cups}</TableCell>
                   <TableCell>{c.consumption_type}</TableCell>
+                  <TableCell>{c.customer?.consumption_balance ?? "—"}</TableCell>
                   <TableCell>{format(new Date(c.created_at), "p")}</TableCell>
                   <TableCell>{c.voided ? <Badge variant="destructive">Voided</Badge> : <Badge variant="secondary">Active</Badge>}</TableCell>
                   {isAdmin && (
@@ -255,7 +395,7 @@ export function DailyReportClient({
               ))}
               {checkins.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 6 : 5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={isAdmin ? 9 : 8} className="text-center text-muted-foreground">
                     No check-ins on this day.
                   </TableCell>
                 </TableRow>

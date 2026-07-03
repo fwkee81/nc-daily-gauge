@@ -26,7 +26,9 @@ export default async function DailyReportPage({
     supabase.rpc("upcoming_birthdays", { p_club_id: clubId }),
     supabase
       .from("checkins")
-      .select("id, cups, consumption_type, voided, created_at, customer:customers(name)")
+      .select(
+        "id, cups, consumption_type, voided, created_at, customer:customers(name, nc_level, consumption_balance, coach:coaches!customers_coach_id_fkey(name))"
+      )
       .eq("checkin_date", date)
       .eq("nc_club_id", clubId)
       .order("created_at", { ascending: false }),
