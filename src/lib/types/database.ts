@@ -237,6 +237,10 @@ export type Database = {
         Returns: MonthlyCoachCupsRow[];
       };
       list_branch_clubs: { Args: Record<string, never>; Returns: BranchClubRow[] };
+      visible_club_ids: {
+        Args: { p_coach_id: string };
+        Returns: { visible_club_ids: string }[];
+      };
     };
   };
 };

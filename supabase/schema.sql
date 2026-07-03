@@ -195,6 +195,23 @@ as $$
   select coalesce((select is_admin from coaches where auth_user_id = auth.uid()), false);
 $$;
 
+-- One hardcoded network-wide super admin (the founding account) who is the
+-- only one allowed to edit/deactivate ANY coach record — including coaches
+-- in downline (sponsored) clubs. Every other admin can view their downline
+-- network's coaches but not edit them, avoiding cross-club edit disputes.
+create or replace function is_super_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select email from auth.users where id = auth.uid()) = 'fwkee81@gmail.com',
+    false
+  );
+$$;
+
 -- Returns every nc_club a coach is allowed to see reports for: their own club,
 -- plus any club whose Owner traces back to them through the sponsor chain
 -- (i.e. a branch NC owner who named this coach as their sponsor, directly or
@@ -221,6 +238,7 @@ $$;
 
 grant execute on function current_coach_id() to authenticated;
 grant execute on function is_current_coach_admin() to authenticated;
+grant execute on function is_super_admin() to authenticated;
 grant execute on function visible_club_ids(uuid) to authenticated;
 
 -- =========================================================================
@@ -242,11 +260,13 @@ create policy "nc_clubs_insert" on nc_clubs
   for insert to authenticated with check (true);
 
 -- coaches: readable by any signed-in coach (needed to populate sponsor /
--- invited-by pickers, including across clubs). A coach may create/edit their
--- own row; an admin may also edit any coach within their own club (e.g. to
--- fix a level/position/sponsor, or deactivate someone who left). The
--- restrict_coach_self_update trigger below stops a non-admin from using their
--- own-row update rights to promote themselves or hop clubs.
+-- invited-by pickers, including across clubs, and so any admin can view
+-- their downline network's coaches). A coach may edit their own row's safe
+-- fields; only the super admin may edit any coach (including position,
+-- level, sponsor, club, member ID, active) — including downline coaches —
+-- so no cross-club edit disputes between branch admins. The
+-- restrict_coach_self_update trigger below stops a non-super-admin from
+-- using their own-row update rights to promote themselves or hop clubs.
 create policy "coaches_select" on coaches
   for select to authenticated using (true);
 create policy "coaches_insert_self" on coaches
@@ -257,18 +277,18 @@ create policy "coaches_update_self" on coaches
 create policy "coaches_update_admin" on coaches
   for update to authenticated
   using (
-    is_current_coach_admin()
-    and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
+    is_super_admin()
+    and nc_club_id in (select visible_club_ids(current_coach_id()))
   )
   with check (
-    is_current_coach_admin()
-    and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
+    is_super_admin()
+    and nc_club_id in (select visible_club_ids(current_coach_id()))
   );
 
--- A non-admin can update their own coaches row (per coaches_update_self
+-- A non-super-admin can update their own coaches row (per coaches_update_self
 -- above), but must not be able to use that to promote themselves to admin,
 -- change their level/sponsor, hop to another club, or edit their member ID.
--- Only admins (via coaches_update_admin) may change those fields.
+-- Only the super admin (via coaches_update_admin) may change those fields.
 create or replace function restrict_coach_self_update()
 returns trigger
 language plpgsql
@@ -276,7 +296,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if is_current_coach_admin() then
+  if is_super_admin() then
     return new;
   end if;
 
@@ -286,7 +306,7 @@ begin
     or new.nc_club_id is distinct from old.nc_club_id
     or new.member_id is distinct from old.member_id
     or new.active is distinct from old.active then
-    raise exception 'Only an admin can change position, level, sponsor, club, member ID, or active status';
+    raise exception 'Only the network admin can change position, level, sponsor, club, member ID, or active status';
   end if;
 
   return new;

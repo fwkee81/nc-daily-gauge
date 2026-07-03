@@ -41,6 +41,7 @@ export interface CoachRow {
   nc_position: NcPosition;
   nc_club_id: string | null;
   active: boolean;
+  nc_club?: { name: string } | null;
 }
 
 interface SponsorOption {
@@ -50,12 +51,12 @@ interface SponsorOption {
 
 export function CoachesClient({
   currentCoachId,
-  clubName,
+  isSuperAdmin,
   coaches,
   sponsorOptions,
 }: {
   currentCoachId: string;
-  clubName: string | null;
+  isSuperAdmin: boolean;
   coaches: CoachRow[];
   sponsorOptions: SponsorOption[];
 }) {
@@ -85,11 +86,13 @@ export function CoachesClient({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">
-        Coaches {clubName && <span className="text-muted-foreground">— {clubName}</span>}
-      </h1>
+      <h1 className="text-2xl font-semibold">Coaches</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Coaches register themselves — this is for fixing details or removing someone who left.
+        Your own club plus any downline branch that named you as sponsor. Coaches register
+        themselves —{" "}
+        {isSuperAdmin
+          ? "you can fix details or remove someone who left."
+          : "only the network admin can edit or remove a coach."}
       </p>
 
       <Input
@@ -104,12 +107,13 @@ export function CoachesClient({
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Club</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Level</TableHead>
               <TableHead>Position</TableHead>
               <TableHead>Sponsor</TableHead>
               <TableHead>Member ID</TableHead>
-              <TableHead />
+              {isSuperAdmin && <TableHead />}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -123,44 +127,47 @@ export function CoachesClient({
                     </Badge>
                   )}
                 </TableCell>
+                <TableCell>{c.nc_club?.name ?? "—"}</TableCell>
                 <TableCell>{c.contact}</TableCell>
                 <TableCell>{c.level}</TableCell>
                 <TableCell>{c.nc_position}</TableCell>
                 <TableCell>{nameOf(c.sponsor_id)}</TableCell>
                 <TableCell>{c.member_id}</TableCell>
-                <TableCell className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setEditing(c)}>
-                    Edit
-                  </Button>
-                  {c.id !== currentCoachId && (
-                    <AlertDialog>
-                      <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>
-                        Remove
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remove {c.name}?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This hides the coach from pickers and this list. Their past
-                            check-ins and customers they invited stay on record for
-                            reporting.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeactivate(c.id)}>
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </TableCell>
+                {isSuperAdmin && (
+                  <TableCell className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setEditing(c)}>
+                      Edit
+                    </Button>
+                    {c.id !== currentCoachId && (
+                      <AlertDialog>
+                        <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>
+                          Remove
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove {c.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This hides the coach from pickers and this list. Their past
+                              check-ins and customers they invited stay on record for
+                              reporting.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeactivate(c.id)}>
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={isSuperAdmin ? 8 : 7} className="text-center text-muted-foreground">
                   No coaches found.
                 </TableCell>
               </TableRow>
@@ -169,23 +176,25 @@ export function CoachesClient({
         </Table>
       </div>
 
-      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit coach</DialogTitle>
-          </DialogHeader>
-          {editing && (
-            <CoachForm
-              coach={editing}
-              sponsorOptions={sponsorOptions}
-              onDone={() => {
-                setEditing(null);
-                router.refresh();
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {isSuperAdmin && (
+        <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit coach</DialogTitle>
+            </DialogHeader>
+            {editing && (
+              <CoachForm
+                coach={editing}
+                sponsorOptions={sponsorOptions}
+                onDone={() => {
+                  setEditing(null);
+                  router.refresh();
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

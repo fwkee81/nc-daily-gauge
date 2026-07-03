@@ -36,6 +36,11 @@ export const NC_CLUBS = [
 
 export const ADMIN_POSITIONS: NcPosition[] = ["Owner", "Internship"];
 
+// The one account allowed to edit/deactivate any coach across the whole
+// network (including downline branches). Mirrors is_super_admin() in
+// supabase/schema.sql — keep these in sync.
+export const SUPER_ADMIN_EMAIL = "fwkee81@gmail.com";
+
 export const CUSTOMER_GENDERS: CustomerGender[] = ["Male", "Female", "Couple", "Family", "Others"];
 
 export const CUSTOMER_NC_LEVELS: CustomerNcLevel[] = [

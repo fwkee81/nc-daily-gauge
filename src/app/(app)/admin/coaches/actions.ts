@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentCoach } from "@/lib/auth";
+import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
+import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import type { CoachLevel, NcPosition } from "@/lib/types/database";
 
 export interface CoachFormInput {
@@ -15,10 +16,20 @@ export interface CoachFormInput {
   ncPosition: NcPosition;
 }
 
+// RLS already enforces this (coaches_update_admin requires is_super_admin()),
+// but checking here too gives a clear error instead of a raw Postgres one.
+async function requireSuperAdmin() {
+  const user = await getCurrentUser();
+  return user?.email === SUPER_ADMIN_EMAIL;
+}
+
 export async function updateCoach(id: string, input: CoachFormInput) {
   const coach = await getCurrentCoach();
   if (!coach || !coach.is_admin) {
     return { error: "Not authorized." };
+  }
+  if (!(await requireSuperAdmin())) {
+    return { error: "Only the network admin can edit coach profiles." };
   }
 
   const supabase = await createClient();
@@ -47,6 +58,9 @@ export async function deactivateCoach(id: string) {
   const coach = await getCurrentCoach();
   if (!coach || !coach.is_admin) {
     return { error: "Not authorized." };
+  }
+  if (!(await requireSuperAdmin())) {
+    return { error: "Only the network admin can remove a coach." };
   }
   if (coach.id === id) {
     return { error: "You can't deactivate your own coach account." };
