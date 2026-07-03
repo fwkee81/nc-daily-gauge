@@ -128,15 +128,19 @@ function SortableHead({
   );
 }
 
-export interface RenewalRow {
+// Combines actual renewals with newly added customers into one list — a
+// brand new sign-up is the first entry in a customer's cup ledger, so it
+// shows up here too (tagged "New" instead of "Renewal").
+export interface LedgerRow {
   id: string;
-  nc_level: string;
-  cups_added: number;
-  previous_balance: number;
-  new_balance: number;
-  created_at: string;
-  customer: { name: string } | null;
-  renewed_by_coach: { name: string } | null;
+  kind: "new" | "renewal";
+  customerName: string;
+  ncLevel: string;
+  cupsAdded: number;
+  previousBalance: number;
+  newBalance: number;
+  byCoachName: string | null;
+  createdAt: string;
 }
 
 interface HistoryEntry {
@@ -160,7 +164,7 @@ export function DailyReportClient({
   coachCups,
   birthdays,
   checkins,
-  renewals,
+  ledger,
 }: {
   date: string;
   hasExplicitDate: boolean;
@@ -178,7 +182,7 @@ export function DailyReportClient({
   coachCups: CoachCupRow[];
   birthdays: BirthdayRow[];
   checkins: CheckinRow[];
-  renewals: RenewalRow[];
+  ledger: LedgerRow[];
 }) {
   const router = useRouter();
   const [checkinSort, setCheckinSort] = useState<{ key: CheckinSortKey; dir: "asc" | "desc" } | null>(
@@ -406,36 +410,44 @@ export function DailyReportClient({
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold">Renewals on this day</h2>
+        <h2 className="text-lg font-semibold">New/Renewals</h2>
         <div className="mt-2 overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Type</TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>NC Level</TableHead>
                 <TableHead>Cups added</TableHead>
                 <TableHead>Balance</TableHead>
-                <TableHead>Renewed by</TableHead>
+                <TableHead>By Coach</TableHead>
                 <TableHead>Time</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {renewals.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>{r.customer?.name ?? "—"}</TableCell>
-                  <TableCell>{r.nc_level}</TableCell>
-                  <TableCell>+{r.cups_added}</TableCell>
+              {ledger.map((r) => (
+                <TableRow key={`${r.kind}-${r.id}`}>
                   <TableCell>
-                    {r.previous_balance} → {r.new_balance}
+                    {r.kind === "new" ? (
+                      <Badge>New</Badge>
+                    ) : (
+                      <Badge variant="secondary">Renewal</Badge>
+                    )}
                   </TableCell>
-                  <TableCell>{r.renewed_by_coach?.name ?? "—"}</TableCell>
-                  <TableCell>{format(new Date(r.created_at), "p")}</TableCell>
+                  <TableCell>{r.customerName}</TableCell>
+                  <TableCell>{r.ncLevel}</TableCell>
+                  <TableCell>+{r.cupsAdded}</TableCell>
+                  <TableCell>
+                    {r.previousBalance} → {r.newBalance}
+                  </TableCell>
+                  <TableCell>{r.byCoachName ?? "—"}</TableCell>
+                  <TableCell>{format(new Date(r.createdAt), "p")}</TableCell>
                 </TableRow>
               ))}
-              {renewals.length === 0 && (
+              {ledger.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    No renewals on this day.
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    No new customers or renewals on this day.
                   </TableCell>
                 </TableRow>
               )}
