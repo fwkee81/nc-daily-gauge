@@ -20,10 +20,10 @@ export default async function AdminCoachesPage() {
 
   const supabase = await createClient();
 
-  const { data: visibleClubRows } = await supabase.rpc("visible_club_ids", {
+  const { data: visibleClubRows } = await supabase.rpc("list_visible_club_ids", {
     p_coach_id: coach.id,
   });
-  const clubIds = (visibleClubRows ?? []).map((row) => row.visible_club_ids);
+  const clubIds = (visibleClubRows ?? []).map((row) => row.club_id);
 
   const [{ data: networkCoaches }, { data: allCoaches }] = await Promise.all([
     supabase

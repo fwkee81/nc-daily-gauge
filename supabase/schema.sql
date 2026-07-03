@@ -236,10 +236,26 @@ as $$
   select distinct nc_club_id from downline where nc_club_id is not null;
 $$;
 
+-- PostgREST's client representation of a bare `setof uuid` RPC result isn't
+-- something to rely on from the client — wrap it in a proper table type
+-- (one named column) for direct client-side calls, same pattern as
+-- list_branch_clubs(). SQL-to-SQL callers keep using visible_club_ids()
+-- directly (e.g. inside RLS policies and other functions).
+create or replace function list_visible_club_ids(p_coach_id uuid)
+returns table (club_id uuid)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select v.club_id from visible_club_ids(p_coach_id) as v(club_id);
+$$;
+
 grant execute on function current_coach_id() to authenticated;
 grant execute on function is_current_coach_admin() to authenticated;
 grant execute on function is_super_admin() to authenticated;
 grant execute on function visible_club_ids(uuid) to authenticated;
+grant execute on function list_visible_club_ids(uuid) to authenticated;
 
 -- =========================================================================
 -- ROW LEVEL SECURITY

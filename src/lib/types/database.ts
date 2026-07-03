@@ -241,6 +241,10 @@ export type Database = {
         Args: { p_coach_id: string };
         Returns: { visible_club_ids: string }[];
       };
+      list_visible_club_ids: {
+        Args: { p_coach_id: string };
+        Returns: { club_id: string }[];
+      };
     };
   };
 };
