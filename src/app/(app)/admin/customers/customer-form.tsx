@@ -177,6 +177,13 @@ export function CustomerForm({
       return;
     }
 
+    // Save changes covers everything on the form, including a family member
+    // typed into the fields below but never explicitly added via the
+    // separate "Add family member" button.
+    if (editing && newMemberName.trim()) {
+      await handleAddMember();
+    }
+
     toast.success(editing ? "Customer updated." : "Customer added.");
     onDone();
   }
