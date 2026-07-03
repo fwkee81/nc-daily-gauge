@@ -72,6 +72,7 @@ export type Customer = {
   coach_id: string | null;
   member_id: string | null;
   member_type: MemberType | null;
+  remark: string | null;
   created_by: string | null;
   active: boolean;
   created_at: string;

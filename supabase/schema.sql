@@ -87,6 +87,7 @@ create table customers (
   coach_id uuid references coaches (id),
   member_id text,
   member_type member_type,
+  remark text,
   created_by uuid references coaches (id),
   -- Soft delete: customers are never hard-deleted because checkins.customer_id
   -- references them (and we want historical reports to keep working). "Remove"

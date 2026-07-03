@@ -24,6 +24,7 @@ export interface CustomerFormInput {
   coachId: string | null;
   memberId: string | null;
   memberType: MemberType | null;
+  remark: string | null;
 }
 
 export async function createCustomer(input: CustomerFormInput) {
@@ -48,6 +49,7 @@ export async function createCustomer(input: CustomerFormInput) {
     coach_id: input.coachId,
     member_id: input.memberId,
     member_type: input.memberType,
+    remark: input.remark,
     created_by: coach.id,
   });
 
@@ -80,6 +82,7 @@ export async function updateCustomer(id: string, input: CustomerFormInput) {
       coach_id: input.coachId,
       member_id: input.memberId,
       member_type: input.memberType,
+      remark: input.remark,
     })
     .eq("id", id);
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -65,6 +66,7 @@ export function CustomerForm({
   const [coachId, setCoachId] = useState<string | null>(editing?.coach_id ?? null);
   const [memberId, setMemberId] = useState(editing?.member_id ?? "");
   const [memberType, setMemberType] = useState<MemberType | "">(editing?.member_type ?? "");
+  const [remark, setRemark] = useState(editing?.remark ?? "");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,6 +116,7 @@ export function CustomerForm({
       coachId,
       memberId: memberId.trim() || null,
       memberType: memberType || null,
+      remark: remark.trim() || null,
     };
 
     setIsPending(true);
@@ -265,6 +268,16 @@ export function CustomerForm({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="space-y-1">
+        <Label>Remark</Label>
+        <Textarea
+          value={remark}
+          onChange={(e) => setRemark(e.target.value)}
+          placeholder="Any notes about this customer..."
+          rows={3}
+        />
       </div>
 
       <Button type="submit" disabled={isPending} className="w-full">

@@ -54,6 +54,7 @@ export interface CustomerRow {
   coach_id: string | null;
   member_id: string | null;
   member_type: MemberType | null;
+  remark: string | null;
   invited_by_coach?: { id: string; name: string } | null;
   invited_by_customer?: { id: string; name: string } | null;
   coach?: { id: string; name: string } | null;
@@ -156,6 +157,7 @@ export function CustomersClient({
               <TableHead>Invited by</TableHead>
               <TableHead>Coach</TableHead>
               <TableHead>Member</TableHead>
+              <TableHead>Remark</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -176,6 +178,9 @@ export function CustomersClient({
                 <TableCell>{c.coach?.name ?? "—"}</TableCell>
                 <TableCell>
                   {c.member_id ? `${c.member_id} (${c.member_type ?? "—"})` : "—"}
+                </TableCell>
+                <TableCell className="max-w-[200px] truncate" title={c.remark ?? undefined}>
+                  {c.remark || "—"}
                 </TableCell>
                 <TableCell className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => setRenewing(c)}>
@@ -217,7 +222,7 @@ export function CustomersClient({
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground">
+                <TableCell colSpan={11} className="text-center text-muted-foreground">
                   No customers found.
                 </TableCell>
               </TableRow>
