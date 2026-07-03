@@ -66,12 +66,23 @@ interface CoachOption {
   name: string;
 }
 
+export interface CustomerMemberRow {
+  id: string;
+  customer_id: string;
+  name: string;
+  contact: string | null;
+  dob: string | null;
+  active: boolean;
+}
+
 export function CustomersClient({
   initialCustomers,
   coaches,
+  members,
 }: {
   initialCustomers: CustomerRow[];
   coaches: CoachOption[];
+  members: CustomerMemberRow[];
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -143,6 +154,7 @@ export function CustomersClient({
               coaches={coaches}
               customers={initialCustomers}
               editing={editing}
+              members={editing ? members.filter((m) => m.customer_id === editing.id) : []}
               onDone={() => {
                 setDialogOpen(false);
                 router.refresh();

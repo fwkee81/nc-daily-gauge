@@ -18,8 +18,14 @@ import {
 import { Combobox, type ComboboxOption } from "@/components/combobox";
 import { CUSTOMER_GENDERS, CUSTOMER_NC_LEVELS, MEMBER_TYPES } from "@/lib/constants";
 import type { CustomerGender, CustomerNcLevel, MemberType } from "@/lib/types/database";
-import { createCustomer, updateCustomer, type CustomerFormInput } from "./actions";
-import type { CustomerRow } from "./customers-client";
+import {
+  addCustomerMember,
+  createCustomer,
+  deactivateCustomerMember,
+  updateCustomer,
+  type CustomerFormInput,
+} from "./actions";
+import type { CustomerMemberRow, CustomerRow } from "./customers-client";
 
 interface CoachOption {
   id: string;
@@ -43,11 +49,13 @@ export function CustomerForm({
   coaches,
   customers,
   editing,
+  members,
   onDone,
 }: {
   coaches: CoachOption[];
   customers: CustomerRow[];
   editing?: CustomerRow | null;
+  members: CustomerMemberRow[];
   onDone: () => void;
 }) {
   const [name, setName] = useState(editing?.name ?? "");
@@ -69,6 +77,46 @@ export function CustomerForm({
   const [remark, setRemark] = useState(editing?.remark ?? "");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [familyMembers, setFamilyMembers] = useState<CustomerMemberRow[]>(members);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberContact, setNewMemberContact] = useState("");
+  const [newMemberDob, setNewMemberDob] = useState("");
+  const [memberPending, setMemberPending] = useState(false);
+  const [memberError, setMemberError] = useState<string | null>(null);
+
+  async function handleAddMember() {
+    if (!editing || !newMemberName.trim()) return;
+    setMemberError(null);
+    setMemberPending(true);
+    const result = await addCustomerMember(editing.id, {
+      name: newMemberName.trim(),
+      contact: newMemberContact.trim() || null,
+      dob: newMemberDob || null,
+    });
+    setMemberPending(false);
+
+    if (result?.error || !result?.member) {
+      setMemberError(result?.error ?? "Could not add family member.");
+      return;
+    }
+
+    setFamilyMembers((prev) => [...prev, result.member]);
+    setNewMemberName("");
+    setNewMemberContact("");
+    setNewMemberDob("");
+    toast.success("Family member added.");
+  }
+
+  async function handleRemoveMember(id: string) {
+    const result = await deactivateCustomerMember(id);
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    setFamilyMembers((prev) => prev.filter((m) => m.id !== id));
+    toast.success("Family member removed.");
+  }
 
   const computedAge = dob ? differenceInYears(new Date(), new Date(dob)) : null;
 
@@ -278,6 +326,76 @@ export function CustomerForm({
           placeholder="Any notes about this customer..."
           rows={3}
         />
+      </div>
+
+      <div className="space-y-2 rounded-md border p-3">
+        <Label>Family / shared members</Label>
+        <p className="text-xs text-muted-foreground">
+          A spouse or family member who shares this customer&apos;s consumption balance. They can
+          be found by their own name at check-in.
+        </p>
+
+        {editing ? (
+          <>
+            {familyMembers.length > 0 && (
+              <ul className="space-y-1">
+                {familyMembers.map((m) => (
+                  <li
+                    key={m.id}
+                    className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm"
+                  >
+                    <span>
+                      {m.name}
+                      {m.contact && <span className="text-muted-foreground"> · {m.contact}</span>}
+                      {m.dob && <span className="text-muted-foreground"> · {m.dob}</span>}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRemoveMember(m.id)}
+                    >
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {memberError && <p className="text-sm text-destructive">{memberError}</p>}
+
+            <div className="grid grid-cols-3 gap-2">
+              <Input
+                placeholder="Name"
+                value={newMemberName}
+                onChange={(e) => setNewMemberName(e.target.value)}
+              />
+              <Input
+                placeholder="Contact"
+                value={newMemberContact}
+                onChange={(e) => setNewMemberContact(e.target.value)}
+              />
+              <Input
+                type="date"
+                value={newMemberDob}
+                onChange={(e) => setNewMemberDob(e.target.value)}
+              />
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!newMemberName.trim() || memberPending}
+              onClick={handleAddMember}
+            >
+              {memberPending ? "Adding..." : "Add family member"}
+            </Button>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Save the customer first, then edit them to add family members.
+          </p>
+        )}
       </div>
 
       <Button type="submit" disabled={isPending} className="w-full">

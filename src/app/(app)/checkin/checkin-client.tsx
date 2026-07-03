@@ -16,12 +16,18 @@ import type { ConsumptionType } from "@/lib/types/database";
 import { submitCheckin } from "./actions";
 import { WalkinDialog } from "./walkin-dialog";
 
+interface CheckinOption {
+  key: string;
+  customerId: string;
+  memberId: string | null;
+  name: string;
+  contact: string;
+  consumptionBalance: number;
+}
+
 interface CustomerOption {
   id: string;
   name: string;
-  contact: string;
-  dob: string | null;
-  consumption_balance: number;
 }
 
 interface CoachOption {
@@ -34,35 +40,37 @@ function lastFourDigits(contact: string) {
 }
 
 export function CheckinClient({
+  checkinOptions,
   customers,
   coaches,
   isAdmin,
 }: {
+  checkinOptions: CheckinOption[];
   customers: CustomerOption[];
   coaches: CoachOption[];
   isAdmin: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [cups, setCups] = useState(1);
   const [consumptionType, setConsumptionType] = useState<ConsumptionType>(CONSUMPTION_TYPES[0]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ name: string; balance: number } | null>(null);
   const [walkinOpen, setWalkinOpen] = useState(false);
 
-  const selected = customers.find((c) => c.id === selectedId) ?? null;
+  const selected = checkinOptions.find((c) => c.key === selectedKey) ?? null;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter(
+    if (!q) return checkinOptions;
+    return checkinOptions.filter(
       (c) => c.name.toLowerCase().includes(q) || lastFourDigits(c.contact).includes(q)
     );
-  }, [customers, search]);
+  }, [checkinOptions, search]);
 
   const groups = useMemo(() => {
-    const map = new Map<string, CustomerOption[]>();
+    const map = new Map<string, CheckinOption[]>();
     for (const c of filtered) {
       const letter = c.name.trim()[0]?.toUpperCase() ?? "#";
       if (!map.has(letter)) map.set(letter, []);
@@ -71,18 +79,18 @@ export function CheckinClient({
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
 
-  function handleSelect(id: string) {
+  function handleSelect(key: string) {
     setResult(null);
-    if (selectedId !== id) {
-      setSelectedId(id);
+    if (selectedKey !== key) {
+      setSelectedKey(key);
       setCups(1);
       return;
     }
-    // same customer clicked again: 1 -> 2 -> deselect
+    // same row clicked again: 1 -> 2 -> deselect
     if (cups === 1) {
       setCups(2);
     } else {
-      setSelectedId(null);
+      setSelectedKey(null);
       setCups(1);
     }
   }
@@ -91,7 +99,13 @@ export function CheckinClient({
     if (!selected) return;
     setSubmitting(true);
     const checkinDate = format(new Date(), "yyyy-MM-dd");
-    const res = await submitCheckin(selected.id, cups, consumptionType, checkinDate);
+    const res = await submitCheckin(
+      selected.customerId,
+      cups,
+      consumptionType,
+      checkinDate,
+      selected.memberId
+    );
     setSubmitting(false);
 
     if (res.error) {
@@ -101,7 +115,7 @@ export function CheckinClient({
 
     playChime();
     setResult({ name: res.name!, balance: res.balance! });
-    setSelectedId(null);
+    setSelectedKey(null);
     setCups(1);
     router.refresh();
   }
@@ -133,19 +147,19 @@ export function CheckinClient({
         />
 
         <div className="mt-4 space-y-3">
-          {groups.map(([letter, members]) => (
+          {groups.map(([letter, items]) => (
             <details key={letter} open className="rounded-md border">
               <summary className="cursor-pointer select-none bg-muted/50 px-3 py-2 text-sm font-semibold">
-                {letter} <span className="text-muted-foreground">({members.length})</span>
+                {letter} <span className="text-muted-foreground">({items.length})</span>
               </summary>
               <div className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 md:grid-cols-5">
-                {members.map((c) => {
-                  const isSelected = selectedId === c.id;
+                {items.map((c) => {
+                  const isSelected = selectedKey === c.key;
                   return (
                     <button
-                      key={c.id}
+                      key={c.key}
                       type="button"
-                      onClick={() => handleSelect(c.id)}
+                      onClick={() => handleSelect(c.key)}
                       className={cn(
                         "flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-center transition-colors",
                         isSelected
@@ -154,20 +168,32 @@ export function CheckinClient({
                       )}
                     >
                       <span className="text-sm font-semibold leading-tight">{c.name}</span>
-                      <span
-                        className={cn(
-                          "text-xs",
-                          isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
-                        )}
-                      >
-                        ···{lastFourDigits(c.contact)}
-                      </span>
+                      {c.contact && (
+                        <span
+                          className={cn(
+                            "text-xs",
+                            isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
+                          )}
+                        >
+                          ···{lastFourDigits(c.contact)}
+                        </span>
+                      )}
+                      {c.memberId && (
+                        <span
+                          className={cn(
+                            "text-[10px]",
+                            isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
+                          )}
+                        >
+                          shares account
+                        </span>
+                      )}
                       <Badge
                         variant={
-                          c.consumption_balance < RENEWAL_REMINDER_THRESHOLD ? "destructive" : "secondary"
+                          c.consumptionBalance < RENEWAL_REMINDER_THRESHOLD ? "destructive" : "secondary"
                         }
                       >
-                        {c.consumption_balance} left
+                        {c.consumptionBalance} left
                       </Badge>
                       {isSelected && (
                         <span className="text-xs font-medium">

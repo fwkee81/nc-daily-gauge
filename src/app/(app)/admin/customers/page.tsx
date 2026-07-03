@@ -43,5 +43,19 @@ export default async function AdminCustomersPage() {
       : null,
   }));
 
-  return <CustomersClient initialCustomers={rowsWithInvitedByCustomer} coaches={coaches ?? []} />;
+  const customerIds = rows.map((c) => c.id);
+  const { data: members } = await supabase
+    .from("customer_members")
+    .select("id, customer_id, name, contact, dob, active")
+    .in("customer_id", customerIds.length > 0 ? customerIds : [""])
+    .eq("active", true)
+    .order("name");
+
+  return (
+    <CustomersClient
+      initialCustomers={rowsWithInvitedByCustomer}
+      coaches={coaches ?? []}
+      members={members ?? []}
+    />
+  );
 }

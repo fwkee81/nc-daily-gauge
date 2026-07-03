@@ -79,9 +79,20 @@ export type Customer = {
   updated_at: string;
 };
 
+export type CustomerMember = {
+  id: string;
+  customer_id: string;
+  name: string;
+  contact: string | null;
+  dob: string | null;
+  active: boolean;
+  created_at: string;
+};
+
 export type Checkin = {
   id: string;
   customer_id: string;
+  member_id: string | null;
   nc_club_id: string;
   cups: number;
   consumption_type: ConsumptionType;
@@ -173,6 +184,11 @@ export type Database = {
         Insert: Partial<CustomerRenewal>;
         Update: Partial<CustomerRenewal>;
       } & NoRelationships;
+      customer_members: {
+        Row: CustomerMember;
+        Insert: Partial<CustomerMember>;
+        Update: Partial<CustomerMember>;
+      } & NoRelationships;
     };
     Views: Record<string, never>;
     Enums: Record<string, never>;
@@ -184,6 +200,7 @@ export type Database = {
           p_cups: number;
           p_consumption_type: ConsumptionType;
           p_checkin_date: string;
+          p_member_id?: string | null;
         };
         Returns: Checkin;
       };

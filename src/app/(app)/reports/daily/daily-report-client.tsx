@@ -63,6 +63,13 @@ export interface CheckinRow {
     consumption_balance: number;
     coach: { name: string } | null;
   } | null;
+  // Set when a shared family member checked in themselves rather than the
+  // account holder — display their name instead, balance is still shared.
+  member: { name: string } | null;
+}
+
+function checkinDisplayName(c: CheckinRow) {
+  return c.member?.name ?? c.customer?.name ?? "—";
 }
 
 type CheckinSortKey =
@@ -78,7 +85,7 @@ type CheckinSortKey =
 function checkinSortValue(c: CheckinRow, key: CheckinSortKey): string | number {
   switch (key) {
     case "customer":
-      return c.customer?.name ?? "";
+      return checkinDisplayName(c);
     case "coach":
       return c.customer?.coach?.name ?? "";
     case "nc_level":
@@ -382,7 +389,7 @@ export function DailyReportClient({
             <TableBody>
               {sortedCheckins.map((c) => (
                 <TableRow key={c.id} className={c.voided ? "opacity-50" : undefined}>
-                  <TableCell>{c.customer?.name ?? "—"}</TableCell>
+                  <TableCell>{checkinDisplayName(c)}</TableCell>
                   <TableCell>{c.customer?.coach?.name ?? "—"}</TableCell>
                   <TableCell>{c.customer?.nc_level ?? "—"}</TableCell>
                   <TableCell>{c.cups}</TableCell>
@@ -536,7 +543,7 @@ function ManageCheckinDialog({ checkin }: { checkin: CheckinRow }) {
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Manage check-in — {checkin.customer?.name}</DialogTitle>
+          <DialogTitle>Manage check-in — {checkinDisplayName(checkin)}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">

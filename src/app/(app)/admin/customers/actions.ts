@@ -146,3 +146,56 @@ export async function reactivateCustomer(id: string) {
   revalidatePath("/admin/customers");
   return { success: true };
 }
+
+export interface CustomerMemberInput {
+  name: string;
+  contact: string | null;
+  dob: string | null;
+}
+
+// A spouse/family member sharing this customer's consumption balance — they
+// get their own name, contact and DOB so they can be found by name at
+// check-in, but no separate balance of their own.
+export async function addCustomerMember(customerId: string, input: CustomerMemberInput) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) {
+    return { error: "Not authorized." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("customer_members")
+    .insert({
+      customer_id: customerId,
+      name: input.name,
+      contact: input.contact,
+      dob: input.dob,
+    })
+    .select("id, customer_id, name, contact, dob, active")
+    .single();
+
+  if (error || !data) return { error: error?.message ?? "Could not add family member." };
+
+  revalidatePath("/admin/customers");
+  return { success: true, member: data };
+}
+
+// Soft delete, same reasoning as customers: checkins reference members, so
+// "removing" one sets active = false instead of deleting the row.
+export async function deactivateCustomerMember(id: string) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) {
+    return { error: "Not authorized." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("customer_members")
+    .update({ active: false })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/customers");
+  return { success: true };
+}

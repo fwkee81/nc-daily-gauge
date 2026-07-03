@@ -7,7 +7,8 @@ export async function submitCheckin(
   customerId: string,
   cups: number,
   consumptionType: ConsumptionType,
-  checkinDate: string
+  checkinDate: string,
+  memberId: string | null = null
 ) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("record_checkin", {
@@ -15,6 +16,7 @@ export async function submitCheckin(
     p_cups: cups,
     p_consumption_type: consumptionType,
     p_checkin_date: checkinDate,
+    p_member_id: memberId,
   });
 
   if (error) {
@@ -31,7 +33,24 @@ export async function submitCheckin(
     return { error: customerError?.message ?? "Check-in recorded but could not load balance." };
   }
 
-  return { success: true, checkin: data, name: customer.name, balance: customer.consumption_balance };
+  // Show the family member's own name when they checked in themselves,
+  // even though the balance shown is the shared account's.
+  let displayName = customer.name;
+  if (memberId) {
+    const { data: member } = await supabase
+      .from("customer_members")
+      .select("name")
+      .eq("id", memberId)
+      .single();
+    if (member) displayName = member.name;
+  }
+
+  return {
+    success: true,
+    checkin: data,
+    name: displayName,
+    balance: customer.consumption_balance,
+  };
 }
 
 export async function submitWalkinCheckin(input: {
