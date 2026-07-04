@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { BranchDailySummaryRow } from "@/lib/types/database";
+import { BranchesDateNav } from "./branches-date-nav";
 
-export default async function BranchesPage() {
+export default async function BranchesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
   const coach = await getCurrentCoach();
   if (!coach) redirect("/onboarding");
   if (!coach.is_admin) {
@@ -18,18 +23,24 @@ export default async function BranchesPage() {
     );
   }
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const { date: dateParam } = await searchParams;
+  const date = dateParam ?? format(new Date(), "yyyy-MM-dd");
+  const month = date.slice(0, 7);
+
   const supabase = await createClient();
-  const { data } = await supabase.rpc("branches_daily_summary", { p_date: today });
+  const { data } = await supabase.rpc("branches_daily_summary", { p_date: date });
   const branches = (data ?? []) as BranchDailySummaryRow[];
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Branches</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Branches</h1>
+        <BranchesDateNav date={date} hasExplicitDate={Boolean(dateParam)} />
+      </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        Nutrition clubs whose Owner named you as their sponsor. Numbers below are for today (
-        {format(new Date(), "d MMM yyyy")}) — each branch&apos;s numbers are shown on their own,
-        never merged with your own club.
+        Nutrition clubs whose Owner named you as their sponsor. Numbers below are for{" "}
+        {format(parseISO(date), "EEEE, d MMM yyyy")} — each branch&apos;s numbers are shown on
+        their own, never merged with your own club.
       </p>
 
       <div className="mt-6 space-y-3">
@@ -57,13 +68,13 @@ export default async function BranchesPage() {
             </CardContent>
             <div className="flex flex-wrap gap-2 px-6 pb-6">
               <Link
-                href={`/reports/daily?club=${branch.club_id}`}
+                href={`/reports/daily?club=${branch.club_id}&date=${date}`}
                 className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent"
               >
                 Daily Report <ChevronRight className="size-4 text-muted-foreground" />
               </Link>
               <Link
-                href={`/reports/metrics?club=${branch.club_id}`}
+                href={`/reports/metrics?club=${branch.club_id}&month=${month}`}
                 className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent"
               >
                 NC Metrics <ChevronRight className="size-4 text-muted-foreground" />
