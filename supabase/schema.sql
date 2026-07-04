@@ -311,16 +311,16 @@ create policy "coaches_insert_self" on coaches
 create policy "coaches_update_self" on coaches
   for update to authenticated using (auth_user_id = auth.uid())
   with check (auth_user_id = auth.uid());
+-- is_super_admin() is already the only gate that matters here — it's a
+-- single hardcoded account, not a per-branch admin role — so this
+-- deliberately does NOT also restrict nc_club_id to visible_club_ids().
+-- That extra check used to block the super admin from reassigning a coach
+-- to a club that isn't (yet) reachable through the sponsor tree, e.g. a
+-- club whose Owner hasn't registered yet, or a standalone test account.
 create policy "coaches_update_admin" on coaches
   for update to authenticated
-  using (
-    is_super_admin()
-    and nc_club_id in (select visible_club_ids(current_coach_id()))
-  )
-  with check (
-    is_super_admin()
-    and nc_club_id in (select visible_club_ids(current_coach_id()))
-  );
+  using (is_super_admin())
+  with check (is_super_admin());
 
 -- A non-super-admin can update their own coaches row (per coaches_update_self
 -- above), but must not be able to use that to promote themselves to admin,
