@@ -1,15 +1,19 @@
 import { redirect } from "next/navigation";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { BranchCoachCupsCompareRow, BranchDailySummaryRow } from "@/lib/types/database";
-import { BranchesDateNav } from "./branches-date-nav";
-import { BranchesList } from "./branches-list";
+import type {
+  BranchCoachCupsCompareRow,
+  BranchDailySummaryRow,
+  BranchLeaderboardRow,
+  BranchMonthlySummaryRow,
+} from "@/lib/types/database";
+import { BranchesTabs } from "./branches-tabs";
 
 export default async function BranchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ tab?: string; date?: string; month?: string }>;
 }) {
   const coach = await getCurrentCoach();
   if (!coach) redirect("/onboarding");
@@ -21,37 +25,42 @@ export default async function BranchesPage({
     );
   }
 
-  const { date: dateParam } = await searchParams;
+  const { tab: tabParam, date: dateParam, month: monthParam } = await searchParams;
+  const tab = tabParam === "monthly" ? "monthly" : "daily";
   const date = dateParam ?? format(new Date(), "yyyy-MM-dd");
-  const month = date.slice(0, 7);
+  const month = monthParam ?? format(new Date(), "yyyy-MM");
 
   const supabase = await createClient();
-  const [summaryRes, coachCupsRes] = await Promise.all([
+  const [summaryRes, coachCupsRes, monthlySummaryRes, leaderboardsRes] = await Promise.all([
     supabase.rpc("branches_daily_summary", { p_date: date }),
     supabase.rpc("branches_coach_cups_compare", { p_date: date }),
+    supabase.rpc("branches_monthly_summary", { p_month: `${month}-01` }),
+    supabase.rpc("branches_monthly_leaderboards", { p_month: `${month}-01` }),
   ]);
   const branches = (summaryRes.data ?? []) as BranchDailySummaryRow[];
   const coachCups = (coachCupsRes.data ?? []) as BranchCoachCupsCompareRow[];
+  const monthlySummary = (monthlySummaryRes.data ?? []) as BranchMonthlySummaryRow[];
+  const leaderboards = (leaderboardsRes.data ?? []) as BranchLeaderboardRow[];
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Branches</h1>
-        <BranchesDateNav date={date} hasExplicitDate={Boolean(dateParam)} />
-      </div>
+      <h1 className="text-2xl font-semibold">Branches</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Your own club plus every nutrition club whose Owner named you as their sponsor. Numbers
-        below are for {format(parseISO(date), "EEEE, d MMM yyyy")}, compared against each club&apos;s
-        own previous operating day — each club&apos;s numbers stand on their own, never merged
-        together.
+        Your own club plus every nutrition club whose Owner named you as their sponsor — each
+        club&apos;s numbers stand on their own, never merged together.
       </p>
 
-      <BranchesList
+      <BranchesTabs
+        tab={tab}
+        date={date}
+        hasExplicitDate={Boolean(dateParam)}
+        month={month}
+        hasExplicitMonth={Boolean(monthParam)}
+        ownClubId={coach.nc_club_id}
         branches={branches}
         coachCups={coachCups}
-        ownClubId={coach.nc_club_id}
-        date={date}
-        month={month}
+        monthlySummary={monthlySummary}
+        leaderboards={leaderboards}
       />
     </div>
   );

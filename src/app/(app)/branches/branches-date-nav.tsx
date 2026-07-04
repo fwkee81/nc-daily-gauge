@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { withParam } from "./url";
 
 export function BranchesDateNav({
   date,
@@ -14,6 +15,7 @@ export function BranchesDateNav({
   hasExplicitDate: boolean;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const parsedDate = parseISO(date);
 
   // Same "server thinks it's UTC" self-correct as Daily Report/NC Metrics —
@@ -22,13 +24,13 @@ export function BranchesDateNav({
     if (hasExplicitDate) return;
     const clientDate = format(new Date(), "yyyy-MM-dd");
     if (clientDate !== date) {
-      router.replace(`/branches?date=${clientDate}`);
+      router.replace(`/branches?${withParam(searchParams, "date", clientDate)}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function goToDate(d: string) {
-    router.push(`/branches?date=${d}`);
+    router.push(`/branches?${withParam(searchParams, "date", d)}`);
   }
 
   return (

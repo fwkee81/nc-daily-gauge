@@ -199,6 +199,28 @@ export type BranchCoachCupsCompareRow = {
   prev_cups: number;
 };
 
+export type BranchMonthlySummaryRow = {
+  club_id: string;
+  club_name: string;
+  operating_days: number;
+  avg_daily_cups: number;
+  coach_cup_avg_daily: number;
+  total_5day: number;
+  total_10day: number;
+  total_20day: number;
+  total_30day: number;
+};
+
+export type BranchLeaderboardBoard = "new_5day" | "total_30day" | "coach_cup_avg";
+
+export type BranchLeaderboardRow = {
+  board: BranchLeaderboardBoard;
+  coach_id: string;
+  coach_name: string;
+  club_name: string;
+  value: number;
+};
+
 type NoRelationships = {
   Relationships: [];
 };
@@ -305,6 +327,14 @@ export type Database = {
       branches_coach_cups_compare: {
         Args: { p_date: string };
         Returns: BranchCoachCupsCompareRow[];
+      };
+      branches_monthly_summary: {
+        Args: { p_month: string };
+        Returns: BranchMonthlySummaryRow[];
+      };
+      branches_monthly_leaderboards: {
+        Args: { p_month: string };
+        Returns: BranchLeaderboardRow[];
       };
       visible_club_ids: {
         Args: { p_coach_id: string };
