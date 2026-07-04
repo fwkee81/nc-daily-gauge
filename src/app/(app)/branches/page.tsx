@@ -37,17 +37,32 @@ export default async function BranchesPage() {
           </p>
         )}
         {branches.map((branch) => (
-          <Link key={branch.club_id} href={`/reports/daily?club=${branch.club_id}`}>
-            <Card className="transition-colors hover:bg-accent/50">
-              <CardHeader className="flex-row items-center justify-between space-y-0">
-                <div>
-                  <CardTitle>{branch.club_name}</CardTitle>
-                  <CardDescription>View Daily Report &amp; NC Metrics</CardDescription>
-                </div>
-                <ChevronRight className="size-5 text-muted-foreground" />
-              </CardHeader>
-            </Card>
-          </Link>
+          <Card key={branch.club_id}>
+            <CardHeader>
+              <CardTitle>{branch.club_name}</CardTitle>
+              <CardDescription>Read-only — never merged with your own club</CardDescription>
+            </CardHeader>
+            <div className="flex flex-wrap gap-2 px-6 pb-6">
+              <Link
+                href={`/reports/daily?club=${branch.club_id}`}
+                className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent"
+              >
+                Daily Report <ChevronRight className="size-4 text-muted-foreground" />
+              </Link>
+              <Link
+                href={`/reports/metrics?club=${branch.club_id}`}
+                className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent"
+              >
+                NC Metrics <ChevronRight className="size-4 text-muted-foreground" />
+              </Link>
+              <Link
+                href={`/admin/customers?club=${branch.club_id}`}
+                className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent"
+              >
+                Customers <ChevronRight className="size-4 text-muted-foreground" />
+              </Link>
+            </div>
+          </Card>
         ))}
       </div>
     </div>

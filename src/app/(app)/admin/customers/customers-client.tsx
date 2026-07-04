@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { differenceInYears } from "date-fns";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
@@ -167,10 +168,14 @@ export function CustomersClient({
   initialCustomers,
   coaches,
   members,
+  viewingBranch,
+  clubName,
 }: {
   initialCustomers: CustomerRow[];
   coaches: CoachOption[];
   members: CustomerMemberRow[];
+  viewingBranch: boolean;
+  clubName: string | null;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -233,34 +238,47 @@ export function CustomersClient({
 
   return (
     <div>
+      {viewingBranch && (
+        <div className="mb-4 flex items-center justify-between rounded-md border bg-secondary/15 px-4 py-2 text-sm">
+          <span>
+            Viewing branch <strong>{clubName}</strong> — read-only, not merged with your own club.
+          </span>
+          <Link href="/admin/customers" className="underline underline-offset-4">
+            Back to my club
+          </Link>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Customers</h1>
-        <Dialog
-          open={dialogOpen}
-          onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) setEditing(null);
-          }}
-        >
-          <DialogTrigger render={<Button onClick={() => setEditing(null)} />}>
-            Add customer
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{editing ? "Edit customer" : "Add customer"}</DialogTitle>
-            </DialogHeader>
-            <CustomerForm
-              coaches={coaches}
-              customers={initialCustomers}
-              editing={editing}
-              members={editing ? members.filter((m) => m.customer_id === editing.id) : []}
-              onDone={() => {
-                setDialogOpen(false);
-                router.refresh();
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        {!viewingBranch && (
+          <Dialog
+            open={dialogOpen}
+            onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) setEditing(null);
+            }}
+          >
+            <DialogTrigger render={<Button onClick={() => setEditing(null)} />}>
+              Add customer
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{editing ? "Edit customer" : "Add customer"}</DialogTitle>
+              </DialogHeader>
+              <CustomerForm
+                coaches={coaches}
+                customers={initialCustomers}
+                editing={editing}
+                members={editing ? members.filter((m) => m.customer_id === editing.id) : []}
+                onDone={() => {
+                  setDialogOpen(false);
+                  router.refresh();
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -351,7 +369,7 @@ export function CustomersClient({
                 direction={sort?.dir ?? "asc"}
                 onClick={() => toggleSort("status")}
               />
-              <TableHead />
+              {!viewingBranch && <TableHead />}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -384,54 +402,56 @@ export function CustomersClient({
                     <Badge variant="destructive">Inactive</Badge>
                   )}
                 </TableCell>
-                <TableCell className="flex gap-2">
-                  {!c.active && (
-                    <Button size="sm" variant="outline" onClick={() => handleReactivate(c.id)}>
-                      Reactivate
+                {!viewingBranch && (
+                  <TableCell className="flex gap-2">
+                    {!c.active && (
+                      <Button size="sm" variant="outline" onClick={() => handleReactivate(c.id)}>
+                        Reactivate
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => setRenewing(c)}>
+                      Renew
                     </Button>
-                  )}
-                  <Button size="sm" variant="outline" onClick={() => setRenewing(c)}>
-                    Renew
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditing(c);
-                      setDialogOpen(true);
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  {c.active && (
-                  <AlertDialog>
-                    <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>
-                      Remove
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remove {c.name}?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This hides the customer from check-in and this list. Their past
-                          check-in history is kept for reporting. You can ask an admin to
-                          restore them directly in the database if needed.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(c.id)}>
-                          Remove
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  )}
-                </TableCell>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditing(c);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    {c.active && (
+                    <AlertDialog>
+                      <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>
+                        Remove
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove {c.name}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This hides the customer from check-in and this list. Their past
+                            check-in history is kept for reporting. You can ask an admin to
+                            restore them directly in the database if needed.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(c.id)}>
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
             {sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={12} className="text-center text-muted-foreground">
+                <TableCell colSpan={viewingBranch ? 11 : 12} className="text-center text-muted-foreground">
                   No customers found.
                 </TableCell>
               </TableRow>

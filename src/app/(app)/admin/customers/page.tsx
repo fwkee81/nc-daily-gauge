@@ -3,7 +3,11 @@ import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CustomersClient, type CustomerRow } from "./customers-client";
 
-export default async function AdminCustomersPage() {
+export default async function AdminCustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ club?: string }>;
+}) {
   const coach = await getCurrentCoach();
   if (!coach) redirect("/onboarding");
   if (!coach.is_admin) {
@@ -14,9 +18,13 @@ export default async function AdminCustomersPage() {
     );
   }
 
+  const { club: clubParam } = await searchParams;
+  const clubId = clubParam || coach.nc_club_id || "";
+  const viewingBranch = Boolean(clubParam && clubParam !== coach.nc_club_id);
+
   const supabase = await createClient();
 
-  const [{ data: customers }, { data: coaches }] = await Promise.all([
+  const [{ data: customers }, { data: coaches }, { data: clubRow }] = await Promise.all([
     // NOTE: invited_by_customer is deliberately NOT embedded here via a
     // PostgREST join (customers!customers_invited_by_customer_id_fkey) —
     // PostgREST can't resolve a self-referential relationship on the same
@@ -29,9 +37,12 @@ export default async function AdminCustomersPage() {
       .select(
         "*, invited_by_coach:coaches!customers_invited_by_coach_id_fkey(id,name), coach:coaches!customers_coach_id_fkey(id,name)"
       )
-      .eq("nc_club_id", coach.nc_club_id ?? "")
+      .eq("nc_club_id", clubId)
       .order("name"),
     supabase.from("coaches").select("id, name").eq("active", true).order("name"),
+    viewingBranch
+      ? supabase.from("nc_clubs").select("name").eq("id", clubId).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const rows = (customers ?? []) as unknown as CustomerRow[];
@@ -56,6 +67,8 @@ export default async function AdminCustomersPage() {
       initialCustomers={rowsWithInvitedByCustomer}
       coaches={coaches ?? []}
       members={members ?? []}
+      viewingBranch={viewingBranch}
+      clubName={clubRow?.name ?? null}
     />
   );
 }
