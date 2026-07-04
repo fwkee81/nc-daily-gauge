@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { CONSUMPTION_TYPES } from "@/lib/constants";
 import type { ConsumptionType } from "@/lib/types/database";
 import {
@@ -114,15 +115,17 @@ function SortableHead({
   active,
   direction,
   onClick,
+  className,
 }: {
   label: string;
   active: boolean;
   direction: "asc" | "desc";
   onClick: () => void;
+  className?: string;
 }) {
   return (
     <TableHead
-      className="cursor-pointer select-none whitespace-nowrap hover:text-foreground"
+      className={cn("cursor-pointer select-none whitespace-nowrap hover:text-foreground", className)}
       onClick={onClick}
     >
       <span className="inline-flex items-center gap-1">
@@ -346,6 +349,7 @@ export function DailyReportClient({
                   active={checkinSort?.key === "customer"}
                   direction={checkinSort?.dir ?? "asc"}
                   onClick={() => toggleCheckinSort("customer")}
+                  className="sticky left-0 z-20 border-r bg-background"
                 />
                 <SortableHead
                   label="Coach"
@@ -395,7 +399,7 @@ export function DailyReportClient({
             <TableBody>
               {sortedCheckins.map((c) => (
                 <TableRow key={c.id} className={c.voided ? "opacity-50" : undefined}>
-                  <TableCell>
+                  <TableCell className="sticky left-0 z-10 border-r bg-background">
                     <CustomerInfoDialog customerId={c.customer_id} name={checkinDisplayName(c)} />
                   </TableCell>
                   <TableCell>{c.customer?.coach?.name ?? "—"}</TableCell>
