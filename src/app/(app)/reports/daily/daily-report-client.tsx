@@ -343,15 +343,23 @@ export function DailyReportClient({
                 return (
                   <Fragment key={row.coach_id}>
                     <TableRow
-                      className="cursor-pointer hover:bg-accent/50"
+                      className={cn(
+                        "cursor-pointer hover:bg-accent/50",
+                        isExpanded && "border-l-4 border-l-primary bg-primary/5 hover:bg-primary/10"
+                      )}
                       onClick={() =>
                         setExpandedCoachId((current) => (current === row.coach_id ? null : row.coach_id))
                       }
                     >
                       <TableCell>
-                        <span className="inline-flex items-center gap-1">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1",
+                            isExpanded && "font-semibold text-primary"
+                          )}
+                        >
                           {isExpanded ? (
-                            <ChevronDown className="size-3.5 text-muted-foreground" />
+                            <ChevronDown className="size-3.5" />
                           ) : (
                             <ChevronRight className="size-3.5 text-muted-foreground" />
                           )}
@@ -361,18 +369,18 @@ export function DailyReportClient({
                       <TableCell className="text-right">{row.cups}</TableCell>
                     </TableRow>
                     {isExpanded && (
-                      <TableRow key={`${row.coach_id}-detail`}>
-                        <TableCell colSpan={2} className="bg-muted/30 p-0">
+                      <TableRow key={`${row.coach_id}-detail`} className="border-l-4 border-l-primary">
+                        <TableCell colSpan={2} className="bg-primary/5 p-0">
                           {customerCheckins.length === 0 ? (
                             <p className="p-3 text-sm text-muted-foreground">
                               No qualifying check-ins for this coach.
                             </p>
                           ) : (
-                            <ul className="divide-y">
+                            <ul className="divide-y divide-primary/10">
                               {customerCheckins.map((c) => (
                                 <li
                                   key={c.id}
-                                  className="flex items-center justify-between px-3 py-1.5 text-sm"
+                                  className="flex items-center justify-between py-1.5 pr-3 pl-8 text-sm"
                                 >
                                   <span>{checkinDisplayName(c)}</span>
                                   <span className="text-muted-foreground">
