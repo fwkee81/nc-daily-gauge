@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { differenceInYears } from "date-fns";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -75,6 +77,92 @@ export interface CustomerMemberRow {
   active: boolean;
 }
 
+type SortKey =
+  | "name"
+  | "gender"
+  | "contact"
+  | "age"
+  | "nc_level"
+  | "balance"
+  | "invited_by"
+  | "coach"
+  | "member"
+  | "remark"
+  | "status";
+
+function invitedByLabel(c: CustomerRow) {
+  if (c.invited_by_type === "plugin") return "Plug-in";
+  if (c.invited_by_type === "coach") return c.invited_by_coach?.name ?? "—";
+  return c.invited_by_customer?.name ?? "—";
+}
+
+function ageOf(c: CustomerRow) {
+  if (c.age_override != null) return c.age_override;
+  if (!c.dob) return null;
+  return differenceInYears(new Date(), new Date(c.dob));
+}
+
+function sortValue(c: CustomerRow, key: SortKey): string | number {
+  switch (key) {
+    case "name":
+      return c.name.toLowerCase();
+    case "gender":
+      return c.gender;
+    case "contact":
+      return c.contact;
+    case "age":
+      return ageOf(c) ?? -1;
+    case "nc_level":
+      return c.nc_level;
+    case "balance":
+      return c.consumption_balance;
+    case "invited_by":
+      return invitedByLabel(c).toLowerCase();
+    case "coach":
+      return c.coach?.name?.toLowerCase() ?? "";
+    case "member":
+      return c.member_id?.toLowerCase() ?? "";
+    case "remark":
+      return c.remark?.toLowerCase() ?? "";
+    case "status":
+      return c.active ? 1 : 0;
+  }
+}
+
+function SortableHead({
+  label,
+  active,
+  direction,
+  onClick,
+  className,
+}: {
+  label: string;
+  active: boolean;
+  direction: "asc" | "desc";
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <TableHead
+      className={cn("cursor-pointer select-none whitespace-nowrap hover:text-foreground", className)}
+      onClick={onClick}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active ? (
+          direction === "asc" ? (
+            <ArrowUp className="size-3" />
+          ) : (
+            <ArrowDown className="size-3" />
+          )
+        ) : (
+          <ArrowUpDown className="size-3 opacity-30" />
+        )}
+      </span>
+    </TableHead>
+  );
+}
+
 export function CustomersClient({
   initialCustomers,
   coaches,
@@ -90,6 +178,7 @@ export function CustomersClient({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerRow | null>(null);
   const [renewing, setRenewing] = useState<CustomerRow | null>(null);
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -100,16 +189,26 @@ export function CustomersClient({
     });
   }, [initialCustomers, search, showInactive]);
 
-  function invitedByLabel(c: CustomerRow) {
-    if (c.invited_by_type === "plugin") return "Plug-in";
-    if (c.invited_by_type === "coach") return c.invited_by_coach?.name ?? "—";
-    return c.invited_by_customer?.name ?? "—";
-  }
+  const sorted = useMemo(() => {
+    if (!sort) return filtered;
+    const { key, dir } = sort;
+    const result = [...filtered].sort((a, b) => {
+      const av = sortValue(a, key);
+      const bv = sortValue(b, key);
+      if (av < bv) return -1;
+      if (av > bv) return 1;
+      return 0;
+    });
+    return dir === "asc" ? result : result.reverse();
+  }, [filtered, sort]);
 
-  function ageOf(c: CustomerRow) {
-    if (c.age_override != null) return c.age_override;
-    if (!c.dob) return null;
-    return differenceInYears(new Date(), new Date(c.dob));
+  function toggleSort(key: SortKey) {
+    setSort((current) => {
+      if (current?.key === key) {
+        return { key, dir: current.dir === "asc" ? "desc" : "asc" };
+      }
+      return { key, dir: "asc" };
+    });
   }
 
   async function handleDelete(id: string) {
@@ -185,24 +284,82 @@ export function CustomersClient({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Gender</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Age</TableHead>
-              <TableHead>NC Level</TableHead>
-              <TableHead>Balance</TableHead>
-              <TableHead>Invited by</TableHead>
-              <TableHead>Coach</TableHead>
-              <TableHead>Member</TableHead>
-              <TableHead>Remark</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableHead
+                label="Name"
+                active={sort?.key === "name"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("name")}
+                className="sticky left-0 z-20 border-r bg-background"
+              />
+              <SortableHead
+                label="Gender"
+                active={sort?.key === "gender"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("gender")}
+              />
+              <SortableHead
+                label="Contact"
+                active={sort?.key === "contact"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("contact")}
+              />
+              <SortableHead
+                label="Age"
+                active={sort?.key === "age"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("age")}
+              />
+              <SortableHead
+                label="NC Level"
+                active={sort?.key === "nc_level"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("nc_level")}
+              />
+              <SortableHead
+                label="Balance"
+                active={sort?.key === "balance"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("balance")}
+              />
+              <SortableHead
+                label="Invited by"
+                active={sort?.key === "invited_by"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("invited_by")}
+              />
+              <SortableHead
+                label="Coach"
+                active={sort?.key === "coach"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("coach")}
+              />
+              <SortableHead
+                label="Member"
+                active={sort?.key === "member"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("member")}
+              />
+              <SortableHead
+                label="Remark"
+                active={sort?.key === "remark"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("remark")}
+              />
+              <SortableHead
+                label="Status"
+                active={sort?.key === "status"}
+                direction={sort?.dir ?? "asc"}
+                onClick={() => toggleSort("status")}
+              />
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((c) => (
+            {sorted.map((c) => (
               <TableRow key={c.id} className={c.active ? undefined : "opacity-60"}>
-                <TableCell className="font-medium">{c.name}</TableCell>
+                <TableCell className="sticky left-0 z-10 border-r bg-background font-medium">
+                  {c.name}
+                </TableCell>
                 <TableCell>{c.gender}</TableCell>
                 <TableCell>{c.contact}</TableCell>
                 <TableCell>{ageOf(c) ?? "—"}</TableCell>
@@ -272,7 +429,7 @@ export function CustomersClient({
                 </TableCell>
               </TableRow>
             ))}
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={12} className="text-center text-muted-foreground">
                   No customers found.
