@@ -1,41 +1,36 @@
-.root {
-  --forest: #a66e00;
-  --sage: #fff3d6;
-  --page-bg: #fffbf0;
-  --card: #ffffff;
-  --coral: #e2672f;
-  --coral-deep: #b8431f;
-  --gold: #946c00;
-  --gold-bg: #fff0c2;
-  --ink: #2b2308;
-  --muted: #8a7b52;
-  --line: #f0e2be;
-  --radius: 18px;
-  --shadow: 0 4px 16px rgba(166, 110, 0, 0.09);
+/*
+ * Restyled to reuse NC Daily Gauge's own theme tokens (defined in
+ * src/app/globals.css: --primary/--secondary are the brand green/orange,
+ * --font-sans/--font-heading are the app's loaded fonts) instead of the
+ * reference calculator's own forest/coral/gold palette, so this tool
+ * doesn't look like a bolted-on separate site.
+ */
 
-  background: var(--page-bg);
-  color: var(--ink);
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    "PingFang SC",
-    "Microsoft YaHei",
-    sans-serif;
+.root {
+  --cal-line: var(--border);
+  --cal-soft: color-mix(in oklch, var(--primary), white 85%);
+  --cal-accent-bg: color-mix(in oklch, var(--secondary), white 80%);
+  --cal-accent-fg: color-mix(in oklch, var(--secondary), black 35%);
+  --cal-shadow: 0 4px 16px color-mix(in oklch, var(--foreground), transparent 92%);
+
+  background: var(--muted);
+  color: var(--foreground);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
   font-feature-settings: "tnum";
   padding-bottom: 36px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-xl);
   overflow: hidden;
 }
 
 .disp {
-  font-family: "Manrope", "Inter", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-heading), var(--font-sans), -apple-system, "PingFang SC", "Microsoft YaHei",
+    sans-serif;
 }
 
 .header {
-  background: radial-gradient(120% 140% at 15% -10%, #e0a816 0%, var(--forest) 55%, #6b4d00 100%);
-  color: #fff;
+  background: radial-gradient(120% 140% at 15% -10%, var(--secondary) 0%, var(--primary) 65%);
+  color: var(--primary-foreground);
   text-align: center;
   padding: 30px 20px 26px;
   position: relative;
@@ -50,7 +45,7 @@
 .header p {
   margin: 8px 0 0;
   font-size: 14px;
-  color: #fae7b5;
+  color: color-mix(in oklch, var(--primary-foreground), transparent 15%);
   font-weight: 600;
   letter-spacing: 0.01em;
 }
@@ -63,17 +58,17 @@
 
 .panel {
   background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  border: 1px solid var(--cal-line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--cal-shadow);
   margin-top: 18px;
   padding: 20px 17px;
 }
 .panelLabel {
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 15px;
   font-weight: 800;
-  color: var(--ink);
+  color: var(--foreground);
   margin: 0 0 13px;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -81,7 +76,7 @@
 .panelLabel .en {
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--muted-foreground);
   letter-spacing: 0.04em;
 }
 
@@ -93,49 +88,49 @@
   flex: 1;
   min-width: 0;
   text-align: center;
-  border: 1.5px solid var(--line);
-  border-radius: 13px;
+  border: 1.5px solid var(--cal-line);
+  border-radius: var(--radius-lg);
   padding: 10px 3px;
   cursor: pointer;
-  background: #fff;
+  background: var(--card);
   transition: all 0.18s ease;
   user-select: none;
 }
 .tierBox .tTop {
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 16px;
   font-weight: 800;
-  color: var(--forest);
+  color: var(--primary);
   line-height: 1.2;
 }
 .tierBox .tBottom {
   font-size: 10.5px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-weight: 600;
   margin-top: 2px;
   overflow-wrap: break-word;
   word-break: break-word;
 }
 .tierBox.active {
-  background: var(--forest);
-  border-color: var(--forest);
-  box-shadow: 0 4px 10px rgba(166, 110, 0, 0.28);
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 4px 10px color-mix(in oklch, var(--primary), transparent 70%);
 }
 .tierBox.active .tTop {
-  color: #fff;
+  color: var(--primary-foreground);
 }
 .tierBox.active .tBottom {
-  color: #fbe8b8;
+  color: color-mix(in oklch, var(--primary-foreground), transparent 20%);
 }
 .tierBox:active {
   transform: scale(0.96);
 }
 
 .popTitle {
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 16px;
   font-weight: 800;
-  color: var(--ink);
+  color: var(--foreground);
   margin: 22px 2px 11px;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -143,16 +138,16 @@
 .popTitle .en {
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--muted-foreground);
   letter-spacing: 0.04em;
   text-transform: none;
 }
 
 .catToggle {
   background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 15px;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--cal-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--cal-shadow);
   margin-top: 14px;
   padding: 15px 16px;
   text-align: center;
@@ -160,19 +155,19 @@
   user-select: none;
   font-size: 15.5px;
   font-weight: 700;
-  color: var(--ink);
+  color: var(--foreground);
   transition: border-color 0.15s;
 }
 .catToggle:active {
   transform: scale(0.99);
 }
 .catToggle .chev {
-  color: var(--coral);
+  color: var(--secondary);
   font-size: 12.5px;
 }
 .catToggle .en {
   font-weight: 600;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .catBody {
   overflow: hidden;
@@ -193,8 +188,8 @@
 }
 
 .card {
-  background: var(--sage);
-  border-radius: 14px;
+  background: var(--cal-soft);
+  border-radius: var(--radius-md);
   padding: 10px 4px;
   text-align: center;
   cursor: pointer;
@@ -210,15 +205,15 @@
   transform: scale(0.96);
 }
 .card.selected {
-  border-color: var(--coral);
-  background: #fff4ef;
+  border-color: var(--secondary);
+  background: var(--cal-accent-bg);
 }
 .card .badge {
   position: absolute;
   top: -7px;
   right: -5px;
-  background: var(--coral);
-  color: #fff;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
   font-size: 11px;
   font-weight: 800;
   border-radius: 999px;
@@ -228,21 +223,21 @@
   align-items: center;
   justify-content: center;
   padding: 0 4px;
-  box-shadow: 0 2px 5px rgba(184, 67, 31, 0.4);
+  box-shadow: 0 2px 5px color-mix(in oklch, var(--secondary), transparent 60%);
 }
 .card .cName {
   font-size: 13.5px;
   font-weight: 800;
-  color: var(--forest);
+  color: var(--primary);
   line-height: 1.2;
   overflow-wrap: break-word;
   word-break: break-word;
 }
 .card .cSub {
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 9.5px;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--muted-foreground);
   margin-top: 3px;
   line-height: 1.2;
   text-transform: uppercase;
@@ -253,7 +248,7 @@
 .card .cFlat {
   font-size: 9px;
   font-weight: 800;
-  color: var(--coral-deep);
+  color: var(--cal-accent-fg);
   margin-top: 2px;
 }
 .card .cPriceRow {
@@ -264,17 +259,17 @@
   gap: 4px;
 }
 .card .cRm {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 12.5px;
   font-weight: 800;
-  color: var(--ink);
+  color: var(--foreground);
 }
 .card .cVp {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 9px;
   font-weight: 700;
-  color: var(--gold);
-  background: var(--gold-bg);
+  color: var(--cal-accent-fg);
+  background: var(--cal-accent-bg);
   border-radius: 999px;
   padding: 2px 7px;
   white-space: nowrap;
@@ -287,7 +282,7 @@
   margin-bottom: 13px;
 }
 .selectedHead .st {
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 15px;
   font-weight: 800;
   text-transform: uppercase;
@@ -296,14 +291,14 @@
 .selectedHead .st .en {
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--muted-foreground);
   letter-spacing: 0.04em;
   text-transform: none;
 }
 .clearLink {
   background: none;
   border: none;
-  color: var(--coral-deep);
+  color: var(--cal-accent-fg);
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
@@ -312,7 +307,7 @@
 
 .emptyCart {
   text-align: center;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 14.5px;
   padding: 24px 10px;
   line-height: 1.7;
@@ -323,7 +318,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 0;
-  border-bottom: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--cal-line);
 }
 .cartRow:last-child {
   border-bottom: none;
@@ -335,11 +330,11 @@
 .cartRow .crName .nm {
   font-size: 15px;
   font-weight: 700;
-  color: var(--ink);
+  color: var(--foreground);
 }
 .cartRow .crName .sb {
   font-size: 11.5px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.01em;
@@ -353,9 +348,9 @@
   width: 25px;
   height: 25px;
   border: none;
-  border-radius: 7px;
-  background: var(--sage);
-  color: var(--forest);
+  border-radius: var(--radius-sm);
+  background: var(--cal-soft);
+  color: var(--primary);
   font-weight: 800;
   font-size: 14px;
   cursor: pointer;
@@ -367,23 +362,23 @@
   text-align: center;
 }
 .cartRow .crAmt {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 15px;
   font-weight: 800;
-  color: var(--forest);
+  color: var(--primary);
   min-width: 78px;
   text-align: right;
 }
 .cartRow .crRemove {
   background: none;
   border: none;
-  color: #c7c2b0;
+  color: var(--muted-foreground);
   font-size: 17px;
   cursor: pointer;
   padding: 2px 3px;
 }
 .cartRow .crRemove:hover {
-  color: var(--coral-deep);
+  color: var(--cal-accent-fg);
 }
 
 .totals {
@@ -391,9 +386,9 @@
   text-align: center;
 }
 .totalLine {
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 13.5px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-weight: 700;
   margin: 0;
   text-transform: uppercase;
@@ -404,17 +399,17 @@
   text-transform: none;
 }
 .totalRm {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 32px;
   font-weight: 800;
-  color: var(--forest);
+  color: var(--primary);
   margin: 4px 0 12px;
 }
 .totalVp {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 16px;
   font-weight: 700;
-  color: var(--gold);
+  color: var(--cal-accent-fg);
   margin: 0 0 16px;
 }
 
@@ -422,15 +417,15 @@
   display: block;
   width: 100%;
   border: none;
-  background: var(--coral);
-  color: #fff;
-  border-radius: 13px;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border-radius: var(--radius-lg);
   padding: 16px 0;
   font-size: 17px;
   font-weight: 800;
   cursor: pointer;
-  font-family: "Manrope", sans-serif;
-  box-shadow: 0 6px 16px rgba(221, 91, 53, 0.32);
+  font-family: var(--font-heading), sans-serif;
+  box-shadow: 0 6px 16px color-mix(in oklch, var(--secondary), transparent 65%);
   transition: transform 0.1s;
 }
 .btnShare:active {
@@ -440,7 +435,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(35, 24, 4, 0.6);
+  background: color-mix(in oklch, var(--foreground), transparent 40%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -455,13 +450,13 @@
   visibility: visible;
 }
 .receipt {
-  background: #fff;
+  background: var(--card);
   width: 100%;
   max-width: 380px;
-  border-radius: 20px;
+  border-radius: var(--radius-2xl);
   max-height: 86vh;
   overflow-y: auto;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 24px 60px color-mix(in oklch, var(--foreground), transparent 65%);
   transform: translateY(14px) scale(0.98);
   transition: transform 0.2s ease;
 }
@@ -469,33 +464,33 @@
   transform: translateY(0) scale(1);
 }
 .rTop {
-  background: var(--forest);
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
   padding: 22px;
   text-align: center;
-  border-radius: 20px 20px 0 0;
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
 }
 .rTop h3 {
   margin: 0 0 3px;
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 19px;
   font-weight: 800;
 }
 .rTop p {
   margin: 0;
   font-size: 13px;
-  color: #fae7b5;
+  color: color-mix(in oklch, var(--primary-foreground), transparent 15%);
 }
 .rTierBadge {
   display: inline-block;
   margin-top: 11px;
   padding: 5px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: color-mix(in oklch, var(--primary-foreground), transparent 82%);
+  border: 1px solid color-mix(in oklch, var(--primary-foreground), transparent 65%);
   font-size: 12.5px;
   font-weight: 800;
-  color: #fff;
+  color: var(--primary-foreground);
   letter-spacing: 0.01em;
 }
 .rList {
@@ -506,24 +501,24 @@
   justify-content: space-between;
   gap: 10px;
   padding: 8px 0;
-  border-bottom: 1px dotted var(--line);
+  border-bottom: 1px dotted var(--cal-line);
   font-size: 14px;
 }
 .rLine .rn {
   font-weight: 700;
-  color: var(--ink);
+  color: var(--foreground);
 }
 .rLine .rs {
   display: block;
   font-size: 11.5px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-weight: 600;
   text-transform: uppercase;
 }
 .rLine .ramt {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-weight: 800;
-  color: var(--forest);
+  color: var(--primary);
   white-space: nowrap;
 }
 .rTotals {
@@ -537,13 +532,13 @@
   display: block;
   width: calc(100% - 40px);
   margin: 16px 20px 20px;
-  border: 1.5px solid var(--line);
-  background: #fff;
-  color: var(--ink);
-  border-radius: 13px;
+  border: 1.5px solid var(--cal-line);
+  background: var(--card);
+  color: var(--foreground);
+  border-radius: var(--radius-lg);
   padding: 13px 0;
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-heading), sans-serif;
 }
