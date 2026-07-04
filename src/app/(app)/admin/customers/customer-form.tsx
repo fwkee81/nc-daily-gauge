@@ -127,6 +127,10 @@ export function CustomerForm({
     }
     for (const c of customers) {
       if (editing && c.id === editing.id) continue;
+      // Hide inactive customers from new selections, but keep whichever one
+      // is already set as this customer's inviter so editing doesn't show a
+      // blank "Invited by" for an existing record.
+      if (!c.active && c.id !== editing?.invited_by_customer_id) continue;
       options.push({ value: `customer:${c.id}`, label: c.name, description: "Customer" });
     }
     return options;
