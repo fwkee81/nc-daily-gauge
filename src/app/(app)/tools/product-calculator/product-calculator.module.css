@@ -1,0 +1,549 @@
+.root {
+  --forest: #a66e00;
+  --sage: #fff3d6;
+  --page-bg: #fffbf0;
+  --card: #ffffff;
+  --coral: #e2672f;
+  --coral-deep: #b8431f;
+  --gold: #946c00;
+  --gold-bg: #fff0c2;
+  --ink: #2b2308;
+  --muted: #8a7b52;
+  --line: #f0e2be;
+  --radius: 18px;
+  --shadow: 0 4px 16px rgba(166, 110, 0, 0.09);
+
+  background: var(--page-bg);
+  color: var(--ink);
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+  font-feature-settings: "tnum";
+  padding-bottom: 36px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.disp {
+  font-family: "Manrope", "Inter", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.header {
+  background: radial-gradient(120% 140% at 15% -10%, #e0a816 0%, var(--forest) 55%, #6b4d00 100%);
+  color: #fff;
+  text-align: center;
+  padding: 30px 20px 26px;
+  position: relative;
+  overflow: hidden;
+}
+.header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.header p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: #fae7b5;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 12px;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-top: 18px;
+  padding: 20px 17px;
+}
+.panelLabel {
+  font-family: "Manrope", sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0 0 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.panelLabel .en {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.tierRow {
+  display: flex;
+  gap: 7px;
+}
+.tierBox {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  border: 1.5px solid var(--line);
+  border-radius: 13px;
+  padding: 10px 3px;
+  cursor: pointer;
+  background: #fff;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+.tierBox .tTop {
+  font-family: "Manrope", sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--forest);
+  line-height: 1.2;
+}
+.tierBox .tBottom {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: 2px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.tierBox.active {
+  background: var(--forest);
+  border-color: var(--forest);
+  box-shadow: 0 4px 10px rgba(166, 110, 0, 0.28);
+}
+.tierBox.active .tTop {
+  color: #fff;
+}
+.tierBox.active .tBottom {
+  color: #fbe8b8;
+}
+.tierBox:active {
+  transform: scale(0.96);
+}
+
+.popTitle {
+  font-family: "Manrope", sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 22px 2px 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.popTitle .en {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.catToggle {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  box-shadow: var(--shadow);
+  margin-top: 14px;
+  padding: 15px 16px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--ink);
+  transition: border-color 0.15s;
+}
+.catToggle:active {
+  transform: scale(0.99);
+}
+.catToggle .chev {
+  color: var(--coral);
+  font-size: 12.5px;
+}
+.catToggle .en {
+  font-weight: 600;
+  color: var(--muted);
+}
+.catBody {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.25s ease;
+}
+.catBody.open {
+  max-height: 8000px;
+}
+.catBodyInner {
+  padding-top: 13px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.card {
+  background: var(--sage);
+  border-radius: 14px;
+  padding: 10px 4px;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    transform 0.1s,
+    border-color 0.15s;
+  position: relative;
+  border: 2px solid transparent;
+  min-width: 0;
+  overflow: hidden;
+}
+.card:active {
+  transform: scale(0.96);
+}
+.card.selected {
+  border-color: var(--coral);
+  background: #fff4ef;
+}
+.card .badge {
+  position: absolute;
+  top: -7px;
+  right: -5px;
+  background: var(--coral);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 999px;
+  min-width: 19px;
+  height: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 2px 5px rgba(184, 67, 31, 0.4);
+}
+.card .cName {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--forest);
+  line-height: 1.2;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.card .cSub {
+  font-family: "Manrope", sans-serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-top: 3px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.005em;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.card .cFlat {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--coral-deep);
+  margin-top: 2px;
+}
+.card .cPriceRow {
+  margin-top: 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.card .cRm {
+  font-family: "Inter", sans-serif;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.card .cVp {
+  font-family: "Inter", sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--gold);
+  background: var(--gold-bg);
+  border-radius: 999px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.selectedHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 13px;
+}
+.selectedHead .st {
+  font-family: "Manrope", sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.selectedHead .st .en {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+.clearLink {
+  background: none;
+  border: none;
+  color: var(--coral-deep);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.emptyCart {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14.5px;
+  padding: 24px 10px;
+  line-height: 1.7;
+}
+
+.cartRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.cartRow:last-child {
+  border-bottom: none;
+}
+.cartRow .crName {
+  flex: 1;
+  min-width: 0;
+}
+.cartRow .crName .nm {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.cartRow .crName .sb {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+.cartRow .crStep {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cartRow .crStep button {
+  width: 25px;
+  height: 25px;
+  border: none;
+  border-radius: 7px;
+  background: var(--sage);
+  color: var(--forest);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+}
+.cartRow .crQty {
+  font-size: 14px;
+  font-weight: 800;
+  min-width: 16px;
+  text-align: center;
+}
+.cartRow .crAmt {
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--forest);
+  min-width: 78px;
+  text-align: right;
+}
+.cartRow .crRemove {
+  background: none;
+  border: none;
+  color: #c7c2b0;
+  font-size: 17px;
+  cursor: pointer;
+  padding: 2px 3px;
+}
+.cartRow .crRemove:hover {
+  color: var(--coral-deep);
+}
+
+.totals {
+  margin-top: 16px;
+  text-align: center;
+}
+.totalLine {
+  font-family: "Manrope", sans-serif;
+  font-size: 13.5px;
+  color: var(--muted);
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.totalLine .lblEn {
+  font-weight: 600;
+  text-transform: none;
+}
+.totalRm {
+  font-family: "Inter", sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--forest);
+  margin: 4px 0 12px;
+}
+.totalVp {
+  font-family: "Inter", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold);
+  margin: 0 0 16px;
+}
+
+.btnShare {
+  display: block;
+  width: 100%;
+  border: none;
+  background: var(--coral);
+  color: #fff;
+  border-radius: 13px;
+  padding: 16px 0;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: "Manrope", sans-serif;
+  box-shadow: 0 6px 16px rgba(221, 91, 53, 0.32);
+  transition: transform 0.1s;
+}
+.btnShare:active {
+  transform: scale(0.98);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(35, 24, 4, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease;
+}
+.overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+.receipt {
+  background: #fff;
+  width: 100%;
+  max-width: 380px;
+  border-radius: 20px;
+  max-height: 86vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  transform: translateY(14px) scale(0.98);
+  transition: transform 0.2s ease;
+}
+.overlay.show .receipt {
+  transform: translateY(0) scale(1);
+}
+.rTop {
+  background: var(--forest);
+  color: #fff;
+  padding: 22px;
+  text-align: center;
+  border-radius: 20px 20px 0 0;
+}
+.rTop h3 {
+  margin: 0 0 3px;
+  font-family: "Manrope", sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+}
+.rTop p {
+  margin: 0;
+  font-size: 13px;
+  color: #fae7b5;
+}
+.rTierBadge {
+  display: inline-block;
+  margin-top: 11px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+.rList {
+  padding: 14px 20px 6px;
+}
+.rLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dotted var(--line);
+  font-size: 14px;
+}
+.rLine .rn {
+  font-weight: 700;
+  color: var(--ink);
+}
+.rLine .rs {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.rLine .ramt {
+  font-family: "Inter", sans-serif;
+  font-weight: 800;
+  color: var(--forest);
+  white-space: nowrap;
+}
+.rTotals {
+  padding: 8px 20px 4px;
+  text-align: center;
+}
+.rTotals .totalRm {
+  font-size: 28px;
+}
+.rClose {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 16px 20px 20px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 13px;
+  padding: 13px 0;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: "Manrope", sans-serif;
+}

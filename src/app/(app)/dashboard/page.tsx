@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { Coffee, CalendarDays, TrendingUp, Users, Building2, type LucideIcon } from "lucide-react";
+import {
+  Coffee,
+  CalendarDays,
+  TrendingUp,
+  Users,
+  Building2,
+  Calculator,
+  type LucideIcon,
+} from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getCurrentCoach } from "@/lib/auth";
@@ -67,6 +75,16 @@ export default async function DashboardPage() {
       : []),
   ];
 
+  const toolTiles: typeof tiles = [
+    {
+      href: "/tools/product-calculator",
+      title: "Product Calculator",
+      description: "Look up Herbalife product prices and VP by price tier.",
+      icon: Calculator,
+      tint: "bg-secondary/25 text-[#8a5a00]",
+    },
+  ];
+
   return (
     <div>
       <h1 className="text-2xl">Welcome, {coach?.name}</h1>
@@ -75,26 +93,36 @@ export default async function DashboardPage() {
         {clubName && <> · {clubName}</>}
       </p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        {tiles.map((tile) => (
-          <Link key={tile.href} href={tile.href}>
-            <Card className="h-full transition-colors hover:bg-accent/50">
-              <CardHeader>
-                <span
-                  className={cn(
-                    "mb-2 flex size-10 items-center justify-center rounded-xl",
-                    tile.tint
-                  )}
-                >
-                  <tile.icon className="size-5" strokeWidth={2.25} />
-                </span>
-                <CardTitle>{tile.title}</CardTitle>
-                <CardDescription>{tile.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      <TileGrid tiles={tiles} />
+
+      <h2 className="mt-8 text-lg font-semibold">Tools</h2>
+      <TileGrid tiles={toolTiles} />
+    </div>
+  );
+}
+
+function TileGrid({
+  tiles,
+}: {
+  tiles: { href: string; title: string; description: string; icon: LucideIcon; tint: string }[];
+}) {
+  return (
+    <div className="mt-4 grid gap-4 sm:grid-cols-3">
+      {tiles.map((tile) => (
+        <Link key={tile.href} href={tile.href}>
+          <Card className="h-full transition-colors hover:bg-accent/50">
+            <CardHeader>
+              <span
+                className={cn("mb-2 flex size-10 items-center justify-center rounded-xl", tile.tint)}
+              >
+                <tile.icon className="size-5" strokeWidth={2.25} />
+              </span>
+              <CardTitle>{tile.title}</CardTitle>
+              <CardDescription>{tile.description}</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+      ))}
     </div>
   );
 }
