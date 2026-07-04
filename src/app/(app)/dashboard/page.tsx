@@ -6,6 +6,7 @@ import {
   Users,
   Building2,
   Calculator,
+  HeartPulse,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,6 +83,13 @@ export default async function DashboardPage() {
       description: "Look up Herbalife product prices and VP by price tier.",
       icon: Calculator,
       tint: "bg-secondary/25 text-[#8a5a00]",
+    },
+    {
+      href: "/tools/wellness-evaluation",
+      title: "Wellness Evaluation",
+      description: "Generate a body composition report from Tanita readings.",
+      icon: HeartPulse,
+      tint: "bg-primary/15 text-primary",
     },
   ];
 

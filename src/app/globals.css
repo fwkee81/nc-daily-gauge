@@ -141,3 +141,11 @@
     @apply font-heading font-semibold tracking-tight;
   }
 }
+
+/* Hide the app's own nav chrome when printing (e.g. Wellness Evaluation's
+   PDF export) so only the page's own content appears on the page. */
+@media print {
+  header {
+    display: none !important;
+  }
+}
