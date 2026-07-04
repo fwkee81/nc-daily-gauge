@@ -28,7 +28,7 @@ export type CustomerGender = "Male" | "Female" | "Couple" | "Family" | "Others";
 
 export type CustomerNcLevel = "5-day" | "10-day" | "20-day" | "30-day" | "Ala Carte";
 
-export type MemberType = "MB" | "SC" | "SB" | "SP" | "WT" | "AWT" | "TAB";
+export type MemberType = "MB" | "SC" | "SB" | "SP" | "WT" | "AWT" | "TAB" | "Non member";
 
 export type ConsumptionType = "Dine-in" | "Take-away";
 

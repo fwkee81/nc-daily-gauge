@@ -69,6 +69,7 @@ export interface CheckinRow {
     nc_level: string;
     consumption_balance: number;
     member_type: MemberType | null;
+    invited_by_customer_id: string | null;
     coach: { id: string; name: string } | null;
   } | null;
   // Set when a shared family member checked in themselves rather than the
@@ -82,8 +83,10 @@ function checkinDisplayName(c: CheckinRow) {
 
 // Mirrors the eligibility rule in daily_coach_cups()/monthly_coach_cups() —
 // a checkin counts toward a coach's cup if the customer is assigned to that
-// coach and their member type isn't excluded (a null member_type counts).
-function coachCheckins(checkins: CheckinRow[], coachId: string) {
+// coach, their member type isn't excluded (a null member_type counts), and
+// they weren't invited by another customer whose own member type is
+// excluded.
+function coachCheckins(checkins: CheckinRow[], coachId: string, excludedInviterIds: Set<string>) {
   return checkins.filter(
     (c) =>
       !c.voided &&
@@ -91,6 +94,10 @@ function coachCheckins(checkins: CheckinRow[], coachId: string) {
       !(
         c.customer?.member_type &&
         COACH_CUP_EXCLUDED_MEMBER_TYPES.includes(c.customer.member_type as MemberType)
+      ) &&
+      !(
+        c.customer?.invited_by_customer_id &&
+        excludedInviterIds.has(c.customer.invited_by_customer_id)
       )
   );
 }
@@ -196,6 +203,7 @@ export function DailyReportClient({
   coachCups,
   birthdays,
   checkins,
+  excludedInviterIds,
   ledger,
 }: {
   date: string;
@@ -214,6 +222,7 @@ export function DailyReportClient({
   coachCups: CoachCupRow[];
   birthdays: BirthdayRow[];
   checkins: CheckinRow[];
+  excludedInviterIds: string[];
   ledger: LedgerRow[];
 }) {
   const router = useRouter();
@@ -221,6 +230,7 @@ export function DailyReportClient({
     null
   );
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null);
+  const excludedInviterIdSet = useMemo(() => new Set(excludedInviterIds), [excludedInviterIds]);
 
   const sortedCheckins = useMemo(() => {
     if (!checkinSort) return checkins;
@@ -339,7 +349,9 @@ export function DailyReportClient({
             <TableBody>
               {coachCups.map((row) => {
                 const isExpanded = expandedCoachId === row.coach_id;
-                const customerCheckins = isExpanded ? coachCheckins(checkins, row.coach_id) : [];
+                const customerCheckins = isExpanded
+                  ? coachCheckins(checkins, row.coach_id, excludedInviterIdSet)
+                  : [];
                 return (
                   <Fragment key={row.coach_id}>
                     <TableRow

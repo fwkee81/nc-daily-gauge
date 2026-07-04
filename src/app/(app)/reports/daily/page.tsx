@@ -20,43 +20,59 @@ export default async function DailyReportPage({
 
   const supabase = await createClient();
 
-  const [totalsRes, coachCupsRes, birthdaysRes, checkinsRes, renewalsRes, newCustomersRes, clubRes] =
-    await Promise.all([
-      supabase.rpc("daily_totals", { p_date: date, p_club_id: clubId }),
-      supabase.rpc("daily_coach_cups", { p_date: date, p_club_id: clubId }),
-      supabase.rpc("upcoming_birthdays", { p_club_id: clubId }),
-      supabase
-        .from("checkins")
-        .select(
-          "id, customer_id, cups, consumption_type, voided, created_at, customer:customers(name, nc_level, consumption_balance, member_type, coach:coaches!customers_coach_id_fkey(id, name)), member:customer_members(name)"
-        )
-        .eq("checkin_date", date)
-        .eq("nc_club_id", clubId)
-        .order("created_at", { ascending: false }),
-      // NOTE: filtering on the embedded `customer` resource requires !inner
-      // (an outer/left embed's columns can't be used in .eq() filters).
-      supabase
-        .from("customer_renewals")
-        .select(
-          "id, nc_level, cups_added, previous_balance, new_balance, created_at, customer:customers!inner(name, nc_club_id), renewed_by_coach:coaches(name)"
-        )
-        .gte("created_at", `${date}T00:00:00`)
-        .lt("created_at", `${nextDate}T00:00:00`)
-        .eq("customer.nc_club_id", clubId)
-        .order("created_at", { ascending: false }),
-      // Newly added customers that day show up alongside renewals — a brand
-      // new sign-up is the first entry in a customer's cup ledger.
-      supabase
-        .from("customers")
-        .select(
-          "id, name, nc_level, consumption_balance, created_at, created_by_coach:coaches!customers_created_by_fkey(name)"
-        )
-        .eq("nc_club_id", clubId)
-        .gte("created_at", `${date}T00:00:00`)
-        .lt("created_at", `${nextDate}T00:00:00`)
-        .order("created_at", { ascending: false }),
-      supabase.from("nc_clubs").select("name").eq("id", clubId).maybeSingle(),
-    ]);
+  const [
+    totalsRes,
+    coachCupsRes,
+    birthdaysRes,
+    checkinsRes,
+    renewalsRes,
+    newCustomersRes,
+    clubRes,
+    excludedInvitersRes,
+  ] = await Promise.all([
+    supabase.rpc("daily_totals", { p_date: date, p_club_id: clubId }),
+    supabase.rpc("daily_coach_cups", { p_date: date, p_club_id: clubId }),
+    supabase.rpc("upcoming_birthdays", { p_club_id: clubId }),
+    supabase
+      .from("checkins")
+      .select(
+        "id, customer_id, cups, consumption_type, voided, created_at, customer:customers(name, nc_level, consumption_balance, member_type, invited_by_customer_id, coach:coaches!customers_coach_id_fkey(id, name)), member:customer_members(name)"
+      )
+      .eq("checkin_date", date)
+      .eq("nc_club_id", clubId)
+      .order("created_at", { ascending: false }),
+    // NOTE: filtering on the embedded `customer` resource requires !inner
+    // (an outer/left embed's columns can't be used in .eq() filters).
+    supabase
+      .from("customer_renewals")
+      .select(
+        "id, nc_level, cups_added, previous_balance, new_balance, created_at, customer:customers!inner(name, nc_club_id), renewed_by_coach:coaches(name)"
+      )
+      .gte("created_at", `${date}T00:00:00`)
+      .lt("created_at", `${nextDate}T00:00:00`)
+      .eq("customer.nc_club_id", clubId)
+      .order("created_at", { ascending: false }),
+    // Newly added customers that day show up alongside renewals — a brand
+    // new sign-up is the first entry in a customer's cup ledger.
+    supabase
+      .from("customers")
+      .select(
+        "id, name, nc_level, consumption_balance, created_at, created_by_coach:coaches!customers_created_by_fkey(name)"
+      )
+      .eq("nc_club_id", clubId)
+      .gte("created_at", `${date}T00:00:00`)
+      .lt("created_at", `${nextDate}T00:00:00`)
+      .order("created_at", { ascending: false }),
+    supabase.from("nc_clubs").select("name").eq("id", clubId).maybeSingle(),
+    // Customers whose own member_type disqualifies whoever they invited from
+    // counting toward Coach's Cup — resolved as a flat id list here (not a
+    // self-referential PostgREST embed) to match the checkins pulled above.
+    supabase
+      .from("customers")
+      .select("id")
+      .eq("nc_club_id", clubId)
+      .in("member_type", ["SP", "WT", "AWT", "TAB"]),
+  ]);
 
   interface RawRenewal {
     id: string;
@@ -129,6 +145,7 @@ export default async function DailyReportPage({
       coachCups={coachCupsRes.data ?? []}
       birthdays={birthdaysRes.data ?? []}
       checkins={(checkinsRes.data ?? []) as unknown as CheckinRow[]}
+      excludedInviterIds={(excludedInvitersRes.data ?? []).map((c) => c.id)}
       ledger={ledger}
     />
   );

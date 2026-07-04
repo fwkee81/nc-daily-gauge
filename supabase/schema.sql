@@ -17,7 +17,7 @@ create type customer_gender as enum ('Male', 'Female', 'Couple', 'Family', 'Othe
 
 create type customer_nc_level as enum ('5-day', '10-day', '20-day', '30-day', 'Ala Carte');
 
-create type member_type as enum ('MB', 'SC', 'SB', 'SP', 'WT', 'AWT', 'TAB');
+create type member_type as enum ('MB', 'SC', 'SB', 'SP', 'WT', 'AWT', 'TAB', 'Non member');
 
 create type consumption_type as enum ('Dine-in', 'Take-away');
 
@@ -730,10 +730,16 @@ as $$
     coalesce(sum(ci.cups), 0) as total_cups,
     coalesce(sum(ci.cups) filter (where cu.invited_by_type = 'plugin'), 0) as plugin_cups,
     -- Mirrors the daily_coach_cups() eligibility rule (coach assigned, member
-    -- type not SP/WT/AWT/TAB), summed across every coach for this club/date.
+    -- type not SP/WT/AWT/TAB, and not invited by a customer whose own member
+    -- type is SP/WT/AWT/TAB), summed across every coach for this club/date.
     coalesce(sum(ci.cups) filter (
       where cu.coach_id is not null
         and (cu.member_type is null or cu.member_type not in ('SP', 'WT', 'AWT', 'TAB'))
+        and not exists (
+          select 1 from customers inviter
+          where inviter.id = cu.invited_by_customer_id
+            and inviter.member_type in ('SP', 'WT', 'AWT', 'TAB')
+        )
     ), 0) as coach_cup_total,
     coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Dine-in'), 0) as dine_in_cups,
     coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Take-away'), 0) as takeaway_cups
@@ -749,7 +755,9 @@ $$;
 -- from invited_by — a customer can be invited by another customer or
 -- Plug-in and still be "under" a coach for cup attribution). Counts any
 -- customer with a coach assigned, EXCEPT member types SP, WT, AWT, TAB (a
--- null/unset member_type still counts).
+-- null/unset member_type still counts) — and EXCEPT a customer invited by
+-- another customer whose own member type is SP, WT, AWT, or TAB, even if
+-- the invitee's own member type would otherwise qualify.
 create or replace function daily_coach_cups(p_date date, p_club_id uuid default null)
 returns table (coach_id uuid, coach_name text, cups bigint)
 language sql
@@ -769,6 +777,11 @@ as $$
     and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()))
     and (cu.member_type is null or cu.member_type not in ('SP', 'WT', 'AWT', 'TAB'))
+    and not exists (
+      select 1 from customers inviter
+      where inviter.id = cu.invited_by_customer_id
+        and inviter.member_type in ('SP', 'WT', 'AWT', 'TAB')
+    )
   group by co.id, co.name
   order by cups desc;
 $$;
@@ -901,7 +914,12 @@ as $$
   from club_checkins cc
   join customers cu on cu.id = cc.customer_id
   join coaches co on co.id = cu.coach_id
-  where cu.member_type is null or cu.member_type not in ('SP', 'WT', 'AWT', 'TAB')
+  where (cu.member_type is null or cu.member_type not in ('SP', 'WT', 'AWT', 'TAB'))
+    and not exists (
+      select 1 from customers inviter
+      where inviter.id = cu.invited_by_customer_id
+        and inviter.member_type in ('SP', 'WT', 'AWT', 'TAB')
+    )
   group by co.id, co.name
   order by total_cups desc;
 $$;

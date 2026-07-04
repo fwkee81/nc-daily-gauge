@@ -51,12 +51,24 @@ export const CUSTOMER_NC_LEVELS: CustomerNcLevel[] = [
   "Ala Carte",
 ];
 
-export const MEMBER_TYPES: MemberType[] = ["MB", "SC", "SB", "SP", "WT", "AWT", "TAB"];
+export const MEMBER_TYPES: MemberType[] = [
+  "MB",
+  "SC",
+  "SB",
+  "SP",
+  "WT",
+  "AWT",
+  "TAB",
+  "Non member",
+];
 
 // Coach's Cup counts any customer with an inviting coach EXCEPT these member
-// types (a null/unset member_type still counts). Mirrors the WHERE clause in
-// daily_coach_cups / monthly_coach_cups in supabase/schema.sql — not read by
-// the app directly, kept here for reference.
+// types (a null/unset member_type still counts), AND excludes a customer
+// invited by another customer whose own member_type is one of these, even if
+// the invitee's own member_type would otherwise qualify. Mirrors the WHERE
+// clause in daily_totals / daily_coach_cups / monthly_coach_cups in
+// supabase/schema.sql — not read by the app directly, kept here for
+// reference.
 export const COACH_CUP_EXCLUDED_MEMBER_TYPES: MemberType[] = ["SP", "WT", "AWT", "TAB"];
 
 export const CONSUMPTION_TYPES: ConsumptionType[] = ["Dine-in", "Take-away"];
