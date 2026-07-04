@@ -158,7 +158,7 @@ export function WalkinDialog({
             of adding them again.
           </p>
 
-          <Button type="submit" disabled={isPending} className="w-full">
+          <Button type="submit" disabled={isPending} className="w-full text-base">
             {isPending ? "Checking in..." : "Check in"}
           </Button>
         </form>

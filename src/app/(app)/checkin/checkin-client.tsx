@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { playChime } from "@/lib/chime";
 import { CONSUMPTION_TYPES, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
@@ -127,14 +128,19 @@ export function CheckinClient({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+    <div
+      className={cn(
+        "grid gap-6 lg:grid-cols-[1fr_320px] lg:pb-0",
+        selected ? "pb-72" : "pb-40"
+      )}
+    >
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">
             Check-in — {format(new Date(), "EEEE, d MMM yyyy")}
           </h1>
           {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => setWalkinOpen(true)}>
+            <Button variant="outline" size="sm" className="text-base" onClick={() => setWalkinOpen(true)}>
               Walk-in (Ala Carte)
             </Button>
           )}
@@ -167,11 +173,11 @@ export function CheckinClient({
                           : "hover:bg-accent"
                       )}
                     >
-                      <span className="text-sm font-semibold leading-tight">{c.name}</span>
+                      <span className="text-base font-semibold leading-tight">{c.name}</span>
                       {c.contact && (
                         <span
                           className={cn(
-                            "text-xs",
+                            "text-sm",
                             isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
                           )}
                         >
@@ -181,7 +187,7 @@ export function CheckinClient({
                       {c.memberId && (
                         <span
                           className={cn(
-                            "text-[10px]",
+                            "text-xs",
                             isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
                           )}
                         >
@@ -189,6 +195,7 @@ export function CheckinClient({
                         </span>
                       )}
                       <Badge
+                        className="text-sm"
                         variant={
                           c.consumptionBalance < RENEWAL_REMINDER_THRESHOLD ? "destructive" : "secondary"
                         }
@@ -196,7 +203,7 @@ export function CheckinClient({
                         {c.consumptionBalance} left
                       </Badge>
                       {isSelected && (
-                        <span className="text-xs font-medium">
+                        <span className="text-sm font-medium">
                           {cups} cup{cups > 1 ? "s" : ""}
                         </span>
                       )}
@@ -212,59 +219,75 @@ export function CheckinClient({
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="rounded-md border p-4">
-          <h2 className="font-semibold">Selection</h2>
-          {selected ? (
-            <div className="mt-3 space-y-3">
-              <div>
-                <p className="font-medium">{selected.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  Click their name again to switch between 1 and 2 cups.
-                </p>
-                <Badge className="mt-2">{cups} cup{cups > 1 ? "s" : ""}</Badge>
-              </div>
-
-              <div>
-                <Label className="mb-2 block">Consumption type</Label>
-                <RadioGroup
-                  value={consumptionType}
-                  onValueChange={(v) => setConsumptionType(v as ConsumptionType)}
-                >
-                  {CONSUMPTION_TYPES.map((type) => (
-                    <div key={type} className="flex items-center gap-2">
-                      <RadioGroupItem value={type} id={`type-${type}`} />
-                      <Label htmlFor={`type-${type}`} className="font-normal">
-                        {type}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
-
-              <Button className="w-full" onClick={handleSubmit} disabled={submitting}>
-                {submitting ? "Submitting..." : "Submit check-in"}
-              </Button>
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Select a customer from the list to begin a check-in.
-            </p>
-          )}
-        </div>
-
-        {result && (
-          <div className="rounded-md border bg-accent/40 p-4">
-            <p className="font-semibold">{result.name}</p>
-            <p className="text-sm">Consumption balance left: {result.balance}</p>
-            {result.balance < RENEWAL_REMINDER_THRESHOLD && (
-              <p className="mt-2 text-sm font-medium text-destructive">
-                Remind customer to renew their NC card.
+      {/* Fixed to the bottom of the screen on mobile so Submit is always
+          reachable without scrolling past the whole customer list — sticky
+          to the top of its column on desktop instead, where it already sits
+          beside (not below) the list. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 rounded-t-xl border-t bg-background p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.12)] lg:sticky lg:top-4 lg:inset-x-auto lg:bottom-auto lg:z-auto lg:h-fit lg:rounded-md lg:border lg:shadow-none">
+        <h2 className="font-semibold">Selection</h2>
+        {selected ? (
+          <div className="mt-3 space-y-3">
+            <div>
+              <p className="text-lg font-medium">{selected.name}</p>
+              <p className="text-sm text-muted-foreground">
+                Click their name again to switch between 1 and 2 cups.
               </p>
-            )}
+              <Badge className="mt-2 text-sm">
+                {cups} cup{cups > 1 ? "s" : ""}
+              </Badge>
+            </div>
+
+            <div>
+              <Label className="mb-2 block">Consumption type</Label>
+              <RadioGroup
+                value={consumptionType}
+                onValueChange={(v) => setConsumptionType(v as ConsumptionType)}
+              >
+                {CONSUMPTION_TYPES.map((type) => (
+                  <div key={type} className="flex items-center gap-2">
+                    <RadioGroupItem value={type} id={`type-${type}`} />
+                    <Label htmlFor={`type-${type}`} className="text-base font-normal">
+                      {type}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            <Button className="w-full text-base" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? "Submitting..." : "Submit check-in"}
+            </Button>
           </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Select a customer from the list to begin a check-in.
+          </p>
         )}
       </div>
+
+      <Dialog open={!!result} onOpenChange={(open) => !open && setResult(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Checked in!</DialogTitle>
+          </DialogHeader>
+          {result && (
+            <div className="space-y-2">
+              <p className="text-lg font-semibold">{result.name}</p>
+              <p className="text-sm text-muted-foreground">
+                Consumption balance left: {result.balance}
+              </p>
+              {result.balance < RENEWAL_REMINDER_THRESHOLD && (
+                <p className="text-sm font-medium text-destructive">
+                  Gentle reminder {result.name}, to renew your nutrition breakfast card.
+                </p>
+              )}
+            </div>
+          )}
+          <Button className="w-full text-base" onClick={() => setResult(null)}>
+            OK
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       {isAdmin && (
         <WalkinDialog
