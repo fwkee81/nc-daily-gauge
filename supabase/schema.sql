@@ -1153,7 +1153,8 @@ as $$
   from my_clubs mc
   left join prev_days pd on pd.club_id = mc.club_id
   left join cup_totals ct on ct.club_id = mc.club_id
-  order by mc.club_name;
+  -- Own club first, then branches alphabetically.
+  order by (mc.club_id <> (select nc_club_id from coaches where auth_user_id = auth.uid())), mc.club_name;
 $$;
 
 -- Per-coach Coach's Cup breakdown per club, today vs. that club's previous
