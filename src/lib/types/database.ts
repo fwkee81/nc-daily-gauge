@@ -173,6 +173,17 @@ export type BranchClubRow = {
   club_name: string;
 };
 
+export type BranchDailySummaryRow = {
+  club_id: string;
+  club_name: string;
+  total_cups: number;
+  coach_cup_total: number;
+  new_5day: number;
+  total_10day: number;
+  total_20day: number;
+  total_30day: number;
+};
+
 type NoRelationships = {
   Relationships: [];
 };
@@ -272,6 +283,10 @@ export type Database = {
         Returns: MonthlyPackageSaleRow[];
       };
       list_branch_clubs: { Args: Record<string, never>; Returns: BranchClubRow[] };
+      branches_daily_summary: {
+        Args: { p_date: string };
+        Returns: BranchDailySummaryRow[];
+      };
       visible_club_ids: {
         Args: { p_coach_id: string };
         Returns: { visible_club_ids: string }[];

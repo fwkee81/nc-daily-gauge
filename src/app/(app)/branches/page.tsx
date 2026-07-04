@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { format } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { BranchClubRow } from "@/lib/types/database";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { BranchDailySummaryRow } from "@/lib/types/database";
 
 export default async function BranchesPage() {
   const coach = await getCurrentCoach();
@@ -17,16 +18,18 @@ export default async function BranchesPage() {
     );
   }
 
+  const today = format(new Date(), "yyyy-MM-dd");
   const supabase = await createClient();
-  const { data } = await supabase.rpc("list_branch_clubs");
-  const branches = (data ?? []) as BranchClubRow[];
+  const { data } = await supabase.rpc("branches_daily_summary", { p_date: today });
+  const branches = (data ?? []) as BranchDailySummaryRow[];
 
   return (
     <div>
       <h1 className="text-2xl font-semibold">Branches</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Nutrition clubs whose Owner named you as their sponsor. Each branch&apos;s numbers are
-        shown on their own — never merged with your own club.
+        Nutrition clubs whose Owner named you as their sponsor. Numbers below are for today (
+        {format(new Date(), "d MMM yyyy")}) — each branch&apos;s numbers are shown on their own,
+        never merged with your own club.
       </p>
 
       <div className="mt-6 space-y-3">
@@ -42,6 +45,16 @@ export default async function BranchesPage() {
               <CardTitle>{branch.club_name}</CardTitle>
               <CardDescription>Read-only — never merged with your own club</CardDescription>
             </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+                <Stat label="Total Cups" value={branch.total_cups} />
+                <Stat label="Coach's Cup" value={branch.coach_cup_total} />
+                <Stat label="New 5-Day" value={branch.new_5day} />
+                <Stat label="10-Day" value={branch.total_10day} />
+                <Stat label="20-Day" value={branch.total_20day} />
+                <Stat label="30-Day" value={branch.total_30day} />
+              </div>
+            </CardContent>
             <div className="flex flex-wrap gap-2 px-6 pb-6">
               <Link
                 href={`/reports/daily?club=${branch.club_id}`}
@@ -65,6 +78,15 @@ export default async function BranchesPage() {
           </Card>
         ))}
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border px-3 py-2">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold">{value}</p>
     </div>
   );
 }
