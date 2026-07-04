@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addMonths, format, parse } from "date-fns";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -15,6 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import type { MonthlyPackageSaleRow } from "@/lib/types/database";
 
 interface CoachCupRow {
   coach_id: string;
@@ -31,6 +35,7 @@ export function MetricsClient({
   viewingBranch,
   totals,
   coachCups,
+  packageSales,
 }: {
   month: string;
   hasExplicitMonth: boolean;
@@ -39,6 +44,7 @@ export function MetricsClient({
   viewingBranch: boolean;
   totals: { total_cups: number; days_in_period: number; avg_daily_cups: number };
   coachCups: CoachCupRow[];
+  packageSales: MonthlyPackageSaleRow[];
 }) {
   const router = useRouter();
   const parsedMonth = parse(month, "yyyy-MM", new Date());
@@ -140,6 +146,129 @@ export function MetricsClient({
             </TableBody>
           </Table>
         </div>
+      </div>
+
+      <PackageSalesSection
+        title="New 5-Day Trial"
+        rows={packageSales.filter((r) => r.nc_level === "5-day")}
+      />
+      <PackageSalesSection
+        title="10-Day"
+        rows={packageSales.filter((r) => r.nc_level === "10-day")}
+      />
+      <PackageSalesSection
+        title="20-Day"
+        rows={packageSales.filter((r) => r.nc_level === "20-day")}
+      />
+      <PackageSalesSection
+        title="30-Day"
+        rows={packageSales.filter((r) => r.nc_level === "30-day")}
+      />
+    </div>
+  );
+}
+
+function groupByCoach(rows: MonthlyPackageSaleRow[]) {
+  const map = new Map<string, { coachName: string; entries: MonthlyPackageSaleRow[] }>();
+  for (const r of rows) {
+    const key = r.coach_id ?? "unassigned";
+    if (!map.has(key)) map.set(key, { coachName: r.coach_name ?? "Unassigned", entries: [] });
+    map.get(key)!.entries.push(r);
+  }
+  return [...map.entries()]
+    .map(([coachKey, v]) => ({ coachKey, coachName: v.coachName, entries: v.entries }))
+    .sort((a, b) => b.entries.length - a.entries.length);
+}
+
+// Same expand-per-coach interaction as Daily Report's Coach's Cup, for a
+// consistent feel across both report pages.
+function PackageSalesSection({ title, rows }: { title: string; rows: MonthlyPackageSaleRow[] }) {
+  const [expandedCoachKey, setExpandedCoachKey] = useState<string | null>(null);
+  const groups = useMemo(() => groupByCoach(rows), [rows]);
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold">
+        {title} — Total: {rows.length}
+      </h2>
+      <div className="mt-2 overflow-x-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Coach</TableHead>
+              <TableHead className="text-right">Count</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {groups.map((g) => {
+              const isExpanded = expandedCoachKey === g.coachKey;
+              return (
+                <Fragment key={g.coachKey}>
+                  <TableRow
+                    className={cn(
+                      "cursor-pointer hover:bg-accent/50",
+                      isExpanded && "border-l-4 border-l-primary bg-primary/5 hover:bg-primary/10"
+                    )}
+                    onClick={() =>
+                      setExpandedCoachKey((current) => (current === g.coachKey ? null : g.coachKey))
+                    }
+                  >
+                    <TableCell>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1",
+                          isExpanded && "font-semibold text-primary"
+                        )}
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="size-3.5" />
+                        ) : (
+                          <ChevronRight className="size-3.5 text-muted-foreground" />
+                        )}
+                        {g.coachName}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">{g.entries.length}</TableCell>
+                  </TableRow>
+                  {isExpanded && (
+                    <TableRow className="border-l-4 border-l-primary">
+                      <TableCell colSpan={2} className="bg-primary/5 p-0">
+                        <ul className="divide-y divide-primary/10">
+                          {g.entries.map((entry) => (
+                            <li
+                              key={`${entry.customer_id}-${entry.entry_date}-${entry.kind}`}
+                              className="flex items-center justify-between py-1.5 pr-3 pl-8 text-sm"
+                            >
+                              <span className="flex items-center gap-2">
+                                {entry.customer_name}
+                                <Badge
+                                  variant={entry.kind === "new" ? "secondary" : "outline"}
+                                  className="text-[0.65rem]"
+                                >
+                                  {entry.kind === "new" ? "New" : "Renewed"}
+                                </Badge>
+                              </span>
+                              <span className="text-muted-foreground">
+                                {format(new Date(entry.entry_date), "d MMM")}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
+              );
+            })}
+            {groups.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center text-muted-foreground">
+                  No activity this month.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

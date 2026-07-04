@@ -19,9 +19,10 @@ export default async function MetricsPage({
 
   const supabase = await createClient();
 
-  const [totalsRes, coachCupsRes, clubRes] = await Promise.all([
+  const [totalsRes, coachCupsRes, packageSalesRes, clubRes] = await Promise.all([
     supabase.rpc("monthly_totals", { p_month: `${month}-01`, p_club_id: clubId }),
     supabase.rpc("monthly_coach_cups", { p_month: `${month}-01`, p_club_id: clubId }),
+    supabase.rpc("monthly_package_sales", { p_month: `${month}-01`, p_club_id: clubId }),
     supabase.from("nc_clubs").select("name").eq("id", clubId).maybeSingle(),
   ]);
 
@@ -34,6 +35,7 @@ export default async function MetricsPage({
       viewingBranch={viewingBranch}
       totals={totalsRes.data?.[0] ?? { total_cups: 0, days_in_period: 0, avg_daily_cups: 0 }}
       coachCups={coachCupsRes.data ?? []}
+      packageSales={packageSalesRes.data ?? []}
     />
   );
 }

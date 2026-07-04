@@ -158,6 +158,16 @@ export type MonthlyCoachCupsRow = {
   avg_daily_cups: number;
 };
 
+export type MonthlyPackageSaleRow = {
+  nc_level: string;
+  coach_id: string | null;
+  coach_name: string | null;
+  customer_id: string;
+  customer_name: string;
+  entry_date: string;
+  kind: "new" | "renewed";
+};
+
 export type BranchClubRow = {
   club_id: string;
   club_name: string;
@@ -256,6 +266,10 @@ export type Database = {
       monthly_coach_cups: {
         Args: { p_month: string; p_club_id?: string | null };
         Returns: MonthlyCoachCupsRow[];
+      };
+      monthly_package_sales: {
+        Args: { p_month: string; p_club_id?: string | null };
+        Returns: MonthlyPackageSaleRow[];
       };
       list_branch_clubs: { Args: Record<string, never>; Returns: BranchClubRow[] };
       visible_club_ids: {
