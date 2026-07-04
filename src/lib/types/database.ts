@@ -177,11 +177,26 @@ export type BranchDailySummaryRow = {
   club_id: string;
   club_name: string;
   total_cups: number;
+  prev_total_cups: number;
   coach_cup_total: number;
+  prev_coach_cup_total: number;
   new_5day: number;
+  prev_new_5day: number;
   total_10day: number;
+  prev_total_10day: number;
   total_20day: number;
+  prev_total_20day: number;
   total_30day: number;
+  prev_total_30day: number;
+  prev_date: string | null;
+};
+
+export type BranchCoachCupsCompareRow = {
+  club_id: string;
+  coach_id: string;
+  coach_name: string;
+  cups: number;
+  prev_cups: number;
 };
 
 type NoRelationships = {
@@ -286,6 +301,10 @@ export type Database = {
       branches_daily_summary: {
         Args: { p_date: string };
         Returns: BranchDailySummaryRow[];
+      };
+      branches_coach_cups_compare: {
+        Args: { p_date: string };
+        Returns: BranchCoachCupsCompareRow[];
       };
       visible_club_ids: {
         Args: { p_coach_id: string };

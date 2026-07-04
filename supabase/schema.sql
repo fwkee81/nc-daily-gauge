@@ -1035,81 +1035,178 @@ $$;
 -- show every branch's numbers at a glance without clicking into each one.
 -- Same definitions as daily_totals/daily_coach_cups/monthly_package_sales,
 -- just pre-aggregated per club instead of per coach.
+-- Includes the caller's own club alongside sponsored branches (unlike
+-- list_branch_clubs(), which is branch-only) — the /branches page wants a
+-- single at-a-glance view across everything, own club included. Every
+-- metric is also compared against each club's own previous OPERATING day
+-- (the most recent earlier date with any non-voided checkin — not
+-- necessarily calendar-yesterday, since a club might not open every day).
+--
+-- Adds prev_* columns and prev_date, which CREATE OR REPLACE can't do —
+-- drop the old 8-column version first.
+drop function if exists branches_daily_summary(date);
+
 create or replace function branches_daily_summary(p_date date)
 returns table (
   club_id uuid,
   club_name text,
   total_cups bigint,
+  prev_total_cups bigint,
   coach_cup_total bigint,
+  prev_coach_cup_total bigint,
   new_5day bigint,
+  prev_new_5day bigint,
   total_10day bigint,
+  prev_total_10day bigint,
   total_20day bigint,
-  total_30day bigint
+  prev_total_20day bigint,
+  total_30day bigint,
+  prev_total_30day bigint,
+  prev_date date
 )
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  with my_branches as (
+  with my_clubs as (
     select nc.id as club_id, nc.name as club_name
     from nc_clubs nc
     where nc.id in (select visible_club_ids(current_coach_id()))
-      and nc.id <> (select nc_club_id from coaches where auth_user_id = auth.uid())
+  ),
+  prev_days as (
+    select mc.club_id, max(ci.checkin_date) as prev_date
+    from my_clubs mc
+    left join checkins ci
+      on ci.nc_club_id = mc.club_id and ci.checkin_date < p_date and not ci.voided
+    group by mc.club_id
   ),
   excluded_per_club as (
-    select mb.club_id, e.customer_id
-    from my_branches mb
-    cross join lateral coach_cup_excluded_customer_ids(mb.club_id) e
+    select mc.club_id, e.customer_id
+    from my_clubs mc
+    cross join lateral coach_cup_excluded_customer_ids(mc.club_id) e
   ),
   cup_totals as (
     select
-      mb.club_id,
-      coalesce(sum(ci.cups), 0) as total_cups,
+      mc.club_id,
+      coalesce(sum(ci.cups) filter (where ci.checkin_date = p_date), 0) as total_cups,
+      coalesce(sum(ci.cups) filter (where ci.checkin_date = pd.prev_date), 0) as prev_total_cups,
       coalesce(sum(ci.cups) filter (
-        where cu.coach_id is not null
+        where ci.checkin_date = p_date
+          and cu.coach_id is not null
           and not exists (
-            select 1 from excluded_per_club ec
-            where ec.club_id = mb.club_id and ec.customer_id = cu.id
+            select 1 from excluded_per_club ec where ec.club_id = mc.club_id and ec.customer_id = cu.id
           )
-      ), 0) as coach_cup_total
-    from my_branches mb
-    join checkins ci on ci.nc_club_id = mb.club_id and ci.checkin_date = p_date and not ci.voided
-    join customers cu on cu.id = ci.customer_id
-    group by mb.club_id
+      ), 0) as coach_cup_total,
+      coalesce(sum(ci.cups) filter (
+        where ci.checkin_date = pd.prev_date
+          and cu.coach_id is not null
+          and not exists (
+            select 1 from excluded_per_club ec where ec.club_id = mc.club_id and ec.customer_id = cu.id
+          )
+      ), 0) as prev_coach_cup_total
+    from my_clubs mc
+    left join prev_days pd on pd.club_id = mc.club_id
+    left join checkins ci
+      on ci.nc_club_id = mc.club_id and not ci.voided
+      and (ci.checkin_date = p_date or ci.checkin_date = pd.prev_date)
+    left join customers cu on cu.id = ci.customer_id
+    group by mc.club_id
   ),
   new_signups as (
-    select cu.nc_club_id as club_id, cu.nc_level, count(*) as n
+    select cu.nc_club_id as club_id, cu.nc_level, cu.created_at::date as d, count(*) as n
     from customers cu
-    where cu.nc_club_id in (select club_id from my_branches)
+    where cu.nc_club_id in (select club_id from my_clubs)
       and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
-      and cu.created_at::date = p_date
-    group by cu.nc_club_id, cu.nc_level
+    group by cu.nc_club_id, cu.nc_level, cu.created_at::date
   ),
   renewals as (
-    select cu.nc_club_id as club_id, cr.nc_level, count(*) as n
+    select cu.nc_club_id as club_id, cr.nc_level, cr.created_at::date as d, count(*) as n
     from customer_renewals cr
     join customers cu on cu.id = cr.customer_id
-    where cu.nc_club_id in (select club_id from my_branches)
+    where cu.nc_club_id in (select club_id from my_clubs)
       and cr.nc_level in ('10-day', '20-day', '30-day')
-      and cr.created_at::date = p_date
-    group by cu.nc_club_id, cr.nc_level
+    group by cu.nc_club_id, cr.nc_level, cr.created_at::date
   )
   select
-    mb.club_id,
-    mb.club_name,
+    mc.club_id,
+    mc.club_name,
     coalesce(ct.total_cups, 0) as total_cups,
+    coalesce(ct.prev_total_cups, 0) as prev_total_cups,
     coalesce(ct.coach_cup_total, 0) as coach_cup_total,
-    coalesce((select n from new_signups ns where ns.club_id = mb.club_id and ns.nc_level = '5-day'), 0) as new_5day,
-    coalesce((select n from new_signups ns where ns.club_id = mb.club_id and ns.nc_level = '10-day'), 0)
-      + coalesce((select n from renewals r where r.club_id = mb.club_id and r.nc_level = '10-day'), 0) as total_10day,
-    coalesce((select n from new_signups ns where ns.club_id = mb.club_id and ns.nc_level = '20-day'), 0)
-      + coalesce((select n from renewals r where r.club_id = mb.club_id and r.nc_level = '20-day'), 0) as total_20day,
-    coalesce((select n from new_signups ns where ns.club_id = mb.club_id and ns.nc_level = '30-day'), 0)
-      + coalesce((select n from renewals r where r.club_id = mb.club_id and r.nc_level = '30-day'), 0) as total_30day
-  from my_branches mb
-  left join cup_totals ct on ct.club_id = mb.club_id
-  order by mb.club_name;
+    coalesce(ct.prev_coach_cup_total, 0) as prev_coach_cup_total,
+    coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '5-day' and ns.d = p_date), 0) as new_5day,
+    coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '5-day' and ns.d = pd.prev_date), 0) as prev_new_5day,
+    coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '10-day' and ns.d = p_date), 0)
+      + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '10-day' and r.d = p_date), 0) as total_10day,
+    coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '10-day' and ns.d = pd.prev_date), 0)
+      + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '10-day' and r.d = pd.prev_date), 0) as prev_total_10day,
+    coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '20-day' and ns.d = p_date), 0)
+      + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '20-day' and r.d = p_date), 0) as total_20day,
+    coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '20-day' and ns.d = pd.prev_date), 0)
+      + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '20-day' and r.d = pd.prev_date), 0) as prev_total_20day,
+    coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '30-day' and ns.d = p_date), 0)
+      + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '30-day' and r.d = p_date), 0) as total_30day,
+    coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '30-day' and ns.d = pd.prev_date), 0)
+      + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '30-day' and r.d = pd.prev_date), 0) as prev_total_30day,
+    pd.prev_date
+  from my_clubs mc
+  left join prev_days pd on pd.club_id = mc.club_id
+  left join cup_totals ct on ct.club_id = mc.club_id
+  order by mc.club_name;
+$$;
+
+-- Per-coach Coach's Cup breakdown per club, today vs. that club's previous
+-- operating day — powers the expandable per-coach list under each branch
+-- card on /branches. Same eligibility rule as coach_cup_excluded_customer_ids.
+create or replace function branches_coach_cups_compare(p_date date)
+returns table (
+  club_id uuid,
+  coach_id uuid,
+  coach_name text,
+  cups bigint,
+  prev_cups bigint
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with my_clubs as (
+    select nc.id as club_id
+    from nc_clubs nc
+    where nc.id in (select visible_club_ids(current_coach_id()))
+  ),
+  prev_days as (
+    select mc.club_id, max(ci.checkin_date) as prev_date
+    from my_clubs mc
+    left join checkins ci
+      on ci.nc_club_id = mc.club_id and ci.checkin_date < p_date and not ci.voided
+    group by mc.club_id
+  ),
+  excluded_per_club as (
+    select mc.club_id, e.customer_id
+    from my_clubs mc
+    cross join lateral coach_cup_excluded_customer_ids(mc.club_id) e
+  )
+  select
+    ci.nc_club_id as club_id,
+    co.id as coach_id,
+    co.name as coach_name,
+    coalesce(sum(ci.cups) filter (where ci.checkin_date = p_date), 0) as cups,
+    coalesce(sum(ci.cups) filter (where ci.checkin_date = pd.prev_date), 0) as prev_cups
+  from checkins ci
+  join customers cu on cu.id = ci.customer_id
+  join coaches co on co.id = cu.coach_id
+  join prev_days pd on pd.club_id = ci.nc_club_id
+  where ci.nc_club_id in (select club_id from my_clubs)
+    and not ci.voided
+    and (ci.checkin_date = p_date or ci.checkin_date = pd.prev_date)
+    and not exists (
+      select 1 from excluded_per_club ec where ec.club_id = ci.nc_club_id and ec.customer_id = cu.id
+    )
+  group by ci.nc_club_id, co.id, co.name
+  order by ci.nc_club_id, cups desc;
 $$;
 
 grant execute on function coach_cup_excluded_customer_ids(uuid) to authenticated;
@@ -1120,4 +1217,5 @@ grant execute on function monthly_totals(date, uuid) to authenticated;
 grant execute on function monthly_coach_cups(date, uuid) to authenticated;
 grant execute on function monthly_package_sales(date, uuid) to authenticated;
 grant execute on function list_branch_clubs() to authenticated;
+grant execute on function branches_coach_cups_compare(date) to authenticated;
 grant execute on function branches_daily_summary(date) to authenticated;
