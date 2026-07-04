@@ -218,12 +218,14 @@ export function DailyReportClient({
     null
   );
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null);
+  const [hideVoided, setHideVoided] = useState(false);
   const excludedCustomerIdSet = useMemo(() => new Set(excludedCustomerIds), [excludedCustomerIds]);
 
   const sortedCheckins = useMemo(() => {
-    if (!checkinSort) return checkins;
+    const filtered = hideVoided ? checkins.filter((c) => !c.voided) : checkins;
+    if (!checkinSort) return filtered;
     const { key, dir } = checkinSort;
-    const sorted = [...checkins].sort((a, b) => {
+    const sorted = [...filtered].sort((a, b) => {
       const av = checkinSortValue(a, key);
       const bv = checkinSortValue(b, key);
       if (av < bv) return -1;
@@ -231,7 +233,7 @@ export function DailyReportClient({
       return 0;
     });
     return dir === "asc" ? sorted : sorted.reverse();
-  }, [checkins, checkinSort]);
+  }, [checkins, checkinSort, hideVoided]);
 
   function toggleCheckinSort(key: CheckinSortKey) {
     setCheckinSort((current) => {
@@ -409,7 +411,17 @@ export function DailyReportClient({
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold">Check-ins on this day</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Check-ins on this day</h2>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={hideVoided}
+              onChange={(e) => setHideVoided(e.target.checked)}
+            />
+            Only show active (hide voided)
+          </label>
+        </div>
         <div className="mt-2 overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
@@ -486,10 +498,12 @@ export function DailyReportClient({
                   )}
                 </TableRow>
               ))}
-              {checkins.length === 0 && (
+              {sortedCheckins.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={isAdmin ? 9 : 8} className="text-center text-muted-foreground">
-                    No check-ins on this day.
+                    {checkins.length === 0
+                      ? "No check-ins on this day."
+                      : "No active check-ins on this day (all voided)."}
                   </TableCell>
                 </TableRow>
               )}
