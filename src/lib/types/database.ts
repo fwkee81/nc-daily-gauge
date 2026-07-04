@@ -233,6 +233,10 @@ export type Database = {
         };
         Returns: Checkin;
       };
+      coach_cup_excluded_customer_ids: {
+        Args: { p_club_id?: string | null };
+        Returns: { customer_id: string }[];
+      };
       daily_totals: {
         Args: { p_date: string; p_club_id?: string | null };
         Returns: DailyTotalsRow[];

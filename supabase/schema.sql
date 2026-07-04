@@ -713,6 +713,36 @@ grant execute on function record_walkin_checkin(text, text, invited_by_type, uui
 -- below and the /branches page). Reports are per-club, not auto-merged
 -- across branches, so numbers are always attributable to one specific club.
 
+-- Every customer in a club whose checkins should NOT count toward any
+-- coach's cup: their own member_type is SP/WT/AWT/TAB, or ANY ancestor in
+-- their invited-by chain (any number of generations back, via
+-- invited_by_customer_id) has one of those member types. This is a property
+-- of the customer, independent of which coach they're assigned to.
+-- `union` (not `union all`) also makes the recursion safe against a cyclical
+-- invited-by chain, should one ever exist — it stops once no new ids surface.
+create or replace function coach_cup_excluded_customer_ids(p_club_id uuid default null)
+returns table (customer_id uuid)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with recursive club_customers as (
+    select id, invited_by_customer_id, member_type
+    from customers
+    where nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
+      and nc_club_id in (select visible_club_ids(current_coach_id()))
+  ),
+  tainted as (
+    select id from club_customers where member_type in ('SP', 'WT', 'AWT', 'TAB')
+    union
+    select cc.id
+    from club_customers cc
+    join tainted t on cc.invited_by_customer_id = t.id
+  )
+  select id as customer_id from tainted;
+$$;
+
 create or replace function daily_totals(p_date date, p_club_id uuid default null)
 returns table (
   total_cups bigint,
@@ -729,17 +759,12 @@ as $$
   select
     coalesce(sum(ci.cups), 0) as total_cups,
     coalesce(sum(ci.cups) filter (where cu.invited_by_type = 'plugin'), 0) as plugin_cups,
-    -- Mirrors the daily_coach_cups() eligibility rule (coach assigned, member
-    -- type not SP/WT/AWT/TAB, and not invited by a customer whose own member
-    -- type is SP/WT/AWT/TAB), summed across every coach for this club/date.
+    -- Mirrors the daily_coach_cups() eligibility rule (coach assigned, not in
+    -- coach_cup_excluded_customer_ids), summed across every coach for this
+    -- club/date.
     coalesce(sum(ci.cups) filter (
       where cu.coach_id is not null
-        and (cu.member_type is null or cu.member_type not in ('SP', 'WT', 'AWT', 'TAB'))
-        and not exists (
-          select 1 from customers inviter
-          where inviter.id = cu.invited_by_customer_id
-            and inviter.member_type in ('SP', 'WT', 'AWT', 'TAB')
-        )
+        and cu.id not in (select customer_id from coach_cup_excluded_customer_ids(p_club_id))
     ), 0) as coach_cup_total,
     coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Dine-in'), 0) as dine_in_cups,
     coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Take-away'), 0) as takeaway_cups
@@ -754,10 +779,9 @@ $$;
 -- "Coach's Cup" is grouped by the customer's assigned coach_id (separate
 -- from invited_by — a customer can be invited by another customer or
 -- Plug-in and still be "under" a coach for cup attribution). Counts any
--- customer with a coach assigned, EXCEPT member types SP, WT, AWT, TAB (a
--- null/unset member_type still counts) — and EXCEPT a customer invited by
--- another customer whose own member type is SP, WT, AWT, or TAB, even if
--- the invitee's own member type would otherwise qualify.
+-- customer with a coach assigned, EXCEPT those in
+-- coach_cup_excluded_customer_ids (own or an ancestor's member type is
+-- SP/WT/AWT/TAB).
 create or replace function daily_coach_cups(p_date date, p_club_id uuid default null)
 returns table (coach_id uuid, coach_name text, cups bigint)
 language sql
@@ -776,12 +800,7 @@ as $$
     and not ci.voided
     and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()))
-    and (cu.member_type is null or cu.member_type not in ('SP', 'WT', 'AWT', 'TAB'))
-    and not exists (
-      select 1 from customers inviter
-      where inviter.id = cu.invited_by_customer_id
-        and inviter.member_type in ('SP', 'WT', 'AWT', 'TAB')
-    )
+    and cu.id not in (select customer_id from coach_cup_excluded_customer_ids(p_club_id))
   group by co.id, co.name
   order by cups desc;
 $$;
@@ -914,12 +933,9 @@ as $$
   from club_checkins cc
   join customers cu on cu.id = cc.customer_id
   join coaches co on co.id = cu.coach_id
-  where (cu.member_type is null or cu.member_type not in ('SP', 'WT', 'AWT', 'TAB'))
-    and not exists (
-      select 1 from customers inviter
-      where inviter.id = cu.invited_by_customer_id
-        and inviter.member_type in ('SP', 'WT', 'AWT', 'TAB')
-    )
+  where cu.id not in (
+    select customer_id from coach_cup_excluded_customer_ids((select id from target_club))
+  )
   group by co.id, co.name
   order by total_cups desc;
 $$;
@@ -942,6 +958,7 @@ as $$
   order by nc.name;
 $$;
 
+grant execute on function coach_cup_excluded_customer_ids(uuid) to authenticated;
 grant execute on function daily_totals(date, uuid) to authenticated;
 grant execute on function daily_coach_cups(date, uuid) to authenticated;
 grant execute on function upcoming_birthdays(uuid) to authenticated;

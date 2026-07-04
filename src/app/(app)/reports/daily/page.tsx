@@ -28,7 +28,7 @@ export default async function DailyReportPage({
     renewalsRes,
     newCustomersRes,
     clubRes,
-    excludedInvitersRes,
+    excludedCustomersRes,
   ] = await Promise.all([
     supabase.rpc("daily_totals", { p_date: date, p_club_id: clubId }),
     supabase.rpc("daily_coach_cups", { p_date: date, p_club_id: clubId }),
@@ -36,7 +36,7 @@ export default async function DailyReportPage({
     supabase
       .from("checkins")
       .select(
-        "id, customer_id, cups, consumption_type, voided, created_at, customer:customers(name, nc_level, consumption_balance, member_type, invited_by_customer_id, coach:coaches!customers_coach_id_fkey(id, name)), member:customer_members(name)"
+        "id, customer_id, cups, consumption_type, voided, created_at, customer:customers(name, nc_level, consumption_balance, coach:coaches!customers_coach_id_fkey(id, name)), member:customer_members(name)"
       )
       .eq("checkin_date", date)
       .eq("nc_club_id", clubId)
@@ -64,14 +64,10 @@ export default async function DailyReportPage({
       .lt("created_at", `${nextDate}T00:00:00`)
       .order("created_at", { ascending: false }),
     supabase.from("nc_clubs").select("name").eq("id", clubId).maybeSingle(),
-    // Customers whose own member_type disqualifies whoever they invited from
-    // counting toward Coach's Cup — resolved as a flat id list here (not a
-    // self-referential PostgREST embed) to match the checkins pulled above.
-    supabase
-      .from("customers")
-      .select("id")
-      .eq("nc_club_id", clubId)
-      .in("member_type", ["SP", "WT", "AWT", "TAB"]),
+    // Every customer disqualified from Coach's Cup — own or an ancestor's
+    // (any generations back, via invited_by_customer_id) member_type is
+    // SP/WT/AWT/TAB. Computed once server-side (recursive) and reused here.
+    supabase.rpc("coach_cup_excluded_customer_ids", { p_club_id: clubId }),
   ]);
 
   interface RawRenewal {
@@ -145,7 +141,7 @@ export default async function DailyReportPage({
       coachCups={coachCupsRes.data ?? []}
       birthdays={birthdaysRes.data ?? []}
       checkins={(checkinsRes.data ?? []) as unknown as CheckinRow[]}
-      excludedInviterIds={(excludedInvitersRes.data ?? []).map((c) => c.id)}
+      excludedCustomerIds={(excludedCustomersRes.data ?? []).map((c) => c.customer_id)}
       ledger={ledger}
     />
   );
