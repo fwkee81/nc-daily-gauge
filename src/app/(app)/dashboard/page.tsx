@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Coffee, CalendarDays, TrendingUp, type LucideIcon } from "lucide-react";
+import { Coffee, CalendarDays, TrendingUp, Users, Building2, type LucideIcon } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getCurrentCoach } from "@/lib/auth";
@@ -47,6 +47,24 @@ export default async function DashboardPage() {
       icon: TrendingUp,
       tint: "bg-primary/15 text-primary",
     },
+    ...(coach?.is_admin
+      ? [
+          {
+            href: "/admin/customers",
+            title: "Customers",
+            description: "Manage customer profiles, balances, and renewals.",
+            icon: Users,
+            tint: "bg-secondary/25 text-[#8a5a00]",
+          },
+          {
+            href: "/branches",
+            title: "Branches",
+            description: "View Daily Report, NC Metrics, and Customers for sponsored branches.",
+            icon: Building2,
+            tint: "bg-primary/15 text-primary",
+          },
+        ]
+      : []),
   ];
 
   return (
