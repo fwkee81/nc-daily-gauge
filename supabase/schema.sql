@@ -1315,12 +1315,20 @@ $$;
 -- caller's own club and every sponsored branch. Returns three ranked lists
 -- tagged by `board` (client splits on this): most new 5-day trial sign-ups,
 -- most 10/20/30-day activity at the 30-day level (new + renewed), and
--- highest average Coach's Cup per operating day.
+-- highest average Coach's Cup per operating day. club_id lets the client
+-- also re-slice the coach_cup_avg rows per club, for the expandable
+-- per-coach breakdown under each club's "Avg Coach's Cup / Day" stat.
+--
+-- Adding club_id changes the return columns, which CREATE OR REPLACE can't
+-- do — drop the old 5-column version first.
+drop function if exists branches_monthly_leaderboards(date);
+
 create or replace function branches_monthly_leaderboards(p_month date)
 returns table (
   board text,
   coach_id uuid,
   coach_name text,
+  club_id uuid,
   club_name text,
   value numeric
 )
@@ -1411,6 +1419,7 @@ as $$
     select
       co.id as coach_id,
       co.name as coach_name,
+      nc.id as club_id,
       nc.name as club_name,
       round(cb.total_cups::numeric / od.n, 2) as value
     from coach_cup_by_coach cb
@@ -1418,17 +1427,17 @@ as $$
     join nc_clubs nc on nc.id = co.nc_club_id
     join operating_days od on od.club_id = cb.club_id and od.n > 0
   )
-  select 'new_5day' as board, co.id as coach_id, co.name as coach_name, nc.name as club_name, n5.n::numeric as value
+  select 'new_5day' as board, co.id as coach_id, co.name as coach_name, nc.id as club_id, nc.name as club_name, n5.n::numeric as value
   from new_5day_by_coach n5
   join coaches co on co.id = n5.coach_id
   join nc_clubs nc on nc.id = co.nc_club_id
   union all
-  select 'total_30day', co.id, co.name, nc.name, t30.n::numeric
+  select 'total_30day', co.id, co.name, nc.id, nc.name, t30.n::numeric
   from total_30_by_coach t30
   join coaches co on co.id = t30.coach_id
   join nc_clubs nc on nc.id = co.nc_club_id
   union all
-  select 'coach_cup_avg', coach_id, coach_name, club_name, value
+  select 'coach_cup_avg', coach_id, coach_name, club_id, club_name, value
   from coach_cup_avg_rows
   order by board, value desc;
 $$;

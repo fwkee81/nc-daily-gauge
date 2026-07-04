@@ -217,6 +217,7 @@ export type BranchLeaderboardRow = {
   board: BranchLeaderboardBoard;
   coach_id: string;
   coach_name: string;
+  club_id: string;
   club_name: string;
   value: number;
 };
