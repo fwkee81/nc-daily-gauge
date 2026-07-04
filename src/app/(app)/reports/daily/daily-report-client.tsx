@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addDays, differenceInYears, format, parseISO } from "date-fns";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,8 +35,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { CONSUMPTION_TYPES } from "@/lib/constants";
-import type { ConsumptionType } from "@/lib/types/database";
+import { CONSUMPTION_TYPES, COACH_CUP_EXCLUDED_MEMBER_TYPES } from "@/lib/constants";
+import type { ConsumptionType, MemberType } from "@/lib/types/database";
 import {
   correctCheckinAction,
   voidCheckinAction,
@@ -68,7 +68,8 @@ export interface CheckinRow {
     name: string;
     nc_level: string;
     consumption_balance: number;
-    coach: { name: string } | null;
+    member_type: MemberType | null;
+    coach: { id: string; name: string } | null;
   } | null;
   // Set when a shared family member checked in themselves rather than the
   // account holder — display their name instead, balance is still shared.
@@ -77,6 +78,21 @@ export interface CheckinRow {
 
 function checkinDisplayName(c: CheckinRow) {
   return c.member?.name ?? c.customer?.name ?? "—";
+}
+
+// Mirrors the eligibility rule in daily_coach_cups()/monthly_coach_cups() —
+// a checkin counts toward a coach's cup if the customer is assigned to that
+// coach and their member type isn't excluded (a null member_type counts).
+function coachCheckins(checkins: CheckinRow[], coachId: string) {
+  return checkins.filter(
+    (c) =>
+      !c.voided &&
+      c.customer?.coach?.id === coachId &&
+      !(
+        c.customer?.member_type &&
+        COACH_CUP_EXCLUDED_MEMBER_TYPES.includes(c.customer.member_type as MemberType)
+      )
+  );
 }
 
 type CheckinSortKey =
@@ -204,6 +220,7 @@ export function DailyReportClient({
   const [checkinSort, setCheckinSort] = useState<{ key: CheckinSortKey; dir: "asc" | "desc" } | null>(
     null
   );
+  const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null);
 
   const sortedCheckins = useMemo(() => {
     if (!checkinSort) return checkins;
@@ -320,12 +337,57 @@ export function DailyReportClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {coachCups.map((row) => (
-                <TableRow key={row.coach_id}>
-                  <TableCell>{row.coach_name}</TableCell>
-                  <TableCell className="text-right">{row.cups}</TableCell>
-                </TableRow>
-              ))}
+              {coachCups.map((row) => {
+                const isExpanded = expandedCoachId === row.coach_id;
+                const customerCheckins = isExpanded ? coachCheckins(checkins, row.coach_id) : [];
+                return (
+                  <Fragment key={row.coach_id}>
+                    <TableRow
+                      className="cursor-pointer hover:bg-accent/50"
+                      onClick={() =>
+                        setExpandedCoachId((current) => (current === row.coach_id ? null : row.coach_id))
+                      }
+                    >
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1">
+                          {isExpanded ? (
+                            <ChevronDown className="size-3.5 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="size-3.5 text-muted-foreground" />
+                          )}
+                          {row.coach_name}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">{row.cups}</TableCell>
+                    </TableRow>
+                    {isExpanded && (
+                      <TableRow key={`${row.coach_id}-detail`}>
+                        <TableCell colSpan={2} className="bg-muted/30 p-0">
+                          {customerCheckins.length === 0 ? (
+                            <p className="p-3 text-sm text-muted-foreground">
+                              No qualifying check-ins for this coach.
+                            </p>
+                          ) : (
+                            <ul className="divide-y">
+                              {customerCheckins.map((c) => (
+                                <li
+                                  key={c.id}
+                                  className="flex items-center justify-between px-3 py-1.5 text-sm"
+                                >
+                                  <span>{checkinDisplayName(c)}</span>
+                                  <span className="text-muted-foreground">
+                                    {c.cups} cup{c.cups > 1 ? "s" : ""}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
               {coachCups.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={2} className="text-center text-muted-foreground">
