@@ -183,6 +183,7 @@ export function CustomersClient({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerRow | null>(null);
   const [renewing, setRenewing] = useState<CustomerRow | null>(null);
+  const [viewing, setViewing] = useState<CustomerRow | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
 
   const filtered = useMemo(() => {
@@ -376,7 +377,13 @@ export function CustomersClient({
             {sorted.map((c) => (
               <TableRow key={c.id} className={c.active ? undefined : "opacity-60"}>
                 <TableCell className="sticky left-0 z-10 border-r bg-background font-medium">
-                  {c.name}
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 font-medium"
+                    onClick={() => setViewing(c)}
+                  >
+                    {c.name}
+                  </Button>
                 </TableCell>
                 <TableCell>{c.gender}</TableCell>
                 <TableCell>{c.contact}</TableCell>
@@ -471,6 +478,98 @@ export function CustomersClient({
           }}
         />
       )}
+
+      <CustomerViewDialog
+        customer={viewing}
+        members={viewing ? members.filter((m) => m.customer_id === viewing.id) : []}
+        onOpenChange={(open) => !open && setViewing(null)}
+      />
     </div>
+  );
+}
+
+function CustomerViewDialog({
+  customer,
+  members,
+  onOpenChange,
+}: {
+  customer: CustomerRow | null;
+  members: CustomerMemberRow[];
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={!!customer} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{customer?.name}</DialogTitle>
+        </DialogHeader>
+
+        {customer && (
+          <div className="space-y-3 text-sm">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <div>
+                <p className="text-xs text-muted-foreground">Gender</p>
+                <p>{customer.gender}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Contact</p>
+                <p>{customer.contact}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Age</p>
+                <p>{ageOf(customer) ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">NC Level</p>
+                <p>{customer.nc_level}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Consumption balance</p>
+                <p>{customer.consumption_balance}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Invited by</p>
+                <p>{invitedByLabel(customer)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Coach</p>
+                <p>{customer.coach?.name ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Member</p>
+                <p>
+                  {customer.member_id
+                    ? `${customer.member_id} (${customer.member_type ?? "—"})`
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Status</p>
+                <p>{customer.active ? "Active" : "Inactive"}</p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-muted-foreground">Remark</p>
+              <p>{customer.remark || "—"}</p>
+            </div>
+
+            {members.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground">Shares account with</p>
+                <ul className="mt-1 space-y-0.5">
+                  {members.map((m) => (
+                    <li key={m.id}>
+                      {m.name}
+                      {m.contact && <span className="text-muted-foreground"> · {m.contact}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
