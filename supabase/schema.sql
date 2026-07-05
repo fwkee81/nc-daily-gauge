@@ -949,6 +949,10 @@ $$;
 -- to record the renewal. A customer with no assigned coach still counts
 -- toward the total, grouped under a null coach_id/coach_name (client
 -- displays this as "Unassigned").
+-- Adds invited_by_type, which CREATE OR REPLACE can't do (return-column
+-- change) — drop the old 7-column version first.
+drop function if exists monthly_package_sales(date, uuid);
+
 create or replace function monthly_package_sales(p_month date, p_club_id uuid default null)
 returns table (
   nc_level text,
@@ -957,7 +961,8 @@ returns table (
   customer_id uuid,
   customer_name text,
   entry_date date,
-  kind text
+  kind text,
+  invited_by_type text
 )
 language sql
 stable
@@ -980,7 +985,8 @@ as $$
       cu.id as customer_id,
       cu.name as customer_name,
       cu.created_at::date as entry_date,
-      'new' as kind
+      'new' as kind,
+      cu.invited_by_type::text as invited_by_type
     from customers cu
     left join coaches co on co.id = cu.coach_id
     cross join bounds b
@@ -997,7 +1003,8 @@ as $$
       cu.id as customer_id,
       cu.name as customer_name,
       cr.created_at::date as entry_date,
-      'renewed' as kind
+      'renewed' as kind,
+      cu.invited_by_type::text as invited_by_type
     from customer_renewals cr
     join customers cu on cu.id = cr.customer_id
     left join coaches co on co.id = cu.coach_id

@@ -166,6 +166,7 @@ export type MonthlyPackageSaleRow = {
   customer_name: string;
   entry_date: string;
   kind: "new" | "renewed";
+  invited_by_type: InvitedByType;
 };
 
 export type BranchClubRow = {

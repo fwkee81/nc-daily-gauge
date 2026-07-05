@@ -168,11 +168,20 @@ export function MetricsClient({
   );
 }
 
+// No coach assigned: label it "Plug-in" when that's also who invited them
+// (the common case — a walk-through customer with no coach relationship at
+// all), otherwise fall back to "Unassigned" so a coach-invited customer
+// that's simply missing a Coach field isn't mislabeled as Plug-in.
+function unassignedLabel(r: MonthlyPackageSaleRow) {
+  return r.invited_by_type === "plugin" ? "Plug-in" : "Unassigned";
+}
+
 function groupByCoach(rows: MonthlyPackageSaleRow[]) {
   const map = new Map<string, { coachName: string; entries: MonthlyPackageSaleRow[] }>();
   for (const r of rows) {
-    const key = r.coach_id ?? "unassigned";
-    if (!map.has(key)) map.set(key, { coachName: r.coach_name ?? "Unassigned", entries: [] });
+    const key = r.coach_id ?? unassignedLabel(r);
+    const coachName = r.coach_name ?? unassignedLabel(r);
+    if (!map.has(key)) map.set(key, { coachName, entries: [] });
     map.get(key)!.entries.push(r);
   }
   return [...map.entries()]
