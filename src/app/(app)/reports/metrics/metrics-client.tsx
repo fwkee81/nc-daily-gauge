@@ -100,10 +100,10 @@ export function MetricsClient({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
+        <Card className="border-2 border-primary bg-primary/5">
           <CardHeader>
             <CardDescription>Total Cups this month</CardDescription>
-            <CardTitle className="text-3xl">{totals.total_cups}</CardTitle>
+            <CardTitle className="text-3xl font-bold text-primary">{totals.total_cups}</CardTitle>
           </CardHeader>
         </Card>
         <Card>

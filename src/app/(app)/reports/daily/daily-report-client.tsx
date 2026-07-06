@@ -303,7 +303,7 @@ export function DailyReportClient({
       <Card className="border-2 border-primary bg-primary/5 sm:max-w-xs">
         <CardHeader>
           <CardDescription>Total NC Cups</CardDescription>
-          <CardTitle className="text-2xl">{totals.total_cups}</CardTitle>
+          <CardTitle className="text-2xl font-bold text-primary">{totals.total_cups}</CardTitle>
         </CardHeader>
       </Card>
 
