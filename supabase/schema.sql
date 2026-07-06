@@ -544,7 +544,17 @@ begin
   values (
     v_club_id, p_name, 'Others', p_contact, null, 'Ala Carte', 1,
     p_invited_by_type, p_invited_by_coach_id, p_invited_by_customer_id,
-    case when p_invited_by_type = 'coach' then p_invited_by_coach_id else null end,
+    -- Invited by a coach: attribute directly to that coach. Invited by a
+    -- customer: inherit whichever coach that customer is under, so the
+    -- walk-in still counts toward Coach's Cup instead of falling through
+    -- with no coach at all. Plug-in has no coach to attribute to.
+    case
+      when p_invited_by_type = 'coach' then p_invited_by_coach_id
+      when p_invited_by_type = 'customer' then (
+        select coach_id from customers where id = p_invited_by_customer_id
+      )
+      else null
+    end,
     v_coach_id, true
   )
   returning id into v_customer_id;
