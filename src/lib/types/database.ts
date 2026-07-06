@@ -99,6 +99,7 @@ export type Checkin = {
   checkin_date: string;
   recorded_by: string | null;
   voided: boolean;
+  is_birthday_shake: boolean;
   created_at: string;
 };
 
@@ -261,6 +262,7 @@ export type Database = {
           p_consumption_type: ConsumptionType;
           p_checkin_date: string;
           p_member_id?: string | null;
+          p_is_birthday_shake?: boolean;
         };
         Returns: Checkin;
       };

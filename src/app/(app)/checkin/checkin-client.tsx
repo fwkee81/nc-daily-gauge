@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -56,8 +57,13 @@ export function CheckinClient({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [cups, setCups] = useState(1);
   const [consumptionType, setConsumptionType] = useState<ConsumptionType>(CONSUMPTION_TYPES[0]);
+  const [isBirthdayShake, setIsBirthdayShake] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ name: string; balance: number } | null>(null);
+  const [result, setResult] = useState<{
+    name: string;
+    balance: number;
+    isBirthdayShake?: boolean;
+  } | null>(null);
   const [walkinOpen, setWalkinOpen] = useState(false);
 
   const selected = checkinOptions.find((c) => c.key === selectedKey) ?? null;
@@ -85,6 +91,7 @@ export function CheckinClient({
     if (selectedKey !== key) {
       setSelectedKey(key);
       setCups(1);
+      setIsBirthdayShake(false);
       return;
     }
     // same row clicked again: 1 -> 2 -> deselect
@@ -93,6 +100,7 @@ export function CheckinClient({
     } else {
       setSelectedKey(null);
       setCups(1);
+      setIsBirthdayShake(false);
     }
   }
 
@@ -105,7 +113,8 @@ export function CheckinClient({
       cups,
       consumptionType,
       checkinDate,
-      selected.memberId
+      selected.memberId,
+      isBirthdayShake
     );
     setSubmitting(false);
 
@@ -115,9 +124,10 @@ export function CheckinClient({
     }
 
     playChime();
-    setResult({ name: res.name!, balance: res.balance! });
+    setResult({ name: res.name!, balance: res.balance!, isBirthdayShake: res.isBirthdayShake });
     setSelectedKey(null);
     setCups(1);
+    setIsBirthdayShake(false);
     router.refresh();
   }
 
@@ -254,6 +264,17 @@ export function CheckinClient({
               </RadioGroup>
             </div>
 
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="birthday-shake"
+                checked={isBirthdayShake}
+                onCheckedChange={(checked) => setIsBirthdayShake(checked)}
+              />
+              <Label htmlFor="birthday-shake" className="text-base font-normal">
+                🎂 Birthday Shake (free, balance not deducted)
+              </Label>
+            </div>
+
             <Button className="w-full text-base" onClick={handleSubmit} disabled={submitting}>
               {submitting ? "Submitting..." : "Submit check-in"}
             </Button>
@@ -273,10 +294,15 @@ export function CheckinClient({
           {result && (
             <div className="space-y-2">
               <p className="text-lg font-semibold">{result.name}</p>
+              {result.isBirthdayShake && (
+                <p className="text-sm font-medium text-primary">
+                  🎂 Birthday Shake — balance not deducted.
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">
                 Consumption balance left: {result.balance}
               </p>
-              {result.balance < RENEWAL_REMINDER_THRESHOLD && (
+              {!result.isBirthdayShake && result.balance < RENEWAL_REMINDER_THRESHOLD && (
                 <p className="text-sm font-medium text-destructive">
                   Gentle reminder {result.name}, to renew your nutrition breakfast card.
                 </p>

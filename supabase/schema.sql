@@ -135,6 +135,9 @@ create table checkins (
   checkin_date date not null,
   recorded_by uuid references coaches (id),
   voided boolean not null default false,
+  -- Free birthday breakfast: still counts as a normal check-in (total cups,
+  -- Coach's Cup) but does not deduct from the customer's consumption balance.
+  is_birthday_shake boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -449,15 +452,17 @@ create policy "customer_renewals_select" on customer_renewals
 
 -- Adding p_member_id changes the argument list, so CREATE OR REPLACE would
 -- leave the old 4-arg signature behind as a separate (now-dead) overload —
--- drop it first.
+-- drop it first. Same reasoning applies below for p_is_birthday_shake.
 drop function if exists record_checkin(uuid, integer, consumption_type, date);
+drop function if exists record_checkin(uuid, integer, consumption_type, date, uuid);
 
 create or replace function record_checkin(
   p_customer_id uuid,
   p_cups integer,
   p_consumption_type consumption_type,
   p_checkin_date date,
-  p_member_id uuid default null
+  p_member_id uuid default null,
+  p_is_birthday_shake boolean default false
 )
 returns checkins
 language plpgsql
@@ -488,12 +493,16 @@ begin
     raise exception 'Family member not found for this customer';
   end if;
 
-  insert into checkins (customer_id, member_id, nc_club_id, cups, consumption_type, checkin_date, recorded_by)
-  values (p_customer_id, p_member_id, v_club_id, p_cups, p_consumption_type, p_checkin_date, v_coach_id)
+  insert into checkins (customer_id, member_id, nc_club_id, cups, consumption_type, checkin_date, recorded_by, is_birthday_shake)
+  values (p_customer_id, p_member_id, v_club_id, p_cups, p_consumption_type, p_checkin_date, v_coach_id, p_is_birthday_shake)
   returning * into v_result;
 
-  update customers set consumption_balance = consumption_balance - p_cups
-  where id = p_customer_id;
+  -- Birthday shake is a free breakfast: check-in and Coach's Cup still count
+  -- (they read from checkins.cups directly), but the balance isn't touched.
+  if not p_is_birthday_shake then
+    update customers set consumption_balance = consumption_balance - p_cups
+    where id = p_customer_id;
+  end if;
 
   return v_result;
 end;
@@ -706,7 +715,7 @@ begin
 end;
 $$;
 
-grant execute on function record_checkin(uuid, integer, consumption_type, date, uuid) to authenticated;
+grant execute on function record_checkin(uuid, integer, consumption_type, date, uuid, boolean) to authenticated;
 grant execute on function correct_checkin(uuid, integer, consumption_type, text) to authenticated;
 grant execute on function void_checkin(uuid, text) to authenticated;
 grant execute on function renew_customer(uuid, customer_nc_level, integer) to authenticated;

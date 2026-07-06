@@ -63,6 +63,7 @@ export interface CheckinRow {
   cups: number;
   consumption_type: ConsumptionType;
   voided: boolean;
+  is_birthday_shake: boolean;
   created_at: string;
   customer: {
     name: string;
@@ -482,7 +483,10 @@ export function DailyReportClient({
               {sortedCheckins.map((c) => (
                 <TableRow key={c.id} className={c.voided ? "opacity-50" : undefined}>
                   <TableCell className="sticky left-0 z-10 border-r bg-background">
-                    <CustomerInfoDialog customerId={c.customer_id} name={checkinDisplayName(c)} />
+                    <div className="flex items-center gap-1.5">
+                      <CustomerInfoDialog customerId={c.customer_id} name={checkinDisplayName(c)} />
+                      {c.is_birthday_shake && <span title="Birthday Shake (free)">🎂</span>}
+                    </div>
                   </TableCell>
                   <TableCell>{c.customer?.coach?.name ?? "—"}</TableCell>
                   <TableCell>{c.customer?.nc_level ?? "—"}</TableCell>

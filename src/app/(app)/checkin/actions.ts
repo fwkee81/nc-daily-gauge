@@ -8,7 +8,8 @@ export async function submitCheckin(
   cups: number,
   consumptionType: ConsumptionType,
   checkinDate: string,
-  memberId: string | null = null
+  memberId: string | null = null,
+  isBirthdayShake: boolean = false
 ) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("record_checkin", {
@@ -17,6 +18,7 @@ export async function submitCheckin(
     p_consumption_type: consumptionType,
     p_checkin_date: checkinDate,
     p_member_id: memberId,
+    p_is_birthday_shake: isBirthdayShake,
   });
 
   if (error) {
@@ -50,6 +52,7 @@ export async function submitCheckin(
     checkin: data,
     name: displayName,
     balance: customer.consumption_balance,
+    isBirthdayShake,
   };
 }
 
