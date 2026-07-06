@@ -40,6 +40,7 @@ export default async function CheckinPage() {
       memberId: null as string | null,
       name: c.name,
       contact: c.contact,
+      dob: c.dob,
       consumptionBalance: c.consumption_balance,
     })),
     ...(members ?? []).map((m) => ({
@@ -50,6 +51,7 @@ export default async function CheckinPage() {
       // A family member without their own contact falls back to the account
       // holder's, so the last-4-digits search still finds them.
       contact: m.contact ?? "",
+      dob: m.dob,
       consumptionBalance: balanceByCustomerId.get(m.customer_id) ?? 0,
     })),
   ].sort((a, b) => a.name.localeCompare(b.name));

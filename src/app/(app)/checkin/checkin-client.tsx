@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { playChime } from "@/lib/chime";
+import { playChime, sayHappyBirthday } from "@/lib/chime";
 import { CONSUMPTION_TYPES, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
 import type { ConsumptionType } from "@/lib/types/database";
 import { submitCheckin } from "./actions";
@@ -24,7 +24,29 @@ interface CheckinOption {
   memberId: string | null;
   name: string;
   contact: string;
+  dob: string | null;
   consumptionBalance: number;
+}
+
+// Eligible for the free Birthday Shake if today falls in the customer's
+// birthday month, or within 7 days after their exact birthday date — the
+// latter covers customers whose birthday lands near month-end and who come
+// in a few days into the following month.
+function isBirthdayShakeEligible(dob: string | null, today: Date): boolean {
+  if (!dob) return false;
+  const [, monthStr, dayStr] = dob.split("-");
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  if (today.getMonth() + 1 === month) return true;
+
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  for (const yearOffset of [-1, 0]) {
+    const birthday = new Date(today.getFullYear() + yearOffset, month - 1, day);
+    const windowEnd = new Date(birthday);
+    windowEnd.setDate(windowEnd.getDate() + 7);
+    if (todayMidnight > birthday && todayMidnight <= windowEnd) return true;
+  }
+  return false;
 }
 
 interface CustomerOption {
@@ -40,6 +62,17 @@ interface CoachOption {
 function lastFourDigits(contact: string) {
   return contact.replace(/\D/g, "").slice(-4);
 }
+
+const CONFETTI_COLORS = [
+  "#9ec835",
+  "#ffbd59",
+  "#ff6b6b",
+  "#4dabf7",
+  "#f06595",
+  "#9ec835",
+  "#ffbd59",
+  "#4dabf7",
+];
 
 export function CheckinClient({
   checkinOptions,
@@ -67,6 +100,10 @@ export function CheckinClient({
   const [walkinOpen, setWalkinOpen] = useState(false);
 
   const selected = checkinOptions.find((c) => c.key === selectedKey) ?? null;
+  const birthdayShakeEligible = useMemo(
+    () => isBirthdayShakeEligible(selected?.dob ?? null, new Date()),
+    [selected]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -124,6 +161,7 @@ export function CheckinClient({
     }
 
     playChime();
+    if (res.isBirthdayShake) sayHappyBirthday(res.name!);
     setResult({ name: res.name!, balance: res.balance!, isBirthdayShake: res.isBirthdayShake });
     setSelectedKey(null);
     setCups(1);
@@ -264,16 +302,18 @@ export function CheckinClient({
               </RadioGroup>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="birthday-shake"
-                checked={isBirthdayShake}
-                onCheckedChange={(checked) => setIsBirthdayShake(checked)}
-              />
-              <Label htmlFor="birthday-shake" className="text-base font-normal">
-                🎂 Birthday Shake (free, balance not deducted)
-              </Label>
-            </div>
+            {birthdayShakeEligible && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="birthday-shake"
+                  checked={isBirthdayShake}
+                  onCheckedChange={(checked) => setIsBirthdayShake(checked)}
+                />
+                <Label htmlFor="birthday-shake" className="text-base font-normal">
+                  🎂 Birthday Shake
+                </Label>
+              </div>
+            )}
 
             <Button className="w-full text-base" onClick={handleSubmit} disabled={submitting}>
               {submitting ? "Submitting..." : "Submit check-in"}
@@ -287,31 +327,64 @@ export function CheckinClient({
       </div>
 
       <Dialog open={!!result} onOpenChange={(open) => !open && setResult(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Checked in!</DialogTitle>
-          </DialogHeader>
-          {result && (
-            <div className="space-y-2">
-              <p className="text-lg font-semibold">{result.name}</p>
-              {result.isBirthdayShake && (
-                <p className="text-sm font-medium text-primary">
-                  🎂 Birthday Shake — balance not deducted.
+        <DialogContent className={cn("sm:max-w-sm", result?.isBirthdayShake && "overflow-hidden")}>
+          {result?.isBirthdayShake ? (
+            <>
+              {CONFETTI_COLORS.map((color, i) => (
+                <span
+                  key={i}
+                  aria-hidden
+                  className="pointer-events-none absolute top-0 h-2.5 w-2.5 rounded-sm"
+                  style={{
+                    left: `${(i * 13 + 5) % 100}%`,
+                    backgroundColor: color,
+                    animation: "confetti-fall 1.8s ease-in forwards",
+                    animationDelay: `${(i % 6) * 0.15}s`,
+                  }}
+                />
+              ))}
+              <DialogHeader>
+                <DialogTitle className="text-center text-xl">🎉 Happy Birthday! 🎉</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col items-center gap-2 py-2 text-center">
+                <span
+                  className="text-6xl"
+                  style={{ display: "inline-block", animation: "cake-bounce 1s ease-in-out infinite" }}
+                >
+                  🎂
+                </span>
+                <p className="text-lg font-semibold">{result.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Enjoy your free birthday breakfast — balance not deducted!
                 </p>
+              </div>
+              <Button className="w-full text-base" onClick={() => setResult(null)}>
+                OK
+              </Button>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Checked in!</DialogTitle>
+              </DialogHeader>
+              {result && (
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold">{result.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Consumption balance left: {result.balance}
+                  </p>
+                  {result.balance < RENEWAL_REMINDER_THRESHOLD && (
+                    <p className="text-sm font-medium text-destructive">
+                      Gentle reminder {result.name}, to renew your nutrition breakfast card.
+                    </p>
+                  )}
+                </div>
               )}
-              <p className="text-sm text-muted-foreground">
-                Consumption balance left: {result.balance}
-              </p>
-              {!result.isBirthdayShake && result.balance < RENEWAL_REMINDER_THRESHOLD && (
-                <p className="text-sm font-medium text-destructive">
-                  Gentle reminder {result.name}, to renew your nutrition breakfast card.
-                </p>
-              )}
-            </div>
+              <Button className="w-full text-base" onClick={() => setResult(null)}>
+                OK
+              </Button>
+            </>
           )}
-          <Button className="w-full text-base" onClick={() => setResult(null)}>
-            OK
-          </Button>
         </DialogContent>
       </Dialog>
 

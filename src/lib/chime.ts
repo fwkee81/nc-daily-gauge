@@ -27,3 +27,14 @@ export function playChime() {
 
   setTimeout(() => ctx.close(), 700);
 }
+
+// Uses the browser's built-in text-to-speech voice for now — swap in a real
+// recorded clip later by playing an <audio> element here instead.
+export function sayHappyBirthday(name: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const utterance = new SpeechSynthesisUtterance(`Happy birthday, ${name}!`);
+  utterance.pitch = 1.4;
+  utterance.rate = 1.05;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
