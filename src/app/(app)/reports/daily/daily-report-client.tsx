@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -588,6 +589,7 @@ function ManageCheckinDialog({ checkin }: { checkin: CheckinRow }) {
   const [open, setOpen] = useState(false);
   const [cups, setCups] = useState(checkin.cups);
   const [type, setType] = useState<ConsumptionType>(checkin.consumption_type);
+  const [isBirthdayShake, setIsBirthdayShake] = useState(checkin.is_birthday_shake);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[] | null>(null);
@@ -606,7 +608,7 @@ function ManageCheckinDialog({ checkin }: { checkin: CheckinRow }) {
       return;
     }
     setSaving(true);
-    const res = await correctCheckinAction(checkin.id, cups, type, reason.trim());
+    const res = await correctCheckinAction(checkin.id, cups, type, reason.trim(), isBirthdayShake);
     setSaving(false);
     if (res.error) {
       toast.error(res.error);
@@ -675,6 +677,17 @@ function ManageCheckinDialog({ checkin }: { checkin: CheckinRow }) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`birthday-shake-${checkin.id}`}
+              checked={isBirthdayShake}
+              onCheckedChange={(checked) => setIsBirthdayShake(checked)}
+            />
+            <Label htmlFor={`birthday-shake-${checkin.id}`} className="font-normal">
+              🎂 Birthday Shake (free, balance not deducted)
+            </Label>
           </div>
 
           <div className="space-y-1">

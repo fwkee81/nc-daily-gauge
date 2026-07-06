@@ -272,6 +272,7 @@ export type Database = {
           p_new_cups: number;
           p_new_consumption_type: ConsumptionType;
           p_reason: string;
+          p_new_is_birthday_shake?: boolean;
         };
         Returns: void;
       };

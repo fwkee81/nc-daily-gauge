@@ -8,7 +8,8 @@ export async function correctCheckinAction(
   checkinId: string,
   newCups: number,
   newConsumptionType: ConsumptionType,
-  reason: string
+  reason: string,
+  newIsBirthdayShake: boolean = false
 ) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("correct_checkin", {
@@ -16,6 +17,7 @@ export async function correctCheckinAction(
     p_new_cups: newCups,
     p_new_consumption_type: newConsumptionType,
     p_reason: reason,
+    p_new_is_birthday_shake: newIsBirthdayShake,
   });
 
   if (error) return { error: error.message };
