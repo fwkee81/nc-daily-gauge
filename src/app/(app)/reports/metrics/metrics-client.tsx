@@ -385,9 +385,9 @@ function birthdaysInMonth(customers: DemographicsCustomer[], parsedMonth: Date) 
 }
 
 // A "Health Ambassador" is a customer who has personally referred 2+
-// first-generation customers who went on to become real 20-Day/30-Day
-// members (identified by having their own member ID) — walk-ins, trials,
-// and plug-in referrals don't count toward this.
+// first-generation customers, where a qualifying customer is 20-Day,
+// 30-Day, or has their own member ID (any one of the three — a customer
+// satisfying more than one still only counts once).
 function healthAmbassadors(customers: DemographicsCustomer[]) {
   const nameById = new Map(customers.map((c) => [c.id, c.name]));
   const counts = new Map<string, number>();
@@ -395,8 +395,7 @@ function healthAmbassadors(customers: DemographicsCustomer[]) {
     const qualifies =
       c.invited_by_type === "customer" &&
       c.invited_by_customer_id &&
-      (c.nc_level === "20-day" || c.nc_level === "30-day") &&
-      c.member_id;
+      (c.nc_level === "20-day" || c.nc_level === "30-day" || c.member_id != null);
     if (qualifies) {
       const inviterId = c.invited_by_customer_id!;
       counts.set(inviterId, (counts.get(inviterId) ?? 0) + 1);
@@ -522,7 +521,8 @@ function DemographicsTab({
       <div>
         <h2 className="text-lg font-semibold">Health Ambassadors</h2>
         <p className="text-sm text-muted-foreground">
-          Customers who&apos;ve personally referred 2 or more first-generation 20-Day/30-Day members.
+          Customers who&apos;ve personally referred 2 or more first-generation customers who are
+          20-Day, 30-Day, or have their own member ID.
         </p>
         <div className="mt-2 overflow-x-auto rounded-md border">
           <Table>
