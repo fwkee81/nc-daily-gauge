@@ -23,6 +23,7 @@ export default async function DailyReportPage({
   const [
     totalsRes,
     coachCupsRes,
+    branchCoachCupsRes,
     birthdaysRes,
     checkinsRes,
     renewalsRes,
@@ -32,6 +33,7 @@ export default async function DailyReportPage({
   ] = await Promise.all([
     supabase.rpc("daily_totals", { p_date: date, p_club_id: clubId }),
     supabase.rpc("daily_coach_cups", { p_date: date, p_club_id: clubId }),
+    supabase.rpc("daily_branch_coach_cups", { p_date: date, p_club_id: clubId }),
     supabase.rpc("upcoming_birthdays", { p_club_id: clubId }),
     supabase
       .from("checkins")
@@ -139,6 +141,7 @@ export default async function DailyReportPage({
         }
       }
       coachCups={coachCupsRes.data ?? []}
+      branchCoachCups={branchCoachCupsRes.data ?? []}
       birthdays={birthdaysRes.data ?? []}
       checkins={(checkinsRes.data ?? []) as unknown as CheckinRow[]}
       excludedCustomerIds={(excludedCustomersRes.data ?? []).map((c) => c.customer_id)}

@@ -139,6 +139,13 @@ export type DailyCoachCupsRow = {
   cups: number;
 };
 
+export type DailyBranchCoachCupsRow = {
+  coach_id: string;
+  coach_name: string;
+  coach_club_name: string | null;
+  cups: number;
+};
+
 export type UpcomingBirthdayRow = {
   customer_id: string;
   name: string;
@@ -307,6 +314,10 @@ export type Database = {
       daily_coach_cups: {
         Args: { p_date: string; p_club_id?: string | null };
         Returns: DailyCoachCupsRow[];
+      };
+      daily_branch_coach_cups: {
+        Args: { p_date: string; p_club_id?: string | null };
+        Returns: DailyBranchCoachCupsRow[];
       };
       upcoming_birthdays: {
         Args: { p_club_id?: string | null };

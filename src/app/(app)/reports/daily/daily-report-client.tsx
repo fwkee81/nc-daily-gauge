@@ -51,6 +51,13 @@ interface CoachCupRow {
   cups: number;
 }
 
+interface BranchCoachCupRow {
+  coach_id: string;
+  coach_name: string;
+  coach_club_name: string | null;
+  cups: number;
+}
+
 interface BirthdayRow {
   customer_id: string;
   name: string;
@@ -89,6 +96,117 @@ function coachCheckins(checkins: CheckinRow[], coachId: string, excludedCustomer
   return checkins.filter(
     (c) =>
       !c.voided && c.customer?.coach?.id === coachId && !excludedCustomerIds.has(c.customer_id)
+  );
+}
+
+// Shared by the Coach's Cup and Branches Coach's Cup tables — same
+// click-to-expand-per-coach interaction, the branch version just adds a
+// column for which club the coach is actually registered under.
+function CoachCupTable({
+  rows,
+  checkins,
+  excludedCustomerIdSet,
+  expandedCoachId,
+  setExpandedCoachId,
+  emptyMessage,
+  showClubColumn = false,
+}: {
+  rows: { coach_id: string; coach_name: string; cups: number; coach_club_name?: string | null }[];
+  checkins: CheckinRow[];
+  excludedCustomerIdSet: Set<string>;
+  expandedCoachId: string | null;
+  setExpandedCoachId: (updater: (current: string | null) => string | null) => void;
+  emptyMessage: string;
+  showClubColumn?: boolean;
+}) {
+  const colSpan = showClubColumn ? 3 : 2;
+  return (
+    <div className="mt-2 overflow-x-auto rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Coach</TableHead>
+            {showClubColumn && <TableHead>Their club</TableHead>}
+            <TableHead className="text-right">Cups</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => {
+            const isExpanded = expandedCoachId === row.coach_id;
+            const customerCheckins = isExpanded
+              ? coachCheckins(checkins, row.coach_id, excludedCustomerIdSet)
+              : [];
+            return (
+              <Fragment key={row.coach_id}>
+                <TableRow
+                  className={cn(
+                    "cursor-pointer hover:bg-accent/50",
+                    isExpanded && "border-l-4 border-l-primary bg-primary/5 hover:bg-primary/10"
+                  )}
+                  onClick={() =>
+                    setExpandedCoachId((current) => (current === row.coach_id ? null : row.coach_id))
+                  }
+                >
+                  <TableCell>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1",
+                        isExpanded && "font-semibold text-primary"
+                      )}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="size-3.5" />
+                      ) : (
+                        <ChevronRight className="size-3.5 text-muted-foreground" />
+                      )}
+                      {row.coach_name}
+                    </span>
+                  </TableCell>
+                  {showClubColumn && (
+                    <TableCell className="text-muted-foreground">
+                      {row.coach_club_name ?? "—"}
+                    </TableCell>
+                  )}
+                  <TableCell className="text-right">{row.cups}</TableCell>
+                </TableRow>
+                {isExpanded && (
+                  <TableRow key={`${row.coach_id}-detail`} className="border-l-4 border-l-primary">
+                    <TableCell colSpan={colSpan} className="bg-primary/5 p-0">
+                      {customerCheckins.length === 0 ? (
+                        <p className="p-3 text-sm text-muted-foreground">
+                          No qualifying check-ins for this coach.
+                        </p>
+                      ) : (
+                        <ul className="divide-y divide-primary/10">
+                          {customerCheckins.map((c) => (
+                            <li
+                              key={c.id}
+                              className="flex items-center justify-between py-1.5 pr-3 pl-8 text-sm"
+                            >
+                              <span>{checkinDisplayName(c)}</span>
+                              <span className="text-muted-foreground">
+                                {c.cups} cup{c.cups > 1 ? "s" : ""}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Fragment>
+            );
+          })}
+          {rows.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={colSpan} className="text-center text-muted-foreground">
+                {emptyMessage}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -191,6 +309,7 @@ export function DailyReportClient({
   isAdmin,
   totals,
   coachCups,
+  branchCoachCups,
   birthdays,
   checkins,
   excludedCustomerIds,
@@ -210,6 +329,7 @@ export function DailyReportClient({
     takeaway_cups: number;
   };
   coachCups: CoachCupRow[];
+  branchCoachCups: BranchCoachCupRow[];
   birthdays: BirthdayRow[];
   checkins: CheckinRow[];
   excludedCustomerIds: string[];
@@ -330,87 +450,34 @@ export function DailyReportClient({
 
       <div>
         <h2 className="text-lg font-semibold">Coach&apos;s Cup</h2>
-        <div className="mt-2 overflow-x-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Coach</TableHead>
-                <TableHead className="text-right">Cups</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {coachCups.map((row) => {
-                const isExpanded = expandedCoachId === row.coach_id;
-                const customerCheckins = isExpanded
-                  ? coachCheckins(checkins, row.coach_id, excludedCustomerIdSet)
-                  : [];
-                return (
-                  <Fragment key={row.coach_id}>
-                    <TableRow
-                      className={cn(
-                        "cursor-pointer hover:bg-accent/50",
-                        isExpanded && "border-l-4 border-l-primary bg-primary/5 hover:bg-primary/10"
-                      )}
-                      onClick={() =>
-                        setExpandedCoachId((current) => (current === row.coach_id ? null : row.coach_id))
-                      }
-                    >
-                      <TableCell>
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1",
-                            isExpanded && "font-semibold text-primary"
-                          )}
-                        >
-                          {isExpanded ? (
-                            <ChevronDown className="size-3.5" />
-                          ) : (
-                            <ChevronRight className="size-3.5 text-muted-foreground" />
-                          )}
-                          {row.coach_name}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">{row.cups}</TableCell>
-                    </TableRow>
-                    {isExpanded && (
-                      <TableRow key={`${row.coach_id}-detail`} className="border-l-4 border-l-primary">
-                        <TableCell colSpan={2} className="bg-primary/5 p-0">
-                          {customerCheckins.length === 0 ? (
-                            <p className="p-3 text-sm text-muted-foreground">
-                              No qualifying check-ins for this coach.
-                            </p>
-                          ) : (
-                            <ul className="divide-y divide-primary/10">
-                              {customerCheckins.map((c) => (
-                                <li
-                                  key={c.id}
-                                  className="flex items-center justify-between py-1.5 pr-3 pl-8 text-sm"
-                                >
-                                  <span>{checkinDisplayName(c)}</span>
-                                  <span className="text-muted-foreground">
-                                    {c.cups} cup{c.cups > 1 ? "s" : ""}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </Fragment>
-                );
-              })}
-              {coachCups.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={2} className="text-center text-muted-foreground">
-                    No qualifying check-ins yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <CoachCupTable
+          rows={coachCups}
+          checkins={checkins}
+          excludedCustomerIdSet={excludedCustomerIdSet}
+          expandedCoachId={expandedCoachId}
+          setExpandedCoachId={setExpandedCoachId}
+          emptyMessage="No qualifying check-ins yet."
+        />
       </div>
+
+      {branchCoachCups.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold">Branches Coach&apos;s Cup</h2>
+          <p className="text-sm text-muted-foreground">
+            Coaches registered under a different club, credited here because one of their
+            customers checked in at this club.
+          </p>
+          <CoachCupTable
+            rows={branchCoachCups}
+            checkins={checkins}
+            excludedCustomerIdSet={excludedCustomerIdSet}
+            expandedCoachId={expandedCoachId}
+            setExpandedCoachId={setExpandedCoachId}
+            emptyMessage="No branch coaches yet."
+            showClubColumn
+          />
+        </div>
+      )}
 
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
