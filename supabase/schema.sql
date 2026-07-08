@@ -1396,6 +1396,13 @@ $$;
 -- also re-slice the coach_cup_avg rows per club, for the expandable
 -- per-coach breakdown under each club's "Avg Coach's Cup / Day" stat.
 --
+-- Every board is restricted to events (signups, renewals, check-ins) that
+-- happened at the SAME club the coach is registered under — a customer's
+-- "Coach" field can point to a coach registered at a different club (they
+-- invited them before moving, or the customer now walks into a different
+-- branch), and those shouldn't inflate that coach's leaderboard stats for a
+-- club they don't actually belong to.
+--
 -- Adding club_id changes the return columns, which CREATE OR REPLACE can't
 -- do — drop the old 5-column version first.
 drop function if exists branches_monthly_leaderboards(date);
@@ -1427,8 +1434,10 @@ as $$
   new_5day_by_coach as (
     select cu.coach_id, count(*) as n
     from customers cu
+    join coaches co on co.id = cu.coach_id
     cross join bounds b
     where cu.nc_club_id in (select club_id from my_clubs)
+      and cu.nc_club_id = co.nc_club_id
       and cu.nc_level = '5-day'
       and cu.created_at::date between b.month_start and b.month_end
       and cu.coach_id is not null
@@ -1437,8 +1446,10 @@ as $$
   new_30_signups as (
     select cu.coach_id, count(*) as n
     from customers cu
+    join coaches co on co.id = cu.coach_id
     cross join bounds b
     where cu.nc_club_id in (select club_id from my_clubs)
+      and cu.nc_club_id = co.nc_club_id
       and cu.nc_level = '30-day'
       and cu.created_at::date between b.month_start and b.month_end
       and cu.coach_id is not null
@@ -1448,8 +1459,10 @@ as $$
     select cu.coach_id, count(*) as n
     from customer_renewals cr
     join customers cu on cu.id = cr.customer_id
+    join coaches co on co.id = cu.coach_id
     cross join bounds b
     where cu.nc_club_id in (select club_id from my_clubs)
+      and cu.nc_club_id = co.nc_club_id
       and cr.nc_level = '30-day'
       and cr.created_at::date between b.month_start and b.month_end
       and cu.coach_id is not null
@@ -1486,7 +1499,9 @@ as $$
     select cu.coach_id, cc.club_id, coalesce(sum(cc.cups), 0) as total_cups
     from club_checkins cc
     join customers cu on cu.id = cc.customer_id
+    join coaches co on co.id = cu.coach_id
     where cu.coach_id is not null
+      and co.nc_club_id = cc.club_id
       and not exists (
         select 1 from excluded_per_club ec where ec.club_id = cc.club_id and ec.customer_id = cu.id
       )
