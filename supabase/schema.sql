@@ -1197,8 +1197,11 @@ as $$
   from my_clubs mc
   left join prev_days pd on pd.club_id = mc.club_id
   left join cup_totals ct on ct.club_id = mc.club_id
-  -- Own club first, then branches alphabetically.
-  order by (mc.club_id <> (select nc_club_id from coaches where auth_user_id = auth.uid())), mc.club_name;
+  -- Own club first, then branches ranked by today's Total Cups (highest first).
+  order by
+    (mc.club_id <> (select nc_club_id from coaches where auth_user_id = auth.uid())),
+    coalesce(ct.total_cups, 0) desc,
+    mc.club_name;
 $$;
 
 -- Per-coach Coach's Cup breakdown per club, today vs. that club's previous
@@ -1352,7 +1355,12 @@ as $$
   from my_clubs mc
   left join operating_days od on od.club_id = mc.club_id
   left join cup_totals ct on ct.club_id = mc.club_id
-  order by (mc.club_id <> (select nc_club_id from coaches where auth_user_id = auth.uid())), mc.club_name;
+  -- Own club first, then branches ranked by this month's Avg Cups / Day
+  -- (highest first) — clubs with no operating days yet sort to the end.
+  order by
+    (mc.club_id <> (select nc_club_id from coaches where auth_user_id = auth.uid())),
+    round(coalesce(ct.total_cups, 0)::numeric / nullif(od.n, 0), 2) desc nulls last,
+    mc.club_name;
 $$;
 
 -- Cross-club leaderboards for the Branches "Monthly" tab, spanning the
