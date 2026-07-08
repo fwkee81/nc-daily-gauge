@@ -19,6 +19,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
           { href: "/branches", label: "Branches" },
         ]
       : []),
+    { href: "/profile", label: "Profile" },
   ];
 
   return (
