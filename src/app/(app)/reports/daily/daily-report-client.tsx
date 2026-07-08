@@ -37,7 +37,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { CONSUMPTION_TYPES } from "@/lib/constants";
-import type { ConsumptionType } from "@/lib/types/database";
+import type { ConsumptionType, InvitedByType } from "@/lib/types/database";
 import {
   correctCheckinAction,
   voidCheckinAction,
@@ -77,6 +77,7 @@ export interface CheckinRow {
     name: string;
     nc_level: string;
     consumption_balance: number;
+    invited_by_type: InvitedByType;
     coach: { id: string; name: string } | null;
   } | null;
   // Set when a shared family member checked in themselves rather than the
@@ -341,7 +342,26 @@ export function DailyReportClient({
   );
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null);
   const [hideVoided, setHideVoided] = useState(false);
+  const [breakdownOpen, setBreakdownOpen] = useState<"plugin" | "dine-in" | "takeaway" | null>(null);
   const excludedCustomerIdSet = useMemo(() => new Set(excludedCustomerIds), [excludedCustomerIds]);
+
+  const breakdowns = useMemo(() => {
+    const active = checkins.filter((c) => !c.voided);
+    return {
+      plugin: {
+        title: "Plug-in Cups",
+        rows: active.filter((c) => c.customer?.invited_by_type === "plugin"),
+      },
+      "dine-in": {
+        title: "Dine-in Cups",
+        rows: active.filter((c) => c.consumption_type === "Dine-in"),
+      },
+      takeaway: {
+        title: "Take-away Cups",
+        rows: active.filter((c) => c.consumption_type === "Take-away"),
+      },
+    } as const;
+  }, [checkins]);
 
   const sortedCheckins = useMemo(() => {
     const filtered = hideVoided ? checkins.filter((c) => !c.voided) : checkins;
@@ -428,25 +448,59 @@ export function DailyReportClient({
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
+        <Card
+          className="cursor-pointer transition-colors hover:bg-accent/50"
+          onClick={() => setBreakdownOpen("plugin")}
+        >
           <CardHeader>
             <CardDescription>Plug-in Cups</CardDescription>
             <CardTitle className="text-2xl">{totals.plugin_cups}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card
+          className="cursor-pointer transition-colors hover:bg-accent/50"
+          onClick={() => setBreakdownOpen("dine-in")}
+        >
           <CardHeader>
             <CardDescription>Dine-in Cups</CardDescription>
             <CardTitle className="text-2xl">{totals.dine_in_cups}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card
+          className="cursor-pointer transition-colors hover:bg-accent/50"
+          onClick={() => setBreakdownOpen("takeaway")}
+        >
           <CardHeader>
             <CardDescription>Take-away Cups</CardDescription>
             <CardTitle className="text-2xl">{totals.takeaway_cups}</CardTitle>
           </CardHeader>
         </Card>
       </div>
+
+      <Dialog open={!!breakdownOpen} onOpenChange={(open) => !open && setBreakdownOpen(null)}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{breakdownOpen ? breakdowns[breakdownOpen].title : ""}</DialogTitle>
+          </DialogHeader>
+          {breakdownOpen && (
+            <ul className="divide-y">
+              {breakdowns[breakdownOpen].rows.map((c) => (
+                <li key={c.id} className="flex items-center justify-between py-2 text-sm">
+                  <span>{checkinDisplayName(c)}</span>
+                  <span className="text-muted-foreground">
+                    {c.cups} cup{c.cups > 1 ? "s" : ""}
+                  </span>
+                </li>
+              ))}
+              {breakdowns[breakdownOpen].rows.length === 0 && (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No check-ins yet.
+                </p>
+              )}
+            </ul>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <div>
         <h2 className="text-lg font-semibold">Coach&apos;s Cup</h2>

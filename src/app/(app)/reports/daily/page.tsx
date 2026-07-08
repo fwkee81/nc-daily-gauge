@@ -38,7 +38,7 @@ export default async function DailyReportPage({
     supabase
       .from("checkins")
       .select(
-        "id, customer_id, cups, consumption_type, voided, is_birthday_shake, created_at, customer:customers(name, nc_level, consumption_balance, coach:coaches!customers_coach_id_fkey(id, name)), member:customer_members(name)"
+        "id, customer_id, cups, consumption_type, voided, is_birthday_shake, created_at, customer:customers(name, nc_level, consumption_balance, invited_by_type, coach:coaches!customers_coach_id_fkey(id, name)), member:customer_members(name)"
       )
       .eq("checkin_date", date)
       .eq("nc_club_id", clubId)
