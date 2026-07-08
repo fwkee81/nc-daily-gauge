@@ -744,6 +744,36 @@ as $$
   select id as customer_id from tainted;
 $$;
 
+-- Every customer who traces back — through any number of customer-to-customer
+-- generations via invited_by_customer_id — to a root customer whose own
+-- invited_by_type is 'plugin', plus that root itself. "Plug-in Cups" credits
+-- every generation of a Plug-in-originated chain, not just the customer
+-- Plug-in invited directly. A chain stops the moment someone was invited by
+-- a coach instead of a customer (invited_by_customer_id is null there), so
+-- it never crosses into an unrelated coach-invited lineage.
+create or replace function plugin_lineage_customer_ids(p_club_id uuid default null)
+returns table (customer_id uuid)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with recursive club_customers as (
+    select id, invited_by_type, invited_by_customer_id
+    from customers
+    where nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
+      and nc_club_id in (select visible_club_ids(current_coach_id()))
+  ),
+  tainted as (
+    select id from club_customers where invited_by_type = 'plugin'
+    union
+    select cc.id
+    from club_customers cc
+    join tainted t on cc.invited_by_customer_id = t.id
+  )
+  select id as customer_id from tainted;
+$$;
+
 create or replace function daily_totals(p_date date, p_club_id uuid default null)
 returns table (
   total_cups bigint,
@@ -759,7 +789,9 @@ set search_path = public
 as $$
   select
     coalesce(sum(ci.cups), 0) as total_cups,
-    coalesce(sum(ci.cups) filter (where cu.invited_by_type = 'plugin'), 0) as plugin_cups,
+    coalesce(sum(ci.cups) filter (
+      where cu.id in (select customer_id from plugin_lineage_customer_ids(p_club_id))
+    ), 0) as plugin_cups,
     -- Mirrors the daily_coach_cups() eligibility rule (coach assigned, not in
     -- coach_cup_excluded_customer_ids), summed across every coach for this
     -- club/date.
@@ -1510,6 +1542,7 @@ as $$
 $$;
 
 grant execute on function coach_cup_excluded_customer_ids(uuid) to authenticated;
+grant execute on function plugin_lineage_customer_ids(uuid) to authenticated;
 grant execute on function daily_totals(date, uuid) to authenticated;
 grant execute on function daily_coach_cups(date, uuid) to authenticated;
 grant execute on function daily_branch_coach_cups(date, uuid) to authenticated;

@@ -37,7 +37,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { CONSUMPTION_TYPES } from "@/lib/constants";
-import type { ConsumptionType, InvitedByType } from "@/lib/types/database";
+import type { ConsumptionType } from "@/lib/types/database";
 import {
   correctCheckinAction,
   voidCheckinAction,
@@ -77,7 +77,6 @@ export interface CheckinRow {
     name: string;
     nc_level: string;
     consumption_balance: number;
-    invited_by_type: InvitedByType;
     coach: { id: string; name: string } | null;
   } | null;
   // Set when a shared family member checked in themselves rather than the
@@ -314,6 +313,7 @@ export function DailyReportClient({
   birthdays,
   checkins,
   excludedCustomerIds,
+  pluginCustomerIds,
   ledger,
 }: {
   date: string;
@@ -334,6 +334,7 @@ export function DailyReportClient({
   birthdays: BirthdayRow[];
   checkins: CheckinRow[];
   excludedCustomerIds: string[];
+  pluginCustomerIds: string[];
   ledger: LedgerRow[];
 }) {
   const router = useRouter();
@@ -344,13 +345,14 @@ export function DailyReportClient({
   const [hideVoided, setHideVoided] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState<"plugin" | "dine-in" | "takeaway" | null>(null);
   const excludedCustomerIdSet = useMemo(() => new Set(excludedCustomerIds), [excludedCustomerIds]);
+  const pluginCustomerIdSet = useMemo(() => new Set(pluginCustomerIds), [pluginCustomerIds]);
 
   const breakdowns = useMemo(() => {
     const active = checkins.filter((c) => !c.voided);
     return {
       plugin: {
         title: "Plug-in Cups",
-        rows: active.filter((c) => c.customer?.invited_by_type === "plugin"),
+        rows: active.filter((c) => pluginCustomerIdSet.has(c.customer_id)),
       },
       "dine-in": {
         title: "Dine-in Cups",
@@ -361,7 +363,7 @@ export function DailyReportClient({
         rows: active.filter((c) => c.consumption_type === "Take-away"),
       },
     } as const;
-  }, [checkins]);
+  }, [checkins, pluginCustomerIdSet]);
 
   const sortedCheckins = useMemo(() => {
     const filtered = hideVoided ? checkins.filter((c) => !c.voided) : checkins;

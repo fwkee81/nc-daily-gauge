@@ -30,6 +30,7 @@ export default async function DailyReportPage({
     newCustomersRes,
     clubRes,
     excludedCustomersRes,
+    pluginLineageRes,
   ] = await Promise.all([
     supabase.rpc("daily_totals", { p_date: date, p_club_id: clubId }),
     supabase.rpc("daily_coach_cups", { p_date: date, p_club_id: clubId }),
@@ -38,7 +39,7 @@ export default async function DailyReportPage({
     supabase
       .from("checkins")
       .select(
-        "id, customer_id, cups, consumption_type, voided, is_birthday_shake, created_at, customer:customers(name, nc_level, consumption_balance, invited_by_type, coach:coaches!customers_coach_id_fkey(id, name)), member:customer_members(name)"
+        "id, customer_id, cups, consumption_type, voided, is_birthday_shake, created_at, customer:customers(name, nc_level, consumption_balance, coach:coaches!customers_coach_id_fkey(id, name)), member:customer_members(name)"
       )
       .eq("checkin_date", date)
       .eq("nc_club_id", clubId)
@@ -70,6 +71,9 @@ export default async function DailyReportPage({
     // (any generations back, via invited_by_customer_id) member_type is
     // SP/WT/AWT/TAB. Computed once server-side (recursive) and reused here.
     supabase.rpc("coach_cup_excluded_customer_ids", { p_club_id: clubId }),
+    // Every customer descended from a Plug-in-invited root, any number of
+    // generations — mirrors the exclusion query above but for Plug-in Cups.
+    supabase.rpc("plugin_lineage_customer_ids", { p_club_id: clubId }),
   ]);
 
   interface RawRenewal {
@@ -145,6 +149,7 @@ export default async function DailyReportPage({
       birthdays={birthdaysRes.data ?? []}
       checkins={(checkinsRes.data ?? []) as unknown as CheckinRow[]}
       excludedCustomerIds={(excludedCustomersRes.data ?? []).map((c) => c.customer_id)}
+      pluginCustomerIds={(pluginLineageRes.data ?? []).map((c) => c.customer_id)}
       ledger={ledger}
     />
   );
