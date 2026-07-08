@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
@@ -25,7 +26,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <NavLinks isAdmin={coach.is_admin} />
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{coach.name}</span>
+            <Link
+              href="/profile"
+              className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              {coach.name}
+            </Link>
             <form action={signOut}>
               <Button variant="ghost" size="sm" type="submit">
                 Sign out
