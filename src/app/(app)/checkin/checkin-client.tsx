@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { UserPlus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -79,11 +80,13 @@ export function CheckinClient({
   customers,
   coaches,
   isAdmin,
+  clubName,
 }: {
   checkinOptions: CheckinOption[];
   customers: CustomerOption[];
   coaches: CoachOption[];
   isAdmin: boolean;
+  clubName: string | null;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -105,23 +108,14 @@ export function CheckinClient({
     [selected]
   );
 
+  const hasQuery = search.trim().length > 0;
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return checkinOptions;
+    if (!q) return [];
     return checkinOptions.filter(
       (c) => c.name.toLowerCase().includes(q) || lastFourDigits(c.contact).includes(q)
     );
   }, [checkinOptions, search]);
-
-  const groups = useMemo(() => {
-    const map = new Map<string, CheckinOption[]>();
-    for (const c of filtered) {
-      const letter = c.name.trim()[0]?.toUpperCase() ?? "#";
-      if (!map.has(letter)) map.set(letter, []);
-      map.get(letter)!.push(c);
-    }
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [filtered]);
 
   function handleSelect(key: string) {
     setResult(null);
@@ -166,12 +160,16 @@ export function CheckinClient({
     setSelectedKey(null);
     setCups(1);
     setIsBirthdayShake(false);
+    // Clear the search so the next customer doesn't see (or accidentally
+    // tap) the previous person's result still sitting in the list.
+    setSearch("");
     router.refresh();
   }
 
   function handleWalkinDone(walkinResult: { name: string; balance: number }) {
     playChime();
     setResult(walkinResult);
+    setSearch("");
     router.refresh();
   }
 
@@ -185,84 +183,96 @@ export function CheckinClient({
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">
-            Check-in — {format(new Date(), "EEEE, d MMM yyyy")}
+            {clubName ?? "Check-in"} — {format(new Date(), "EEEE, d MMM yyyy")}
           </h1>
           {isAdmin && (
-            <Button variant="outline" size="sm" className="text-base" onClick={() => setWalkinOpen(true)}>
+            <Button
+              variant="secondary"
+              className="gap-2 rounded-full px-5 text-base font-semibold shadow-sm"
+              onClick={() => setWalkinOpen(true)}
+            >
+              <UserPlus className="size-5" />
               Walk-in (Ala Carte)
             </Button>
           )}
         </div>
-        <Input
-          className="mt-4"
-          placeholder="Search by name or last 4 digits of contact..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
 
-        <div className="mt-4 space-y-3">
-          {groups.map(([letter, items]) => (
-            <details key={letter} open className="rounded-md border">
-              <summary className="cursor-pointer select-none bg-muted/50 px-3 py-2 text-sm font-semibold">
-                {letter} <span className="text-muted-foreground">({items.length})</span>
-              </summary>
-              <div className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 md:grid-cols-5">
-                {items.map((c) => {
-                  const isSelected = selectedKey === c.key;
-                  return (
-                    <button
-                      key={c.key}
-                      type="button"
-                      onClick={() => handleSelect(c.key)}
-                      className={cn(
-                        "flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-center transition-colors",
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "hover:bg-accent"
-                      )}
-                    >
-                      <span className="text-base font-semibold leading-tight">{c.name}</span>
-                      {c.contact && (
-                        <span
-                          className={cn(
-                            "text-sm",
-                            isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
-                          )}
-                        >
-                          ···{lastFourDigits(c.contact)}
-                        </span>
-                      )}
-                      {c.memberId && (
-                        <span
-                          className={cn(
-                            "text-xs",
-                            isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
-                          )}
-                        >
-                          shares account
-                        </span>
-                      )}
-                      <Badge
-                        className="text-sm"
-                        variant={
-                          c.consumptionBalance < RENEWAL_REMINDER_THRESHOLD ? "destructive" : "secondary"
-                        }
+        <div className="relative mt-4">
+          <Search className="pointer-events-none absolute top-1/2 left-4 size-6 -translate-y-1/2 text-primary" />
+          <Input
+            autoFocus
+            className="h-16 rounded-2xl border-2 border-primary pl-12 text-xl shadow-sm focus-visible:ring-4"
+            placeholder="Search by name or last 4 digits of contact..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="mt-4">
+          {!hasQuery && (
+            <p className="py-16 text-center text-lg text-muted-foreground">
+              Type a name or the last 4 digits of a contact number to find a customer.
+            </p>
+          )}
+          {hasQuery && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {filtered.map((c) => {
+                const isSelected = selectedKey === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => handleSelect(c.key)}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-4 text-center transition-colors",
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "hover:bg-accent"
+                    )}
+                  >
+                    <span className="text-xl font-semibold leading-tight">{c.name}</span>
+                    {c.contact && (
+                      <span
+                        className={cn(
+                          "text-base",
+                          isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
+                        )}
                       >
-                        {c.consumptionBalance} left
-                      </Badge>
-                      {isSelected && (
-                        <span className="text-sm font-medium">
-                          {cups} cup{cups > 1 ? "s" : ""}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </details>
-          ))}
-          {groups.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">No customers found.</p>
+                        ···{lastFourDigits(c.contact)}
+                      </span>
+                    )}
+                    {c.memberId && (
+                      <span
+                        className={cn(
+                          "text-sm",
+                          isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
+                        )}
+                      >
+                        shares account
+                      </span>
+                    )}
+                    <Badge
+                      className="text-base"
+                      variant={
+                        c.consumptionBalance < RENEWAL_REMINDER_THRESHOLD ? "destructive" : "secondary"
+                      }
+                    >
+                      {c.consumptionBalance} left
+                    </Badge>
+                    {isSelected && (
+                      <span className="text-base font-medium">
+                        {cups} cup{cups > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+              {filtered.length === 0 && (
+                <p className="col-span-full py-8 text-center text-lg text-muted-foreground">
+                  No customers found.
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -272,21 +282,21 @@ export function CheckinClient({
           to the top of its column on desktop instead, where it already sits
           beside (not below) the list. */}
       <div className="fixed inset-x-0 bottom-0 z-40 rounded-t-xl border-t bg-background p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.12)] lg:sticky lg:top-4 lg:inset-x-auto lg:bottom-auto lg:z-auto lg:h-fit lg:rounded-md lg:border lg:shadow-none">
-        <h2 className="font-semibold">Selection</h2>
+        <h2 className="text-lg font-semibold">Selection</h2>
         {selected ? (
-          <div className="mt-3 space-y-3">
+          <div className="mt-3 space-y-4">
             <div>
-              <p className="text-lg font-medium">{selected.name}</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xl font-medium">{selected.name}</p>
+              <p className="text-base text-muted-foreground">
                 Click their name again to switch between 1 and 2 cups.
               </p>
-              <Badge className="mt-2 text-sm">
+              <Badge className="mt-2 text-base">
                 {cups} cup{cups > 1 ? "s" : ""}
               </Badge>
             </div>
 
             <div>
-              <Label className="mb-2 block">Consumption type</Label>
+              <Label className="mb-2 block text-base">Consumption type</Label>
               <RadioGroup
                 value={consumptionType}
                 onValueChange={(v) => setConsumptionType(v as ConsumptionType)}
@@ -294,7 +304,7 @@ export function CheckinClient({
                 {CONSUMPTION_TYPES.map((type) => (
                   <div key={type} className="flex items-center gap-2">
                     <RadioGroupItem value={type} id={`type-${type}`} />
-                    <Label htmlFor={`type-${type}`} className="text-base font-normal">
+                    <Label htmlFor={`type-${type}`} className="text-lg font-normal">
                       {type}
                     </Label>
                   </div>
@@ -309,18 +319,22 @@ export function CheckinClient({
                   checked={isBirthdayShake}
                   onCheckedChange={(checked) => setIsBirthdayShake(checked)}
                 />
-                <Label htmlFor="birthday-shake" className="text-base font-normal">
+                <Label htmlFor="birthday-shake" className="text-lg font-normal">
                   🎂 Birthday Shake
                 </Label>
               </div>
             )}
 
-            <Button className="w-full text-base" onClick={handleSubmit} disabled={submitting}>
+            <Button
+              className="w-full py-6 text-lg"
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
               {submitting ? "Submitting..." : "Submit check-in"}
             </Button>
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
+          <p className="mt-3 text-base text-muted-foreground">
             Select a customer from the list to begin a check-in.
           </p>
         )}
@@ -344,7 +358,7 @@ export function CheckinClient({
                 />
               ))}
               <DialogHeader>
-                <DialogTitle className="text-center text-xl">🎉 Happy Birthday! 🎉</DialogTitle>
+                <DialogTitle className="text-center text-2xl">🎉 Happy Birthday! 🎉</DialogTitle>
               </DialogHeader>
               <div className="flex flex-col items-center gap-2 py-2 text-center">
                 <span
@@ -353,34 +367,34 @@ export function CheckinClient({
                 >
                   🎂
                 </span>
-                <p className="text-lg font-semibold">{result.name}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xl font-semibold">{result.name}</p>
+                <p className="text-base text-muted-foreground">
                   Enjoy your free birthday breakfast — balance not deducted!
                 </p>
               </div>
-              <Button className="w-full text-base" onClick={() => setResult(null)}>
+              <Button className="w-full py-6 text-lg" onClick={() => setResult(null)}>
                 OK
               </Button>
             </>
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Checked in!</DialogTitle>
+                <DialogTitle className="text-2xl">Checked in!</DialogTitle>
               </DialogHeader>
               {result && (
                 <div className="space-y-2">
-                  <p className="text-lg font-semibold">{result.name}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xl font-semibold">{result.name}</p>
+                  <p className="text-base text-muted-foreground">
                     Consumption balance left: {result.balance}
                   </p>
                   {result.balance < RENEWAL_REMINDER_THRESHOLD && (
-                    <p className="text-sm font-medium text-destructive">
+                    <p className="text-base font-medium text-destructive">
                       Gentle reminder {result.name}, to renew your nutrition breakfast card.
                     </p>
                   )}
                 </div>
               )}
-              <Button className="w-full text-base" onClick={() => setResult(null)}>
+              <Button className="w-full py-6 text-lg" onClick={() => setResult(null)}>
                 OK
               </Button>
             </>

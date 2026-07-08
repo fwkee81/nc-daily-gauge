@@ -8,7 +8,7 @@ export default async function CheckinPage() {
   if (!coach) redirect("/onboarding");
 
   const supabase = await createClient();
-  const [{ data: customers }, { data: coaches }] = await Promise.all([
+  const [{ data: customers }, { data: coaches }, { data: club }] = await Promise.all([
     supabase
       .from("customers")
       .select("id, name, contact, dob, consumption_balance")
@@ -21,6 +21,7 @@ export default async function CheckinPage() {
       .eq("nc_club_id", coach.nc_club_id ?? "")
       .eq("active", true)
       .order("name"),
+    supabase.from("nc_clubs").select("name").eq("id", coach.nc_club_id ?? "").maybeSingle(),
   ]);
 
   const customerIds = (customers ?? []).map((c) => c.id);
@@ -62,6 +63,7 @@ export default async function CheckinPage() {
       customers={customers ?? []}
       coaches={coaches ?? []}
       isAdmin={coach.is_admin}
+      clubName={club?.name ?? null}
     />
   );
 }
