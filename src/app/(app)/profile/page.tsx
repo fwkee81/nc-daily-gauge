@@ -9,25 +9,10 @@ export default async function ProfilePage() {
 
   const supabase = await createClient();
 
-  let clubName: string | null = null;
-  if (coach.nc_club_id) {
-    const { data } = await supabase
-      .from("nc_clubs")
-      .select("name")
-      .eq("id", coach.nc_club_id)
-      .maybeSingle();
-    clubName = data?.name ?? null;
-  }
-
-  let sponsorName: string | null = null;
-  if (coach.sponsor_id) {
-    const { data } = await supabase
-      .from("coaches")
-      .select("name")
-      .eq("id", coach.sponsor_id)
-      .maybeSingle();
-    sponsorName = data?.name ?? null;
-  }
+  const [{ data: sponsorOptions }, { data: clubOptions }] = await Promise.all([
+    supabase.from("coaches").select("id, name").eq("active", true).order("name"),
+    supabase.from("nc_clubs").select("id, name").order("name"),
+  ]);
 
   return (
     <div className="max-w-xl">
@@ -37,8 +22,8 @@ export default async function ProfilePage() {
       </p>
       <ProfileForm
         coach={coach}
-        clubName={clubName}
-        sponsorName={sponsorName}
+        sponsorOptions={sponsorOptions ?? []}
+        clubOptions={clubOptions ?? []}
       />
     </div>
   );

@@ -301,12 +301,11 @@ create policy "nc_clubs_insert" on nc_clubs
 
 -- coaches: readable by any signed-in coach (needed to populate sponsor /
 -- invited-by pickers, including across clubs, and so any admin can view
--- their downline network's coaches). A coach may edit their own row's safe
--- fields; only the super admin may edit any coach (including position,
--- level, sponsor, club, member ID, active) — including downline coaches —
--- so no cross-club edit disputes between branch admins. The
--- restrict_coach_self_update trigger below stops a non-super-admin from
--- using their own-row update rights to promote themselves or hop clubs.
+-- their downline network's coaches). A coach may freely edit every field on
+-- their own row, including position, level, sponsor, club, member ID, and
+-- active status — self-service via the Profile page. The super admin may
+-- additionally edit any OTHER coach's row (e.g. downline coaches), which a
+-- regular coach cannot do.
 create policy "coaches_select" on coaches
   for select to authenticated using (true);
 create policy "coaches_insert_self" on coaches
@@ -324,38 +323,6 @@ create policy "coaches_update_admin" on coaches
   for update to authenticated
   using (is_super_admin())
   with check (is_super_admin());
-
--- A non-super-admin can update their own coaches row (per coaches_update_self
--- above), but must not be able to use that to promote themselves to admin,
--- change their level/sponsor, hop to another club, or edit their member ID.
--- Only the super admin (via coaches_update_admin) may change those fields.
-create or replace function restrict_coach_self_update()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if is_super_admin() then
-    return new;
-  end if;
-
-  if new.nc_position is distinct from old.nc_position
-    or new.level is distinct from old.level
-    or new.sponsor_id is distinct from old.sponsor_id
-    or new.nc_club_id is distinct from old.nc_club_id
-    or new.member_id is distinct from old.member_id
-    or new.active is distinct from old.active then
-    raise exception 'Only the network admin can change position, level, sponsor, club, member ID, or active status';
-  end if;
-
-  return new;
-end;
-$$;
-
-create trigger coaches_restrict_self_update
-before update on coaches
-for each row execute function restrict_coach_self_update();
 
 -- customers: visible across visible clubs (own + sponsored branches); only
 -- admins (Owner/Internship) may write, and only within their own club.
