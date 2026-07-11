@@ -89,11 +89,14 @@ export function CheckinClient({
   clubName: string | null;
 }) {
   const router = useRouter();
+  const todayStr = format(new Date(), "yyyy-MM-dd");
   const [search, setSearch] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [cups, setCups] = useState(1);
   const [consumptionType, setConsumptionType] = useState<ConsumptionType>(CONSUMPTION_TYPES[0]);
   const [isBirthdayShake, setIsBirthdayShake] = useState(false);
+  const [checkinDate, setCheckinDate] = useState(todayStr);
+  const [showBackfill, setShowBackfill] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{
     name: string;
@@ -104,8 +107,8 @@ export function CheckinClient({
 
   const selected = checkinOptions.find((c) => c.key === selectedKey) ?? null;
   const birthdayShakeEligible = useMemo(
-    () => isBirthdayShakeEligible(selected?.dob ?? null, new Date()),
-    [selected]
+    () => isBirthdayShakeEligible(selected?.dob ?? null, new Date(`${checkinDate}T00:00:00`)),
+    [selected, checkinDate]
   );
 
   const hasQuery = search.trim().length > 0;
@@ -123,6 +126,10 @@ export function CheckinClient({
       setSelectedKey(key);
       setCups(1);
       setIsBirthdayShake(false);
+      // Don't let a backfill date picked for the previous customer
+      // silently carry over to a different one.
+      setCheckinDate(todayStr);
+      setShowBackfill(false);
       return;
     }
     // same row clicked again: 1 -> 2 -> deselect
@@ -132,13 +139,14 @@ export function CheckinClient({
       setSelectedKey(null);
       setCups(1);
       setIsBirthdayShake(false);
+      setCheckinDate(todayStr);
+      setShowBackfill(false);
     }
   }
 
   async function handleSubmit() {
     if (!selected) return;
     setSubmitting(true);
-    const checkinDate = format(new Date(), "yyyy-MM-dd");
     const res = await submitCheckin(
       selected.customerId,
       cups,
@@ -161,8 +169,12 @@ export function CheckinClient({
     setCups(1);
     setIsBirthdayShake(false);
     // Clear the search so the next customer doesn't see (or accidentally
-    // tap) the previous person's result still sitting in the list.
+    // tap) the previous person's result still sitting in the list. Also
+    // reset the backfill date so it doesn't silently carry over to the
+    // next (likely same-day) customer.
     setSearch("");
+    setCheckinDate(todayStr);
+    setShowBackfill(false);
     router.refresh();
   }
 
@@ -293,6 +305,34 @@ export function CheckinClient({
               <Badge className="mt-2 text-base">
                 {cups} cup{cups > 1 ? "s" : ""}
               </Badge>
+            </div>
+
+            <div>
+              {!showBackfill ? (
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground underline underline-offset-4"
+                  onClick={() => setShowBackfill(true)}
+                >
+                  Not today? Backfill a different date
+                </button>
+              ) : (
+                <div className="space-y-1">
+                  <Label className="text-base">Check-in date</Label>
+                  <Input
+                    type="date"
+                    max={todayStr}
+                    value={checkinDate}
+                    onChange={(e) => setCheckinDate(e.target.value)}
+                  />
+                  {checkinDate !== todayStr && (
+                    <p className="text-sm font-medium text-destructive">
+                      Backfilling for {format(new Date(`${checkinDate}T00:00:00`), "d MMM yyyy")} —
+                      not today.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
