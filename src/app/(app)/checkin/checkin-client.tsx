@@ -126,6 +126,7 @@ export function CheckinClient({
       setSelectedKey(key);
       setCups(1);
       setIsBirthdayShake(false);
+      setConsumptionType(CONSUMPTION_TYPES[0]);
       // Don't let a backfill date picked for the previous customer
       // silently carry over to a different one.
       setCheckinDate(todayStr);
@@ -139,6 +140,7 @@ export function CheckinClient({
       setSelectedKey(null);
       setCups(1);
       setIsBirthdayShake(false);
+      setConsumptionType(CONSUMPTION_TYPES[0]);
       setCheckinDate(todayStr);
       setShowBackfill(false);
     }
@@ -168,6 +170,7 @@ export function CheckinClient({
     setSelectedKey(null);
     setCups(1);
     setIsBirthdayShake(false);
+    setConsumptionType(CONSUMPTION_TYPES[0]);
     // Clear the search so the next customer doesn't see (or accidentally
     // tap) the previous person's result still sitting in the list. Also
     // reset the backfill date so it doesn't silently carry over to the
