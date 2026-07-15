@@ -6,15 +6,12 @@ import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-const PRIMARY_LINKS = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/checkin", label: "Check-in" },
-  { href: "/reports/daily", label: "Daily Report" },
+// Customers is admin-only, so it's a primary pill for admins (who also get
+// the Admin dropdown for everything else) but NC Metrics — open to every
+// coach — has to stay in the primary row for non-admins, since they never
+// see the dropdown at all.
+const ADMIN_DROPDOWN_LINKS = [
   { href: "/reports/metrics", label: "NC Metrics" },
-];
-
-const ADMIN_LINKS = [
-  { href: "/admin/customers", label: "Customers" },
   { href: "/admin/coaches", label: "Coaches" },
   { href: "/branches", label: "Branches" },
   { href: "/wellness-report", label: "Wellness Report" },
@@ -29,11 +26,19 @@ function pillClass(active: boolean) {
 
 export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
-  const inAdminGroup = ADMIN_LINKS.some((link) => pathname.startsWith(link.href));
+  const inAdminGroup = ADMIN_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
+
+  const primaryLinks = [
+    { href: "/checkin", label: "Check-in" },
+    { href: "/reports/daily", label: "Daily Report" },
+    ...(isAdmin
+      ? [{ href: "/admin/customers", label: "Customers" }]
+      : [{ href: "/reports/metrics", label: "NC Metrics" }]),
+  ];
 
   return (
     <nav className="flex flex-wrap items-center gap-1">
-      {PRIMARY_LINKS.map((link) => (
+      {primaryLinks.map((link) => (
         <Link key={link.href} href={link.href} className={pillClass(pathname === link.href)}>
           {link.label}
         </Link>
@@ -49,7 +54,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
             Admin <ChevronDown className="size-3.5" />
           </PopoverTrigger>
           <PopoverContent className="w-48 p-1.5" align="start">
-            {ADMIN_LINKS.map((link) => (
+            {ADMIN_DROPDOWN_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

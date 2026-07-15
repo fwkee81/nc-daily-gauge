@@ -22,7 +22,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex flex-wrap items-center gap-4">
-            <Logo />
+            <Link href="/dashboard">
+              <Logo />
+            </Link>
             <NavLinks isAdmin={coach.is_admin} />
           </div>
           <div className="flex items-center gap-3">
