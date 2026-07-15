@@ -7,6 +7,7 @@ import type {
   BranchDailySummaryRow,
   BranchLeaderboardRow,
   BranchMonthlySummaryRow,
+  BranchWeeklySummaryRow,
 } from "@/lib/types/database";
 import { BranchesTabs } from "./branches-tabs";
 
@@ -26,19 +27,22 @@ export default async function BranchesPage({
   }
 
   const { tab: tabParam, date: dateParam, month: monthParam } = await searchParams;
-  const tab = tabParam === "monthly" ? "monthly" : "daily";
+  const tab = tabParam === "monthly" ? "monthly" : tabParam === "weekly" ? "weekly" : "daily";
   const date = dateParam ?? format(new Date(), "yyyy-MM-dd");
   const month = monthParam ?? format(new Date(), "yyyy-MM");
 
   const supabase = await createClient();
-  const [summaryRes, coachCupsRes, monthlySummaryRes, leaderboardsRes] = await Promise.all([
-    supabase.rpc("branches_daily_summary", { p_date: date }),
-    supabase.rpc("branches_coach_cups_compare", { p_date: date }),
-    supabase.rpc("branches_monthly_summary", { p_month: `${month}-01` }),
-    supabase.rpc("branches_monthly_leaderboards", { p_month: `${month}-01` }),
-  ]);
+  const [summaryRes, coachCupsRes, weeklySummaryRes, monthlySummaryRes, leaderboardsRes] =
+    await Promise.all([
+      supabase.rpc("branches_daily_summary", { p_date: date }),
+      supabase.rpc("branches_coach_cups_compare", { p_date: date }),
+      supabase.rpc("branches_weekly_summary", { p_date: date }),
+      supabase.rpc("branches_monthly_summary", { p_month: `${month}-01` }),
+      supabase.rpc("branches_monthly_leaderboards", { p_month: `${month}-01` }),
+    ]);
   const branches = (summaryRes.data ?? []) as BranchDailySummaryRow[];
   const coachCups = (coachCupsRes.data ?? []) as BranchCoachCupsCompareRow[];
+  const weeklySummary = (weeklySummaryRes.data ?? []) as BranchWeeklySummaryRow[];
   const monthlySummary = (monthlySummaryRes.data ?? []) as BranchMonthlySummaryRow[];
   const leaderboards = (leaderboardsRes.data ?? []) as BranchLeaderboardRow[];
 
@@ -59,6 +63,7 @@ export default async function BranchesPage({
         ownClubId={coach.nc_club_id}
         branches={branches}
         coachCups={coachCups}
+        weeklySummary={weeklySummary}
         monthlySummary={monthlySummary}
         leaderboards={leaderboards}
       />

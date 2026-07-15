@@ -200,6 +200,20 @@ export type BranchDailySummaryRow = {
   prev_date: string | null;
 };
 
+export type BranchWeeklySummaryRow = {
+  club_id: string;
+  club_name: string;
+  operating_days: number;
+  window_start: string | null;
+  window_end: string | null;
+  total_cups: number;
+  coach_cup_total: number;
+  total_5day: number;
+  total_10day: number;
+  total_20day: number;
+  total_30day: number;
+};
+
 export type BranchCoachCupsCompareRow = {
   club_id: string;
   coach_id: string;
@@ -343,6 +357,10 @@ export type Database = {
       branches_daily_summary: {
         Args: { p_date: string };
         Returns: BranchDailySummaryRow[];
+      };
+      branches_weekly_summary: {
+        Args: { p_date?: string };
+        Returns: BranchWeeklySummaryRow[];
       };
       branches_coach_cups_compare: {
         Args: { p_date: string };

@@ -8,10 +8,12 @@ import type {
   BranchDailySummaryRow,
   BranchLeaderboardRow,
   BranchMonthlySummaryRow,
+  BranchWeeklySummaryRow,
 } from "@/lib/types/database";
 import { BranchesDateNav } from "./branches-date-nav";
 import { BranchesMonthNav } from "./branches-month-nav";
 import { BranchesList } from "./branches-list";
+import { BranchesWeekly } from "./branches-weekly";
 import { BranchesMonthly } from "./branches-monthly";
 import { withParam } from "./url";
 
@@ -24,6 +26,7 @@ export function BranchesTabs({
   ownClubId,
   branches,
   coachCups,
+  weeklySummary,
   monthlySummary,
   leaderboards,
 }: {
@@ -35,6 +38,7 @@ export function BranchesTabs({
   ownClubId: string | null;
   branches: BranchDailySummaryRow[];
   coachCups: BranchCoachCupsCompareRow[];
+  weeklySummary: BranchWeeklySummaryRow[];
   monthlySummary: BranchMonthlySummaryRow[];
   leaderboards: BranchLeaderboardRow[];
 }) {
@@ -49,6 +53,7 @@ export function BranchesTabs({
     <Tabs value={tab} onValueChange={(v) => goToTab(String(v))} className="mt-4">
       <TabsList>
         <TabsTrigger value="daily">Daily</TabsTrigger>
+        <TabsTrigger value="weekly">Weekly</TabsTrigger>
         <TabsTrigger value="monthly">Monthly</TabsTrigger>
       </TabsList>
 
@@ -67,6 +72,16 @@ export function BranchesTabs({
           date={date}
           month={month}
         />
+      </TabsContent>
+
+      <TabsContent value="weekly" className="mt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Each club&apos;s own most recent 6 operating days, ending {format(parseISO(date), "d MMM yyyy")}.
+          </p>
+          <BranchesDateNav date={date} hasExplicitDate={hasExplicitDate} />
+        </div>
+        <BranchesWeekly summary={weeklySummary} ownClubId={ownClubId} date={date} month={month} />
       </TabsContent>
 
       <TabsContent value="monthly" className="mt-4">
