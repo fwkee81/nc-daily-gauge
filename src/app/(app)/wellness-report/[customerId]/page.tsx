@@ -160,9 +160,9 @@ export default async function WellnessReportDetailPage({
                   <BigField label="Body fat" value={latest.body_fat_pct != null ? `${latest.body_fat_pct}%` : "—"} />
                   <BigField label="Body water" value={latest.body_water_pct != null ? `${latest.body_water_pct}%` : "—"} />
                   <BigField label="Muscle mass" value={latest.muscle_mass_kg != null ? `${latest.muscle_mass_kg} kg` : "—"} />
-                  <BigField label="Physical rating" value={latest.physical_rating != null ? String(latest.physical_rating) : "—"} />
-                  <BigField label="Metabolic rate" value={latest.metabolic_rate != null ? String(latest.metabolic_rate) : "—"} />
-                  <BigField label="Metabolic age" value={latest.metabolic_age != null ? String(latest.metabolic_age) : "—"} />
+                  <BigField label="PR" value={latest.physical_rating != null ? String(latest.physical_rating) : "—"} />
+                  <BigField label="BMR" value={latest.metabolic_rate != null ? String(latest.metabolic_rate) : "—"} />
+                  <BigField label="Age" value={latest.metabolic_age != null ? String(latest.metabolic_age) : "—"} />
                   <BigField label="Bone mass" value={latest.bone_mass_kg != null ? `${latest.bone_mass_kg} kg` : "—"} />
                   <BigField label="Visceral fat" value={latest.visceral_fat != null ? String(latest.visceral_fat) : "—"} />
                 </CardContent>

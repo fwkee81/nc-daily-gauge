@@ -36,9 +36,9 @@ export function WellnessReadingsTable({ readings }: { readings: WellnessLog[] })
                 <TableHead>Fat %</TableHead>
                 <TableHead>Water %</TableHead>
                 <TableHead>Muscle</TableHead>
-                <TableHead>Physical rating</TableHead>
-                <TableHead>Metabolic rate</TableHead>
-                <TableHead>Metabolic age</TableHead>
+                <TableHead>PR</TableHead>
+                <TableHead>BMR</TableHead>
+                <TableHead>Age</TableHead>
                 <TableHead>Bone</TableHead>
                 <TableHead>Visceral fat</TableHead>
                 <TableHead>Notes</TableHead>
