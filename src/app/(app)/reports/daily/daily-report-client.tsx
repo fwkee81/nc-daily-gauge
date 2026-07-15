@@ -887,16 +887,17 @@ function CustomerInfoDialog({ customerId, name }: { customerId: string; name: st
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [wellnessExpanded, setWellnessExpanded] = useState(false);
   const [wellnessLogs, setWellnessLogs] = useState<WellnessLogRow[] | null>(null);
 
   useEffect(() => {
-    if (!open || wellnessLogs) return;
+    if (!open || !wellnessExpanded || wellnessLogs) return;
     getWellnessLogs(customerId).then((res) => {
       // Non-critical supplementary panel — treat a failed read the same as
       // "no logs yet" rather than adding a separate error state for it.
       setWellnessLogs("data" in res ? (res.data as unknown as WellnessLogRow[]) : []);
     });
-  }, [open, customerId, wellnessLogs]);
+  }, [open, wellnessExpanded, customerId, wellnessLogs]);
 
   useEffect(() => {
     if (!open || profile || error) return;
@@ -994,18 +995,27 @@ function CustomerInfoDialog({ customerId, name }: { customerId: string; name: st
             <Separator />
 
             <div>
-              <p className="text-xs font-semibold text-muted-foreground">
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground"
+                onClick={() => setWellnessExpanded((v) => !v)}
+              >
+                {wellnessExpanded ? (
+                  <ChevronDown className="size-3.5" />
+                ) : (
+                  <ChevronRight className="size-3.5" />
+                )}
                 My Wellness — Tanita readings
-              </p>
-              {wellnessLogs === null && (
+              </button>
+              {wellnessExpanded && wellnessLogs === null && (
                 <p className="mt-1 text-sm text-muted-foreground">Loading...</p>
               )}
-              {wellnessLogs?.length === 0 && (
+              {wellnessExpanded && wellnessLogs?.length === 0 && (
                 <p className="mt-1 text-sm text-muted-foreground">
                   No readings logged on My Wellness yet.
                 </p>
               )}
-              {wellnessLogs && wellnessLogs.length > 0 && (
+              {wellnessExpanded && wellnessLogs && wellnessLogs.length > 0 && (
                 <div className="mt-2 overflow-x-auto rounded-md border">
                   <table className="w-full text-xs">
                     <thead>
