@@ -36,10 +36,11 @@ export function WellnessReadingsTable({ readings }: { readings: WellnessLog[] })
                 <TableHead>Fat %</TableHead>
                 <TableHead>Water %</TableHead>
                 <TableHead>Muscle</TableHead>
-                <TableHead>Visceral fat</TableHead>
+                <TableHead>Physical rating</TableHead>
+                <TableHead>Metabolic rate</TableHead>
                 <TableHead>Metabolic age</TableHead>
-                <TableHead>Water intake</TableHead>
-                <TableHead>Exercise</TableHead>
+                <TableHead>Bone</TableHead>
+                <TableHead>Visceral fat</TableHead>
                 <TableHead>Notes</TableHead>
               </TableRow>
             </TableHeader>
@@ -51,10 +52,11 @@ export function WellnessReadingsTable({ readings }: { readings: WellnessLog[] })
                   <TableCell>{log.body_fat_pct != null ? `${log.body_fat_pct}%` : "—"}</TableCell>
                   <TableCell>{log.body_water_pct != null ? `${log.body_water_pct}%` : "—"}</TableCell>
                   <TableCell>{log.muscle_mass_kg != null ? `${log.muscle_mass_kg} kg` : "—"}</TableCell>
-                  <TableCell>{log.visceral_fat ?? "—"}</TableCell>
+                  <TableCell>{log.physical_rating ?? "—"}</TableCell>
+                  <TableCell>{log.metabolic_rate ?? "—"}</TableCell>
                   <TableCell>{log.metabolic_age ?? "—"}</TableCell>
-                  <TableCell>{log.water_intake_ml} ml</TableCell>
-                  <TableCell>{log.exercised ? `${log.exercise_minutes} min` : "—"}</TableCell>
+                  <TableCell>{log.bone_mass_kg != null ? `${log.bone_mass_kg} kg` : "—"}</TableCell>
+                  <TableCell>{log.visceral_fat ?? "—"}</TableCell>
                   <TableCell className="max-w-[200px] truncate">{log.notes || "—"}</TableCell>
                 </TableRow>
               ))}

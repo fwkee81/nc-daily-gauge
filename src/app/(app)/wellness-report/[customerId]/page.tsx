@@ -164,8 +164,11 @@ export default async function WellnessReportDetailPage({
                   <Field label="Body fat" value={latest.body_fat_pct != null ? `${latest.body_fat_pct}%` : "—"} />
                   <Field label="Body water" value={latest.body_water_pct != null ? `${latest.body_water_pct}%` : "—"} />
                   <Field label="Muscle mass" value={latest.muscle_mass_kg != null ? `${latest.muscle_mass_kg} kg` : "—"} />
-                  <Field label="Visceral fat" value={latest.visceral_fat != null ? String(latest.visceral_fat) : "—"} />
+                  <Field label="Physical rating" value={latest.physical_rating != null ? String(latest.physical_rating) : "—"} />
+                  <Field label="Metabolic rate" value={latest.metabolic_rate != null ? String(latest.metabolic_rate) : "—"} />
                   <Field label="Metabolic age" value={latest.metabolic_age != null ? String(latest.metabolic_age) : "—"} />
+                  <Field label="Bone mass" value={latest.bone_mass_kg != null ? `${latest.bone_mass_kg} kg` : "—"} />
+                  <Field label="Visceral fat" value={latest.visceral_fat != null ? String(latest.visceral_fat) : "—"} />
                 </CardContent>
               </Card>
               <Card>
