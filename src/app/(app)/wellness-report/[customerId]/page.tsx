@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { differenceInYears, format } from "date-fns";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, User, Stethoscope, Scale, Target, Utensils, Moon } from "lucide-react";
 import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import type { WellnessHealthProfile, WellnessLog } from "@/lib/types/database";
 import { WellnessReadingsTable } from "./wellness-readings-table";
+import { CollapsibleSection } from "./collapsible-section";
 
 const BUDGET_LABELS: Record<string, string> = {
   rm400: "RM400",
@@ -46,25 +48,19 @@ function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm">{value}</p>
+      <p className={cn("text-sm", value === "—" && "text-muted-foreground/60")}>{value}</p>
     </div>
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function BigField({ label, value }: { label: string; value: string }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">{children}</CardContent>
-    </Card>
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn("text-base font-semibold", value === "—" && "text-muted-foreground/60 font-normal")}>
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -155,20 +151,20 @@ export default async function WellnessReportDetailPage({
             </p>
           ) : (
             <div className="mt-2 grid gap-4 sm:grid-cols-2">
-              <Card>
+              <Card className="border-2 border-primary bg-primary/5">
                 <CardHeader>
                   <CardDescription>Latest reading — {format(new Date(latest.log_date), "d MMM yyyy")}</CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-3 gap-3">
-                  <Field label="Weight" value={latest.weight_kg != null ? `${latest.weight_kg} kg` : "—"} />
-                  <Field label="Body fat" value={latest.body_fat_pct != null ? `${latest.body_fat_pct}%` : "—"} />
-                  <Field label="Body water" value={latest.body_water_pct != null ? `${latest.body_water_pct}%` : "—"} />
-                  <Field label="Muscle mass" value={latest.muscle_mass_kg != null ? `${latest.muscle_mass_kg} kg` : "—"} />
-                  <Field label="Physical rating" value={latest.physical_rating != null ? String(latest.physical_rating) : "—"} />
-                  <Field label="Metabolic rate" value={latest.metabolic_rate != null ? String(latest.metabolic_rate) : "—"} />
-                  <Field label="Metabolic age" value={latest.metabolic_age != null ? String(latest.metabolic_age) : "—"} />
-                  <Field label="Bone mass" value={latest.bone_mass_kg != null ? `${latest.bone_mass_kg} kg` : "—"} />
-                  <Field label="Visceral fat" value={latest.visceral_fat != null ? String(latest.visceral_fat) : "—"} />
+                  <BigField label="Weight" value={latest.weight_kg != null ? `${latest.weight_kg} kg` : "—"} />
+                  <BigField label="Body fat" value={latest.body_fat_pct != null ? `${latest.body_fat_pct}%` : "—"} />
+                  <BigField label="Body water" value={latest.body_water_pct != null ? `${latest.body_water_pct}%` : "—"} />
+                  <BigField label="Muscle mass" value={latest.muscle_mass_kg != null ? `${latest.muscle_mass_kg} kg` : "—"} />
+                  <BigField label="Physical rating" value={latest.physical_rating != null ? String(latest.physical_rating) : "—"} />
+                  <BigField label="Metabolic rate" value={latest.metabolic_rate != null ? String(latest.metabolic_rate) : "—"} />
+                  <BigField label="Metabolic age" value={latest.metabolic_age != null ? String(latest.metabolic_age) : "—"} />
+                  <BigField label="Bone mass" value={latest.bone_mass_kg != null ? `${latest.bone_mass_kg} kg` : "—"} />
+                  <BigField label="Visceral fat" value={latest.visceral_fat != null ? String(latest.visceral_fat) : "—"} />
                 </CardContent>
               </Card>
               <Card>
@@ -179,7 +175,7 @@ export default async function WellnessReportDetailPage({
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-3">
-                  <Field
+                  <BigField
                     label="Weight"
                     value={
                       earliest && latest.weight_kg != null && earliest.weight_kg != null
@@ -187,7 +183,7 @@ export default async function WellnessReportDetailPage({
                         : "—"
                     }
                   />
-                  <Field
+                  <BigField
                     label="Body fat"
                     value={
                       earliest && latest.body_fat_pct != null && earliest.body_fat_pct != null
@@ -211,14 +207,14 @@ export default async function WellnessReportDetailPage({
             </p>
           ) : (
             <div className="mt-2 space-y-4">
-              <Section title="Basic">
+              <CollapsibleSection title="Basic" icon={User}>
                 <Field label="Gender" value={prettify(healthProfile.ref_gender)} />
                 <Field label="Height" value={healthProfile.height_cm != null ? `${healthProfile.height_cm} cm` : "—"} />
                 <Field label="Goal" value={prettify(healthProfile.goal_type)} />
                 <Field label="Goal target weight" value={healthProfile.goal_target_kg != null ? `${healthProfile.goal_target_kg} kg` : "—"} />
-              </Section>
+              </CollapsibleSection>
 
-              <Section title="Medical">
+              <CollapsibleSection title="Medical" icon={Stethoscope}>
                 <Field label="Self-assessment" value={prettify(healthProfile.self_assessment)} />
                 <Field label="On medication" value={yesNo(healthProfile.on_medication)} />
                 <Field label="Medications" value={healthProfile.medications || "—"} />
@@ -228,9 +224,9 @@ export default async function WellnessReportDetailPage({
                 />
                 <Field label="Smoking" value={yesNo(healthProfile.smoking)} />
                 <Field label="Smoking detail" value={healthProfile.smoking_detail || "—"} />
-              </Section>
+              </CollapsibleSection>
 
-              <Section title="Weight history">
+              <CollapsibleSection title="Weight history" icon={Scale}>
                 <Field label="Main motive" value={prettify(healthProfile.main_motive)} />
                 <Field
                   label="Reasons for overweight"
@@ -241,9 +237,9 @@ export default async function WellnessReportDetailPage({
                   value={joinList(healthProfile.past_methods, healthProfile.past_methods_other)}
                 />
                 <Field label="Why past methods failed" value={joinList(healthProfile.fail_reasons)} />
-              </Section>
+              </CollapsibleSection>
 
-              <Section title="Motivation">
+              <CollapsibleSection title="Motivation" icon={Target}>
                 <Field label="Breakfast motives" value={joinList(healthProfile.breakfast_motives)} />
                 <Field label="Weight loss motives" value={joinList(healthProfile.weight_loss_motives)} />
                 <Field
@@ -261,9 +257,9 @@ export default async function WellnessReportDetailPage({
                   value={healthProfile.monthly_budget ? BUDGET_LABELS[healthProfile.monthly_budget] ?? healthProfile.monthly_budget : "—"}
                 />
                 <Field label="Avg meal spend" value={healthProfile.avg_meal_spend != null ? `RM${healthProfile.avg_meal_spend}` : "—"} />
-              </Section>
+              </CollapsibleSection>
 
-              <Section title="Eating habits">
+              <CollapsibleSection title="Eating habits" icon={Utensils} defaultOpen={false}>
                 <Field label="Breakfast time" value={healthProfile.breakfast_time || "—"} />
                 <Field label="Breakfast choices" value={joinList(healthProfile.breakfast_choices, healthProfile.breakfast_other)} />
                 <Field label="Morning tea" value={prettify(healthProfile.morning_tea)} />
@@ -273,9 +269,9 @@ export default async function WellnessReportDetailPage({
                 <Field label="Dinner time" value={healthProfile.dinner_time || "—"} />
                 <Field label="Dinner choices" value={joinList(healthProfile.dinner_choices, healthProfile.dinner_other)} />
                 <Field label="Supper" value={prettify(healthProfile.supper)} />
-              </Section>
+              </CollapsibleSection>
 
-              <Section title="Lifestyle">
+              <CollapsibleSection title="Lifestyle" icon={Moon} defaultOpen={false}>
                 <Field label="Most tired time" value={healthProfile.most_tired_time || "—"} />
                 <Field label="Hungriest time" value={healthProfile.hungriest_time || "—"} />
                 <Field label="Wake time" value={healthProfile.wake_time || "—"} />
@@ -289,7 +285,7 @@ export default async function WellnessReportDetailPage({
                 <Field label="Tea / alcohol habit" value={prettify(healthProfile.tea_alcohol_habit)} />
                 <Field label="Exercise habit" value={prettify(healthProfile.exercise_habit)} />
                 <Field label="Exercise / week" value={healthProfile.exercise_weekly_count != null ? `${healthProfile.exercise_weekly_count}x` : "—"} />
-              </Section>
+              </CollapsibleSection>
             </div>
           )}
         </div>
