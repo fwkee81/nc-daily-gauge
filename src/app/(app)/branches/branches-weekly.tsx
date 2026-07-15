@@ -91,6 +91,12 @@ export function BranchesWeekly({
               >
                 Customers <ChevronRight className="size-4 text-muted-foreground" />
               </Link>
+              <Link
+                href={`/wellness-report?club=${branch.club_id}`}
+                className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent"
+              >
+                Wellness Report <ChevronRight className="size-4 text-muted-foreground" />
+              </Link>
             </div>
           </Card>
         );

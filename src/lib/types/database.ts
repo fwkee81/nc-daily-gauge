@@ -248,14 +248,15 @@ export type BranchLeaderboardRow = {
 // Owned by the separate "My Wellness" customer-facing app (own repo at
 // C:\Users\PC\Desktop\my-wellness), not by NC Daily Gauge — but it lives in
 // the same Supabase project and rows are linked back to this app's
-// `customers` table via customer_id. NC Daily Gauge only ever READS this
-// table (to show a customer's self-logged Tanita readings); the table
-// itself, RLS, and all writes are managed entirely by the My Wellness repo.
-// Not declared in schema.sql for that reason — this is just enough typing
-// for a typed .from("wellness_logs") read here.
+// `customers` table via customer_id. NC Daily Gauge only ever READS these
+// tables (to show a customer's self-logged wellness data on the Wellness
+// Report page); the tables, RLS, and all writes are managed entirely by the
+// My Wellness repo. Not declared in schema.sql for that reason — this is
+// just enough typing for typed .from("wellness_*") reads here.
 export type WellnessLog = {
   id: string;
   customer_id: string | null;
+  coach_id: string | null;
   log_date: string;
   weight_kg: number | null;
   body_fat_pct: number | null;
@@ -273,6 +274,70 @@ export type WellnessLog = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type WellnessUser = {
+  auth_user_id: string;
+  customer_id: string;
+  created_at: string;
+};
+
+export type WellnessHealthProfile = {
+  id: string;
+  customer_id: string | null;
+  coach_id: string | null;
+  ref_gender: "female" | "male" | null;
+  height_cm: number | null;
+  goal_type: "loss" | "gain" | null;
+  goal_target_kg: number | null;
+  conditions: string[];
+  conditions_other: string | null;
+  medications: string | null;
+  updated_at: string;
+
+  self_assessment: "healthy" | "not_very_healthy" | "unhealthy" | null;
+  on_medication: boolean | null;
+  exercise_habit: "none" | "daily" | "weekly" | null;
+  exercise_weekly_count: number | null;
+  overweight_reasons: string[];
+  overweight_reasons_other: string | null;
+  past_methods: string[];
+  past_methods_other: string | null;
+  fail_reasons: string[];
+  main_motive: "health_care" | "weight_gain" | "weight_loss" | null;
+
+  breakfast_motives: string[];
+  weight_loss_motives: string[];
+  motive_size_from: string | null;
+  motive_size_to: string | null;
+  weight_loss_motives_remark: string | null;
+  seriousness_score: number | null;
+  monthly_budget: "rm400" | "rm800" | "rm1000" | "rm1500" | "rm1500_above" | null;
+  avg_meal_spend: number | null;
+
+  breakfast_time: string | null;
+  breakfast_choices: string[];
+  breakfast_other: string | null;
+  morning_tea: "none" | "yes" | "occasionally" | null;
+  lunch_time: string | null;
+  lunch_choices: string[];
+  lunch_other: string | null;
+  afternoon_tea: "none" | "yes" | "occasionally" | null;
+  dinner_time: string | null;
+  dinner_choices: string[];
+  dinner_other: string | null;
+  supper: "none" | "yes" | "occasionally" | null;
+
+  most_tired_time: string | null;
+  hungriest_time: string | null;
+  wake_time: string | null;
+  sleep_time: string | null;
+  daily_calorie_estimate: number | null;
+  daily_water_band: "lt1l" | "1l" | "2l" | "3l" | "4l" | "gt4l" | null;
+  coffee_habit: "none" | "daily" | "weekly" | "occasionally" | null;
+  tea_alcohol_habit: "none" | "daily" | "weekly" | "occasionally" | null;
+  smoking: boolean | null;
+  smoking_detail: string | null;
 };
 
 type NoRelationships = {
@@ -306,6 +371,16 @@ export type Database = {
         Row: WellnessLog;
         Insert: Partial<WellnessLog>;
         Update: Partial<WellnessLog>;
+      } & NoRelationships;
+      wellness_users: {
+        Row: WellnessUser;
+        Insert: Partial<WellnessUser>;
+        Update: Partial<WellnessUser>;
+      } & NoRelationships;
+      wellness_health_profiles: {
+        Row: WellnessHealthProfile;
+        Insert: Partial<WellnessHealthProfile>;
+        Update: Partial<WellnessHealthProfile>;
       } & NoRelationships;
     };
     Views: Record<string, never>;

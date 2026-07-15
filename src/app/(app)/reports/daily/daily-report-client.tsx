@@ -43,7 +43,6 @@ import {
   voidCheckinAction,
   getCheckinHistory,
   getCustomerProfile,
-  getWellnessLogs,
 } from "./actions";
 
 interface CoachCupRow {
@@ -872,32 +871,10 @@ interface CustomerProfile {
   members: { id: string; name: string; contact: string | null; dob: string | null }[];
 }
 
-interface WellnessLogRow {
-  id: string;
-  log_date: string;
-  weight_kg: number | null;
-  body_fat_pct: number | null;
-  body_water_pct: number | null;
-  muscle_mass_kg: number | null;
-  visceral_fat: number | null;
-  metabolic_age: number | null;
-}
-
 function CustomerInfoDialog({ customerId, name }: { customerId: string; name: string }) {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [wellnessExpanded, setWellnessExpanded] = useState(false);
-  const [wellnessLogs, setWellnessLogs] = useState<WellnessLogRow[] | null>(null);
-
-  useEffect(() => {
-    if (!open || !wellnessExpanded || wellnessLogs) return;
-    getWellnessLogs(customerId).then((res) => {
-      // Non-critical supplementary panel — treat a failed read the same as
-      // "no logs yet" rather than adding a separate error state for it.
-      setWellnessLogs("data" in res ? (res.data as unknown as WellnessLogRow[]) : []);
-    });
-  }, [open, wellnessExpanded, customerId, wellnessLogs]);
 
   useEffect(() => {
     if (!open || profile || error) return;
@@ -994,56 +971,12 @@ function CustomerInfoDialog({ customerId, name }: { customerId: string; name: st
 
             <Separator />
 
-            <div>
-              <button
-                type="button"
-                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground"
-                onClick={() => setWellnessExpanded((v) => !v)}
-              >
-                {wellnessExpanded ? (
-                  <ChevronDown className="size-3.5" />
-                ) : (
-                  <ChevronRight className="size-3.5" />
-                )}
-                My Wellness — Tanita readings
-              </button>
-              {wellnessExpanded && wellnessLogs === null && (
-                <p className="mt-1 text-sm text-muted-foreground">Loading...</p>
-              )}
-              {wellnessExpanded && wellnessLogs?.length === 0 && (
-                <p className="mt-1 text-sm text-muted-foreground">
-                  No readings logged on My Wellness yet.
-                </p>
-              )}
-              {wellnessExpanded && wellnessLogs && wellnessLogs.length > 0 && (
-                <div className="mt-2 overflow-x-auto rounded-md border">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-muted/50 text-left">
-                        <th className="px-2 py-1.5 font-medium">Date</th>
-                        <th className="px-2 py-1.5 font-medium">Weight</th>
-                        <th className="px-2 py-1.5 font-medium">Fat %</th>
-                        <th className="px-2 py-1.5 font-medium">Water %</th>
-                        <th className="px-2 py-1.5 font-medium">Muscle</th>
-                        <th className="px-2 py-1.5 font-medium">Visceral fat</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {wellnessLogs.map((log) => (
-                        <tr key={log.id}>
-                          <td className="px-2 py-1.5">{format(new Date(log.log_date), "d MMM yyyy")}</td>
-                          <td className="px-2 py-1.5">{log.weight_kg != null ? `${log.weight_kg} kg` : "—"}</td>
-                          <td className="px-2 py-1.5">{log.body_fat_pct != null ? `${log.body_fat_pct}%` : "—"}</td>
-                          <td className="px-2 py-1.5">{log.body_water_pct != null ? `${log.body_water_pct}%` : "—"}</td>
-                          <td className="px-2 py-1.5">{log.muscle_mass_kg != null ? `${log.muscle_mass_kg} kg` : "—"}</td>
-                          <td className="px-2 py-1.5">{log.visceral_fat ?? "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <Link
+              href={`/wellness-report/${customerId}`}
+              className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent"
+            >
+              Wellness Report <ChevronRight className="size-4 text-muted-foreground" />
+            </Link>
           </div>
         )}
       </DialogContent>
