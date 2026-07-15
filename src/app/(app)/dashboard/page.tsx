@@ -7,6 +7,7 @@ import {
   Building2,
   Calculator,
   HeartPulse,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +72,13 @@ export default async function DashboardPage() {
             description: "View Daily Report, NC Metrics, and Customers for sponsored branches.",
             icon: Building2,
             tint: "bg-primary/15 text-primary",
+          },
+          {
+            href: "/wellness-report",
+            title: "Wellness Report",
+            description: "Each customer's My Wellness health profile and readings history.",
+            icon: Activity,
+            tint: "bg-secondary/25 text-[#8a5a00]",
           },
         ]
       : []),
