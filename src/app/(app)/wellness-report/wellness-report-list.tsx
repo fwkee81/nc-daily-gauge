@@ -33,14 +33,16 @@ export function WellnessReportList({
   clubName: string | null;
 }) {
   const [search, setSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.contact.toLowerCase().includes(q)
-    );
-  }, [customers, search]);
+    return customers.filter((c) => {
+      if (!showInactive && !c.active) return false;
+      if (!q) return true;
+      return c.name.toLowerCase().includes(q) || c.contact.toLowerCase().includes(q);
+    });
+  }, [customers, search, showInactive]);
 
   return (
     <div>
@@ -55,12 +57,22 @@ export function WellnessReportList({
         </div>
       )}
 
-      <Input
-        className="mt-4 max-w-sm"
-        placeholder="Search by name or contact..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        <Input
+          className="max-w-sm"
+          placeholder="Search by name or contact..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+          />
+          Show inactive customers
+        </label>
+      </div>
 
       <div className="mt-4 overflow-x-auto rounded-md border">
         <Table>

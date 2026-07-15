@@ -6,15 +6,8 @@ import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import type { WellnessHealthProfile, WellnessLog } from "@/lib/types/database";
+import { WellnessReadingsTable } from "./wellness-readings-table";
 
 const BUDGET_LABELS: Record<string, string> = {
   rm400: "RM400",
@@ -205,47 +198,7 @@ export default async function WellnessReportDetailPage({
           )}
         </div>
 
-        {readings.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold">All readings ({readings.length})</h2>
-            <div className="mt-2 overflow-x-auto rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Weight</TableHead>
-                    <TableHead>Fat %</TableHead>
-                    <TableHead>Water %</TableHead>
-                    <TableHead>Muscle</TableHead>
-                    <TableHead>Visceral fat</TableHead>
-                    <TableHead>Metabolic age</TableHead>
-                    <TableHead>Water intake</TableHead>
-                    <TableHead>Exercise</TableHead>
-                    <TableHead>Notes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {readings.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell>{format(new Date(log.log_date), "d MMM yyyy")}</TableCell>
-                      <TableCell>{log.weight_kg != null ? `${log.weight_kg} kg` : "—"}</TableCell>
-                      <TableCell>{log.body_fat_pct != null ? `${log.body_fat_pct}%` : "—"}</TableCell>
-                      <TableCell>{log.body_water_pct != null ? `${log.body_water_pct}%` : "—"}</TableCell>
-                      <TableCell>{log.muscle_mass_kg != null ? `${log.muscle_mass_kg} kg` : "—"}</TableCell>
-                      <TableCell>{log.visceral_fat ?? "—"}</TableCell>
-                      <TableCell>{log.metabolic_age ?? "—"}</TableCell>
-                      <TableCell>{log.water_intake_ml} ml</TableCell>
-                      <TableCell>
-                        {log.exercised ? `${log.exercise_minutes} min` : "—"}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">{log.notes || "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        )}
+        {readings.length > 0 && <WellnessReadingsTable readings={readings} />}
 
         <div>
           <h2 className="text-lg font-semibold">Health profile</h2>
