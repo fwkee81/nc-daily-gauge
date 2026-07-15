@@ -84,3 +84,22 @@ export async function getCustomerProfile(customerId: string) {
 
   return { data: { ...customer, invitedByCustomerName, members: members ?? [] } };
 }
+
+// Read-only: wellness_logs is owned and written by the separate My Wellness
+// customer app, not NC Daily Gauge. This just shows the customer's own
+// self-logged Tanita readings alongside their NC profile — nothing here
+// writes back to that table.
+export async function getWellnessLogs(customerId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("wellness_logs")
+    .select(
+      "id, log_date, weight_kg, body_fat_pct, body_water_pct, muscle_mass_kg, visceral_fat, metabolic_age"
+    )
+    .eq("customer_id", customerId)
+    .order("log_date", { ascending: false })
+    .limit(10);
+
+  if (error) return { error: error.message };
+  return { data: data ?? [] };
+}

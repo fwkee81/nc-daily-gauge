@@ -245,6 +245,36 @@ export type BranchLeaderboardRow = {
   value: number;
 };
 
+// Owned by the separate "My Wellness" customer-facing app (own repo at
+// C:\Users\PC\Desktop\my-wellness), not by NC Daily Gauge — but it lives in
+// the same Supabase project and rows are linked back to this app's
+// `customers` table via customer_id. NC Daily Gauge only ever READS this
+// table (to show a customer's self-logged Tanita readings); the table
+// itself, RLS, and all writes are managed entirely by the My Wellness repo.
+// Not declared in schema.sql for that reason — this is just enough typing
+// for a typed .from("wellness_logs") read here.
+export type WellnessLog = {
+  id: string;
+  customer_id: string | null;
+  log_date: string;
+  weight_kg: number | null;
+  body_fat_pct: number | null;
+  body_water_pct: number | null;
+  muscle_mass_kg: number | null;
+  physical_rating: number | null;
+  metabolic_rate: number | null;
+  metabolic_age: number | null;
+  bone_mass_kg: number | null;
+  visceral_fat: number | null;
+  water_intake_ml: number;
+  exercised: boolean;
+  exercise_minutes: number;
+  exercise_notes: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type NoRelationships = {
   Relationships: [];
 };
@@ -270,6 +300,12 @@ export type Database = {
         Row: CustomerMember;
         Insert: Partial<CustomerMember>;
         Update: Partial<CustomerMember>;
+      } & NoRelationships;
+      // Owned by the My Wellness app — see the comment on WellnessLog above.
+      wellness_logs: {
+        Row: WellnessLog;
+        Insert: Partial<WellnessLog>;
+        Update: Partial<WellnessLog>;
       } & NoRelationships;
     };
     Views: Record<string, never>;
