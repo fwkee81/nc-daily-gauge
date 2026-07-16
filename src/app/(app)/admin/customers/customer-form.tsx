@@ -308,6 +308,17 @@ export function CustomerForm({
         </p>
       </div>
 
+      <div className="flex flex-wrap gap-4">
+        <label className="flex items-center gap-2 text-sm">
+          <Switch checked={isPjs} onCheckedChange={setIsPjs} />
+          PJS
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <Switch checked={isHealthAmbassador} onCheckedChange={setIsHealthAmbassador} />
+          Health Ambassador
+        </label>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label>Member ID</Label>
@@ -341,17 +352,6 @@ export function CustomerForm({
           placeholder="Any notes about this customer..."
           rows={3}
         />
-      </div>
-
-      <div className="flex flex-wrap gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <Switch checked={isPjs} onCheckedChange={setIsPjs} />
-          PJS
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <Switch checked={isHealthAmbassador} onCheckedChange={setIsHealthAmbassador} />
-          Health Ambassador
-        </label>
       </div>
 
       <div className="space-y-2 rounded-md border p-3">
