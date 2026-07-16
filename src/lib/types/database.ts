@@ -73,6 +73,8 @@ export type Customer = {
   member_id: string | null;
   member_type: MemberType | null;
   remark: string | null;
+  is_pjs: boolean;
+  is_health_ambassador: boolean;
   created_by: string | null;
   active: boolean;
   created_at: string;

@@ -25,6 +25,8 @@ export interface CustomerFormInput {
   memberId: string | null;
   memberType: MemberType | null;
   remark: string | null;
+  isPjs: boolean;
+  isHealthAmbassador: boolean;
 }
 
 export async function createCustomer(input: CustomerFormInput) {
@@ -50,6 +52,8 @@ export async function createCustomer(input: CustomerFormInput) {
     member_id: input.memberId,
     member_type: input.memberType,
     remark: input.remark,
+    is_pjs: input.isPjs,
+    is_health_ambassador: input.isHealthAmbassador,
     created_by: coach.id,
   });
 
@@ -83,6 +87,8 @@ export async function updateCustomer(id: string, input: CustomerFormInput) {
       member_id: input.memberId,
       member_type: input.memberType,
       remark: input.remark,
+      is_pjs: input.isPjs,
+      is_health_ambassador: input.isHealthAmbassador,
     })
     .eq("id", id);
 

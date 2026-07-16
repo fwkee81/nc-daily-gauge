@@ -75,6 +75,8 @@ export function CustomerForm({
   const [memberId, setMemberId] = useState(editing?.member_id ?? "");
   const [memberType, setMemberType] = useState<MemberType | "">(editing?.member_type ?? "");
   const [remark, setRemark] = useState(editing?.remark ?? "");
+  const [isPjs, setIsPjs] = useState(editing?.is_pjs ?? false);
+  const [isHealthAmbassador, setIsHealthAmbassador] = useState(editing?.is_health_ambassador ?? false);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -169,6 +171,8 @@ export function CustomerForm({
       memberId: memberId.trim() || null,
       memberType: memberType || null,
       remark: remark.trim() || null,
+      isPjs,
+      isHealthAmbassador,
     };
 
     setIsPending(true);
@@ -337,6 +341,17 @@ export function CustomerForm({
           placeholder="Any notes about this customer..."
           rows={3}
         />
+      </div>
+
+      <div className="flex flex-wrap gap-4">
+        <label className="flex items-center gap-2 text-sm">
+          <Switch checked={isPjs} onCheckedChange={setIsPjs} />
+          PJS
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <Switch checked={isHealthAmbassador} onCheckedChange={setIsHealthAmbassador} />
+          Health Ambassador
+        </label>
       </div>
 
       <div className="space-y-2 rounded-md border p-3">

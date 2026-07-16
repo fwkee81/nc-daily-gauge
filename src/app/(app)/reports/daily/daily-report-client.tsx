@@ -864,6 +864,8 @@ interface CustomerProfile {
   member_id: string | null;
   member_type: string | null;
   remark: string | null;
+  is_pjs: boolean;
+  is_health_ambassador: boolean;
   active: boolean;
   coach: { name: string } | null;
   invited_by_coach: { name: string } | null;
@@ -949,6 +951,13 @@ function CustomerInfoDialog({ customerId, name }: { customerId: string; name: st
                 <p>{profile.active ? "Active" : "Inactive"}</p>
               </div>
             </div>
+
+            {(profile.is_pjs || profile.is_health_ambassador) && (
+              <div className="flex gap-1.5">
+                {profile.is_pjs && <Badge variant="outline">PJS</Badge>}
+                {profile.is_health_ambassador && <Badge variant="outline">Health Ambassador</Badge>}
+              </div>
+            )}
 
             <div>
               <p className="text-xs text-muted-foreground">Remark</p>

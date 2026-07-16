@@ -91,6 +91,11 @@ create table customers (
   member_id text,
   member_type member_type,
   remark text,
+  -- Manual designations a coach ticks on the customer's profile — independent
+  -- of any computed report (e.g. NC Metrics' Health Ambassador leaderboard,
+  -- which is based on referral counts, not this flag).
+  is_pjs boolean not null default false,
+  is_health_ambassador boolean not null default false,
   created_by uuid references coaches (id),
   -- Soft delete: customers are never hard-deleted because checkins.customer_id
   -- references them (and we want historical reports to keep working). "Remove"

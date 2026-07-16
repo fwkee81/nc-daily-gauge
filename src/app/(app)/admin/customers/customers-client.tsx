@@ -58,6 +58,8 @@ export interface CustomerRow {
   member_id: string | null;
   member_type: MemberType | null;
   remark: string | null;
+  is_pjs: boolean;
+  is_health_ambassador: boolean;
   active: boolean;
   invited_by_coach?: { id: string; name: string } | null;
   invited_by_customer?: { id: string; name: string } | null;
@@ -370,6 +372,7 @@ export function CustomersClient({
                 direction={sort?.dir ?? "asc"}
                 onClick={() => toggleSort("status")}
               />
+              <TableHead>Tags</TableHead>
               {!viewingBranch && <TableHead />}
             </TableRow>
           </TableHeader>
@@ -408,6 +411,12 @@ export function CustomersClient({
                   ) : (
                     <Badge variant="destructive">Inactive</Badge>
                   )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    {c.is_pjs && <Badge variant="outline">PJS</Badge>}
+                    {c.is_health_ambassador && <Badge variant="outline">HA</Badge>}
+                  </div>
                 </TableCell>
                 {!viewingBranch && (
                   <TableCell className="flex gap-2">
@@ -458,7 +467,7 @@ export function CustomersClient({
             ))}
             {sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={viewingBranch ? 11 : 12} className="text-center text-muted-foreground">
+                <TableCell colSpan={viewingBranch ? 12 : 13} className="text-center text-muted-foreground">
                   No customers found.
                 </TableCell>
               </TableRow>
@@ -548,6 +557,13 @@ function CustomerViewDialog({
                 <p>{customer.active ? "Active" : "Inactive"}</p>
               </div>
             </div>
+
+            {(customer.is_pjs || customer.is_health_ambassador) && (
+              <div className="flex gap-1.5">
+                {customer.is_pjs && <Badge variant="outline">PJS</Badge>}
+                {customer.is_health_ambassador && <Badge variant="outline">Health Ambassador</Badge>}
+              </div>
+            )}
 
             <div>
               <p className="text-xs text-muted-foreground">Remark</p>
