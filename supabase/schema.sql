@@ -1301,7 +1301,7 @@ as $$
     from my_clubs mc
     left join prev_days pd on pd.club_id = mc.club_id
     left join inventory_transactions t
-      on t.nc_club_id = mc.club_id and t.direction = 'out' and not t.voided
+      on t.nc_club_id = mc.club_id and t.direction = 'out' and not t.voided and t.customer_id is null
       and (t.txn_date = p_date or t.txn_date = pd.prev_date)
     left join products p on p.id = t.product_id
     group by mc.club_id
@@ -1437,7 +1437,7 @@ as $$
       coalesce(sum(t.quantity * p.vp), 0) as consumption_vp
     from windows w
     left join inventory_transactions t
-      on t.nc_club_id = w.club_id and t.direction = 'out' and not t.voided
+      on t.nc_club_id = w.club_id and t.direction = 'out' and not t.voided and t.customer_id is null
       and t.txn_date between w.window_start and w.window_end
     left join products p on p.id = t.product_id
     group by w.club_id
@@ -1645,7 +1645,7 @@ as $$
     from my_clubs mc
     cross join bounds b
     left join inventory_transactions t
-      on t.nc_club_id = mc.club_id and t.direction = 'out' and not t.voided
+      on t.nc_club_id = mc.club_id and t.direction = 'out' and not t.voided and t.customer_id is null
       and t.txn_date between b.month_start and b.month_end
     left join products p on p.id = t.product_id
     group by mc.club_id
@@ -1932,10 +1932,12 @@ $$;
 
 grant execute on function void_inventory_transaction(uuid, text) to authenticated;
 
--- Total quantity and VP of everything stocked OUT (sold, used, loaned) in a
--- given month, per product — powers the "Consumption VP" stat and
--- per-product breakdown on NC Metrics. Same p_month/p_club_id/visibility
--- shape as the other monthly_* RPCs; voided movements don't count.
+-- Total quantity and VP of product stocked OUT for internal use in a given
+-- month, per product — powers the "Consumption VP" stat and per-product
+-- breakdown on NC Metrics. "Consumption" deliberately excludes anything
+-- tied to a customer (a sale or a loan) — customer_id is null here, so only
+-- stock a coach used up themselves counts. Same p_month/p_club_id/visibility
+-- shape as the other monthly_* RPCs; voided movements don't count either.
 create or replace function monthly_inventory_out(p_month date, p_club_id uuid default null)
 returns table (
   product_id uuid,
@@ -1964,6 +1966,7 @@ as $$
     cross join target_club tc
     where t.direction = 'out'
       and not t.voided
+      and t.customer_id is null
       and t.txn_date between b.month_start and b.month_end
       and t.nc_club_id = tc.id
       and t.nc_club_id in (select visible_club_ids(current_coach_id()))
