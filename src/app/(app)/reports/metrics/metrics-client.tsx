@@ -23,6 +23,7 @@ import type {
   CustomerGender,
   CustomerNcLevel,
   InvitedByType,
+  MonthlyInventoryOutRow,
   MonthlyPackageSaleRow,
 } from "@/lib/types/database";
 
@@ -55,6 +56,7 @@ export function MetricsClient({
   totals,
   coachCups,
   packageSales,
+  inventoryOut,
   customers,
 }: {
   month: string;
@@ -66,8 +68,13 @@ export function MetricsClient({
   totals: { total_cups: number; days_in_period: number; avg_daily_cups: number };
   coachCups: CoachCupRow[];
   packageSales: MonthlyPackageSaleRow[];
+  inventoryOut: MonthlyInventoryOutRow[];
   customers: DemographicsCustomer[];
 }) {
+  const consumptionVp = useMemo(
+    () => inventoryOut.reduce((sum, r) => sum + Number(r.total_vp), 0),
+    [inventoryOut]
+  );
   const router = useRouter();
   const parsedMonth = parse(month, "yyyy-MM", new Date());
 
@@ -133,7 +140,7 @@ export function MetricsClient({
         </TabsList>
 
         <TabsContent value="activity" className="mt-4 space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <Card className="border-2 border-primary bg-primary/5">
               <CardHeader>
                 <CardDescription>Total Cups this month</CardDescription>
@@ -147,6 +154,12 @@ export function MetricsClient({
                   {totals.days_in_period === 1 ? "" : "s"})
                 </CardDescription>
                 <CardTitle className="text-3xl">{totals.avg_daily_cups}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardDescription>Consumption VP</CardDescription>
+                <CardTitle className="text-3xl">{consumptionVp.toFixed(2)}</CardTitle>
               </CardHeader>
             </Card>
           </div>
@@ -198,6 +211,39 @@ export function MetricsClient({
             title="30-Day"
             rows={packageSales.filter((r) => r.nc_level === "30-day")}
           />
+
+          <div>
+            <h2 className="text-lg font-semibold">
+              Product Consumption — Total: {consumptionVp.toFixed(2)} VP
+            </h2>
+            <div className="mt-2 overflow-x-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">VP</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {inventoryOut.map((row) => (
+                    <TableRow key={row.product_id}>
+                      <TableCell>{row.product_name}</TableCell>
+                      <TableCell className="text-right">{row.qty}</TableCell>
+                      <TableCell className="text-right">{Number(row.total_vp).toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {inventoryOut.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-muted-foreground">
+                        No products stocked out this month.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="demographics" className="mt-4">

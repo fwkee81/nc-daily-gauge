@@ -213,6 +213,14 @@ export type MonthlyPackageSaleRow = {
   invited_by_type: InvitedByType;
 };
 
+export type MonthlyInventoryOutRow = {
+  product_id: string;
+  product_name: string;
+  vp: number;
+  qty: number;
+  total_vp: number;
+};
+
 export type BranchClubRow = {
   club_id: string;
   club_name: string;
@@ -512,6 +520,10 @@ export type Database = {
       monthly_package_sales: {
         Args: { p_month: string; p_club_id?: string | null };
         Returns: MonthlyPackageSaleRow[];
+      };
+      monthly_inventory_out: {
+        Args: { p_month: string; p_club_id?: string | null };
+        Returns: MonthlyInventoryOutRow[];
       };
       list_branch_clubs: { Args: Record<string, never>; Returns: BranchClubRow[] };
       branches_daily_summary: {
