@@ -127,6 +127,36 @@ export type CustomerRenewal = {
   created_at: string;
 };
 
+export type InventoryDirection = "in" | "out";
+
+export type Product = {
+  id: string;
+  name: string;
+  vp: number;
+  active: boolean;
+  created_at: string;
+};
+
+export type InventoryTransaction = {
+  id: string;
+  nc_club_id: string;
+  product_id: string;
+  direction: InventoryDirection;
+  quantity: number;
+  txn_date: string;
+  customer_id: string | null;
+  recorded_by: string | null;
+  remark: string | null;
+  created_at: string;
+};
+
+export type InventoryStockLevelRow = {
+  product_id: string;
+  product_name: string;
+  vp: number;
+  on_hand: number;
+};
+
 export type DailyTotalsRow = {
   total_cups: number;
   plugin_cups: number;
@@ -391,6 +421,12 @@ export type Database = {
         Insert: Partial<WellnessHealthProfile>;
         Update: Partial<WellnessHealthProfile>;
       } & NoRelationships;
+      products: { Row: Product; Insert: Partial<Product>; Update: Partial<Product> } & NoRelationships;
+      inventory_transactions: {
+        Row: InventoryTransaction;
+        Insert: Partial<InventoryTransaction>;
+        Update: Partial<InventoryTransaction>;
+      } & NoRelationships;
     };
     Views: Record<string, never>;
     Enums: Record<string, never>;
@@ -501,6 +537,10 @@ export type Database = {
       list_visible_club_ids: {
         Args: { p_coach_id: string };
         Returns: { club_id: string }[];
+      };
+      inventory_stock_levels: {
+        Args: Record<string, never>;
+        Returns: InventoryStockLevelRow[];
       };
     };
   };
