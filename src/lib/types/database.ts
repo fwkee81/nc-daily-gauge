@@ -202,6 +202,12 @@ export type BranchDailySummaryRow = {
   prev_date: string | null;
 };
 
+export type BranchWeeklyDailyRow = {
+  date: string;
+  total_cups: number;
+  coach_cup_total: number;
+};
+
 export type BranchWeeklySummaryRow = {
   club_id: string;
   club_name: string;
@@ -214,6 +220,7 @@ export type BranchWeeklySummaryRow = {
   total_10day: number;
   total_20day: number;
   total_30day: number;
+  daily: BranchWeeklyDailyRow[];
 };
 
 export type BranchCoachCupsCompareRow = {

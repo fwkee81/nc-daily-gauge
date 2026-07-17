@@ -1260,7 +1260,8 @@ returns table (
   total_5day bigint,
   total_10day bigint,
   total_20day bigint,
-  total_30day bigint
+  total_30day bigint,
+  daily jsonb
 )
 language sql
 stable
@@ -1314,6 +1315,36 @@ as $$
     join customers cu on cu.id = ci.customer_id
     group by wd.club_id
   ),
+  daily_cup_totals as (
+    select
+      wd.club_id,
+      wd.checkin_date,
+      coalesce(sum(ci.cups), 0) as total_cups,
+      coalesce(sum(ci.cups) filter (
+        where cu.coach_id is not null
+          and not exists (
+            select 1 from excluded_per_club ec where ec.club_id = wd.club_id and ec.customer_id = cu.id
+          )
+      ), 0) as coach_cup_total
+    from window_days wd
+    join checkins ci on ci.nc_club_id = wd.club_id and ci.checkin_date = wd.checkin_date and not ci.voided
+    join customers cu on cu.id = ci.customer_id
+    group by wd.club_id, wd.checkin_date
+  ),
+  daily_json as (
+    select
+      club_id,
+      jsonb_agg(
+        jsonb_build_object(
+          'date', checkin_date,
+          'total_cups', total_cups,
+          'coach_cup_total', coach_cup_total
+        )
+        order by checkin_date
+      ) as daily
+    from daily_cup_totals
+    group by club_id
+  ),
   new_signups as (
     select cu.nc_club_id as club_id, cu.nc_level, count(*) as n
     from customers cu
@@ -1347,10 +1378,12 @@ as $$
     coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '20-day'), 0)
       + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '20-day'), 0) as total_20day,
     coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '30-day'), 0)
-      + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '30-day'), 0) as total_30day
+      + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '30-day'), 0) as total_30day,
+    coalesce(dj.daily, '[]'::jsonb) as daily
   from my_clubs mc
   left join windows w on w.club_id = mc.club_id
   left join cup_totals ct on ct.club_id = mc.club_id
+  left join daily_json dj on dj.club_id = mc.club_id
   -- Own club first, then branches ranked by Total Cups over the window
   -- (highest first).
   order by

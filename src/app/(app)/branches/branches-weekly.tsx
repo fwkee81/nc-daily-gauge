@@ -5,13 +5,46 @@ import { ChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
-import type { BranchWeeklySummaryRow } from "@/lib/types/database";
+import type { BranchWeeklyDailyRow, BranchWeeklySummaryRow } from "@/lib/types/database";
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-md border px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-lg font-semibold">{value}</p>
+    </div>
+  );
+}
+
+const BAR_HEIGHT_PX = 64;
+
+function DailyBars({ daily }: { daily: BranchWeeklyDailyRow[] }) {
+  if (daily.length === 0) return null;
+  const max = Math.max(...daily.map((d) => d.total_cups), 1);
+
+  return (
+    <div
+      className="mb-4 grid items-end gap-2 rounded-md border bg-muted/30 p-3"
+      style={{ gridTemplateColumns: `repeat(${daily.length}, minmax(0, 1fr))` }}
+    >
+      {daily.map((d) => (
+        <div key={d.date} className="flex flex-col items-center gap-1">
+          <span className="text-xs font-medium">{d.total_cups}</span>
+          <div
+            className="flex w-full items-end justify-center"
+            style={{ height: BAR_HEIGHT_PX }}
+          >
+            <div
+              className="w-6 rounded-t bg-primary"
+              style={{ height: Math.max(4, Math.round((d.total_cups / max) * BAR_HEIGHT_PX)) }}
+              title={`${format(parseISO(d.date), "d MMM")} · ${d.total_cups} cups`}
+            />
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            {format(parseISO(d.date), "EEE")}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -63,6 +96,7 @@ export function BranchesWeekly({
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <DailyBars daily={branch.daily} />
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
                 <Stat label="Total Cups" value={branch.total_cups} />
                 <Stat label="Coach's Cup" value={branch.coach_cup_total} />
