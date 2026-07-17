@@ -190,6 +190,7 @@ export function InventoryClient({
         <div className="mt-3">
           <TransactionsTable
             transactions={transactions}
+            isAdmin={isAdmin}
             productNameById={productNameById}
             customerNameById={customerNameById}
             coachNameById={coachNameById}

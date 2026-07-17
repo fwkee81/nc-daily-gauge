@@ -45,6 +45,19 @@ export async function recordInventoryBatch(input: {
   return { success: true };
 }
 
+export async function voidInventoryTransaction(transactionId: string, reason: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("void_inventory_transaction", {
+    p_transaction_id: transactionId,
+    p_reason: reason,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/inventory");
+  return { success: true };
+}
+
 export async function addProduct(name: string, vp: number) {
   const coach = await getCurrentCoach();
   if (!coach || !coach.is_admin) {

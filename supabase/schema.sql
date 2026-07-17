@@ -231,7 +231,14 @@ create table inventory_transactions (
   customer_id uuid references customers (id),
   recorded_by uuid references coaches (id),
   remark text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- A movement is never edited in place — a mistake is voided (admin-only,
+  -- reason required), same correction model as checkins.voided. No separate
+  -- history table since void is the only correction path here.
+  voided boolean not null default false,
+  voided_by uuid references coaches (id),
+  void_reason text,
+  voided_at timestamptz
 );
 
 create index idx_customers_nc_club on customers (nc_club_id);
@@ -1831,10 +1838,50 @@ as $$
   left join inventory_transactions t
     on t.product_id = p.id
     and t.nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
+    and not t.voided
   where p.active
   group by p.id, p.name, p.vp
   order by p.name;
 $$;
 
 grant execute on function inventory_stock_levels() to authenticated;
+
+-- Lets an admin void a mis-entered stock movement — same correction model
+-- as void_checkin(): a reason is required, who/when/why is recorded on the
+-- row itself, and voided rows drop out of inventory_stock_levels() above.
+create or replace function void_inventory_transaction(p_transaction_id uuid, p_reason text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_editor_id uuid := current_coach_id();
+  v_txn inventory_transactions%rowtype;
+begin
+  if v_editor_id is null or not is_current_coach_admin() then
+    raise exception 'Only admins can void inventory records';
+  end if;
+  if p_reason is null or btrim(p_reason) = '' then
+    raise exception 'A reason is required to void a record';
+  end if;
+
+  select * into v_txn from inventory_transactions where id = p_transaction_id for update;
+  if not found then
+    raise exception 'Record not found';
+  end if;
+  if v_txn.voided then
+    raise exception 'Already voided';
+  end if;
+  if v_txn.nc_club_id <> (select nc_club_id from coaches where id = v_editor_id) then
+    raise exception 'Cannot void records outside your club';
+  end if;
+
+  update inventory_transactions
+  set voided = true, voided_by = v_editor_id, void_reason = p_reason, voided_at = now()
+  where id = p_transaction_id;
+end;
+$$;
+
+grant execute on function void_inventory_transaction(uuid, text) to authenticated;
 grant execute on function branches_monthly_leaderboards(date) to authenticated;

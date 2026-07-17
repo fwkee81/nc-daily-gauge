@@ -148,6 +148,10 @@ export type InventoryTransaction = {
   recorded_by: string | null;
   remark: string | null;
   created_at: string;
+  voided: boolean;
+  voided_by: string | null;
+  void_reason: string | null;
+  voided_at: string | null;
 };
 
 export type InventoryStockLevelRow = {
@@ -541,6 +545,10 @@ export type Database = {
       inventory_stock_levels: {
         Args: Record<string, never>;
         Returns: InventoryStockLevelRow[];
+      };
+      void_inventory_transaction: {
+        Args: { p_transaction_id: string; p_reason: string };
+        Returns: void;
       };
     };
   };

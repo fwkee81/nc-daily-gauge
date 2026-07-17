@@ -55,7 +55,7 @@ export default async function InventoryPage() {
     supabase
       .from("inventory_transactions")
       .select(
-        "id, nc_club_id, product_id, direction, quantity, txn_date, customer_id, recorded_by, remark, created_at"
+        "id, nc_club_id, product_id, direction, quantity, txn_date, customer_id, recorded_by, remark, created_at, voided, voided_by, void_reason, voided_at"
       )
       .eq("nc_club_id", coach.nc_club_id)
       .order("created_at", { ascending: false })
