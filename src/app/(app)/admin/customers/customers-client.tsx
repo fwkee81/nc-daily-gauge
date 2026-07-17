@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { differenceInYears } from "date-fns";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -255,17 +255,24 @@ export function CustomersClient({
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Customers</h1>
         {!viewingBranch && (
-          <Dialog
-            open={dialogOpen}
-            onOpenChange={(open) => {
-              setDialogOpen(open);
-              if (!open) setEditing(null);
-            }}
-          >
-            <DialogTrigger render={<Button onClick={() => setEditing(null)} />}>
-              Add customer
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <div className="flex items-center gap-2">
+            <a
+              href="/api/export/customers"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium transition-all hover:bg-muted"
+            >
+              <Download className="size-4" /> Export to Excel
+            </a>
+            <Dialog
+              open={dialogOpen}
+              onOpenChange={(open) => {
+                setDialogOpen(open);
+                if (!open) setEditing(null);
+              }}
+            >
+              <DialogTrigger render={<Button onClick={() => setEditing(null)} />}>
+                Add customer
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>{editing ? "Edit customer" : "Add customer"}</DialogTitle>
               </DialogHeader>
@@ -280,7 +287,8 @@ export function CustomersClient({
                 }}
               />
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         )}
       </div>
 
