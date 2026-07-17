@@ -54,7 +54,9 @@ export default async function InventoryPage() {
     supabase.from("nc_clubs").select("name").eq("id", coach.nc_club_id).maybeSingle(),
     supabase
       .from("inventory_transactions")
-      .select("id, product_id, direction, quantity, txn_date, customer_id, recorded_by, remark, created_at")
+      .select(
+        "id, nc_club_id, product_id, direction, quantity, txn_date, customer_id, recorded_by, remark, created_at"
+      )
       .eq("nc_club_id", coach.nc_club_id)
       .order("created_at", { ascending: false })
       .limit(300),
