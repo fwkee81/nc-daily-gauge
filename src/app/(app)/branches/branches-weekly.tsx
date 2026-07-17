@@ -7,11 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import type { BranchWeeklyDailyRow, BranchWeeklySummaryRow } from "@/lib/types/database";
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  label,
+  value,
+  decimals = 0,
+}: {
+  label: string;
+  value: number;
+  decimals?: number;
+}) {
   return (
     <div className="rounded-md border px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-lg font-semibold">{value}</p>
+      <p className="text-lg font-semibold">{Number(value).toFixed(decimals)}</p>
     </div>
   );
 }
@@ -104,6 +112,7 @@ export function BranchesWeekly({
                 <Stat label="10-Day" value={branch.total_10day} />
                 <Stat label="20-Day" value={branch.total_20day} />
                 <Stat label="30-Day" value={branch.total_30day} />
+                <Stat label="Consumption VP" value={branch.consumption_vp} decimals={2} />
               </div>
             </CardContent>
             <div className="flex flex-wrap gap-2 px-6 pb-6">

@@ -85,6 +85,7 @@ export function BranchesMonthly({
                   <Stat label="10-Day" value={row.total_10day} />
                   <Stat label="20-Day" value={row.total_20day} />
                   <Stat label="30-Day" value={row.total_30day} />
+                  <Stat label="Consumption VP" value={row.consumption_vp} decimals={2} />
                 </div>
 
                 {isExpanded && (
@@ -141,11 +142,21 @@ export function BranchesMonthly({
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  label,
+  value,
+  decimals,
+}: {
+  label: string;
+  value: number;
+  decimals?: number;
+}) {
   return (
     <div className="rounded-md border px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-lg font-semibold">{value}</p>
+      <p className="text-lg font-semibold">
+        {decimals != null ? Number(value).toFixed(decimals) : value}
+      </p>
     </div>
   );
 }

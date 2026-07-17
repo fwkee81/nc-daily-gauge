@@ -1232,6 +1232,8 @@ returns table (
   prev_total_cups bigint,
   coach_cup_total bigint,
   prev_coach_cup_total bigint,
+  consumption_vp numeric,
+  prev_consumption_vp numeric,
   new_5day bigint,
   prev_new_5day bigint,
   total_10day bigint,
@@ -1291,6 +1293,19 @@ as $$
     left join customers cu on cu.id = ci.customer_id
     group by mc.club_id
   ),
+  inv_totals as (
+    select
+      mc.club_id,
+      coalesce(sum(t.quantity * p.vp) filter (where t.txn_date = p_date), 0) as consumption_vp,
+      coalesce(sum(t.quantity * p.vp) filter (where t.txn_date = pd.prev_date), 0) as prev_consumption_vp
+    from my_clubs mc
+    left join prev_days pd on pd.club_id = mc.club_id
+    left join inventory_transactions t
+      on t.nc_club_id = mc.club_id and t.direction = 'out' and not t.voided
+      and (t.txn_date = p_date or t.txn_date = pd.prev_date)
+    left join products p on p.id = t.product_id
+    group by mc.club_id
+  ),
   new_signups as (
     select cu.nc_club_id as club_id, cu.nc_level, cu.created_at::date as d, count(*) as n
     from customers cu
@@ -1313,6 +1328,8 @@ as $$
     coalesce(ct.prev_total_cups, 0) as prev_total_cups,
     coalesce(ct.coach_cup_total, 0) as coach_cup_total,
     coalesce(ct.prev_coach_cup_total, 0) as prev_coach_cup_total,
+    coalesce(it.consumption_vp, 0) as consumption_vp,
+    coalesce(it.prev_consumption_vp, 0) as prev_consumption_vp,
     coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '5-day' and ns.d = p_date), 0) as new_5day,
     coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '5-day' and ns.d = pd.prev_date), 0) as prev_new_5day,
     coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '10-day' and ns.d = p_date), 0)
@@ -1331,6 +1348,7 @@ as $$
   from my_clubs mc
   left join prev_days pd on pd.club_id = mc.club_id
   left join cup_totals ct on ct.club_id = mc.club_id
+  left join inv_totals it on it.club_id = mc.club_id
   -- Own club first, then branches ranked by today's Total Cups (highest first).
   order by
     (mc.club_id <> (select nc_club_id from coaches where auth_user_id = auth.uid())),
@@ -1354,6 +1372,7 @@ returns table (
   window_end date,
   total_cups bigint,
   coach_cup_total bigint,
+  consumption_vp numeric,
   total_5day bigint,
   total_10day bigint,
   total_20day bigint,
@@ -1412,6 +1431,17 @@ as $$
     join customers cu on cu.id = ci.customer_id
     group by wd.club_id
   ),
+  inv_totals as (
+    select
+      w.club_id,
+      coalesce(sum(t.quantity * p.vp), 0) as consumption_vp
+    from windows w
+    left join inventory_transactions t
+      on t.nc_club_id = w.club_id and t.direction = 'out' and not t.voided
+      and t.txn_date between w.window_start and w.window_end
+    left join products p on p.id = t.product_id
+    group by w.club_id
+  ),
   daily_cup_totals as (
     select
       wd.club_id,
@@ -1469,6 +1499,7 @@ as $$
     w.window_end,
     coalesce(ct.total_cups, 0) as total_cups,
     coalesce(ct.coach_cup_total, 0) as coach_cup_total,
+    coalesce(it.consumption_vp, 0) as consumption_vp,
     coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '5-day'), 0) as total_5day,
     coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '10-day'), 0)
       + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '10-day'), 0) as total_10day,
@@ -1480,6 +1511,7 @@ as $$
   from my_clubs mc
   left join windows w on w.club_id = mc.club_id
   left join cup_totals ct on ct.club_id = mc.club_id
+  left join inv_totals it on it.club_id = mc.club_id
   left join daily_json dj on dj.club_id = mc.club_id
   -- Own club first, then branches ranked by Total Cups over the window
   -- (highest first).
@@ -1553,6 +1585,7 @@ returns table (
   operating_days int,
   avg_daily_cups numeric,
   coach_cup_avg_daily numeric,
+  consumption_vp numeric,
   total_5day bigint,
   total_10day bigint,
   total_20day bigint,
@@ -1605,6 +1638,18 @@ as $$
     join customers cu on cu.id = cc.customer_id
     group by cc.club_id
   ),
+  inv_totals as (
+    select
+      mc.club_id,
+      coalesce(sum(t.quantity * p.vp), 0) as consumption_vp
+    from my_clubs mc
+    cross join bounds b
+    left join inventory_transactions t
+      on t.nc_club_id = mc.club_id and t.direction = 'out' and not t.voided
+      and t.txn_date between b.month_start and b.month_end
+    left join products p on p.id = t.product_id
+    group by mc.club_id
+  ),
   new_signups as (
     select cu.nc_club_id as club_id, cu.nc_level, count(*) as n
     from customers cu
@@ -1630,6 +1675,7 @@ as $$
     coalesce(od.n, 0) as operating_days,
     round(coalesce(ct.total_cups, 0)::numeric / nullif(od.n, 0), 2) as avg_daily_cups,
     round(coalesce(ct.coach_cup_total, 0)::numeric / nullif(od.n, 0), 2) as coach_cup_avg_daily,
+    coalesce(it.consumption_vp, 0) as consumption_vp,
     coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '5-day'), 0) as total_5day,
     coalesce((select n from new_signups ns where ns.club_id = mc.club_id and ns.nc_level = '10-day'), 0)
       + coalesce((select n from renewals r where r.club_id = mc.club_id and r.nc_level = '10-day'), 0) as total_10day,
@@ -1640,6 +1686,7 @@ as $$
   from my_clubs mc
   left join operating_days od on od.club_id = mc.club_id
   left join cup_totals ct on ct.club_id = mc.club_id
+  left join inv_totals it on it.club_id = mc.club_id
   -- Own club first, then branches ranked by this month's Avg Cups / Day
   -- (highest first) — clubs with no operating days yet sort to the end.
   order by

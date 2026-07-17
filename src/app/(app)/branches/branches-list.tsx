@@ -21,21 +21,34 @@ const DIFF_COLOR_CLASS: Record<DiffColor, string> = {
   red: "text-destructive",
 };
 
-function diffInfo(current: number, previous: number): DiffInfo {
+function diffInfo(current: number, previous: number, decimals = 0): DiffInfo {
   const diff = current - previous;
   if (diff === 0) return { text: "No change", color: "yellow" };
-  if (previous === 0) return { text: `+${diff} (new)`, color: "green" };
+  if (previous === 0) return { text: `+${diff.toFixed(decimals)} (new)`, color: "green" };
   const pct = (diff / previous) * 100;
   const sign = diff > 0 ? "+" : "";
-  return { text: `${sign}${diff} (${sign}${pct.toFixed(0)}%)`, color: diff > 0 ? "green" : "red" };
+  return {
+    text: `${sign}${diff.toFixed(decimals)} (${sign}${pct.toFixed(0)}%)`,
+    color: diff > 0 ? "green" : "red",
+  };
 }
 
-function Stat({ label, value, previous }: { label: string; value: number; previous: number }) {
-  const diff = diffInfo(value, previous);
+function Stat({
+  label,
+  value,
+  previous,
+  decimals = 0,
+}: {
+  label: string;
+  value: number;
+  previous: number;
+  decimals?: number;
+}) {
+  const diff = diffInfo(Number(value), Number(previous), decimals);
   return (
     <div className="rounded-md border px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-lg font-semibold">{value}</p>
+      <p className="text-lg font-semibold">{Number(value).toFixed(decimals)}</p>
       <p className={cn("text-xs font-medium", DIFF_COLOR_CLASS[diff.color])}>{diff.text}</p>
     </div>
   );
@@ -126,6 +139,12 @@ export function BranchesList({
                 <Stat label="10-Day" value={branch.total_10day} previous={branch.prev_total_10day} />
                 <Stat label="20-Day" value={branch.total_20day} previous={branch.prev_total_20day} />
                 <Stat label="30-Day" value={branch.total_30day} previous={branch.prev_total_30day} />
+                <Stat
+                  label="Consumption VP"
+                  value={branch.consumption_vp}
+                  previous={branch.prev_consumption_vp}
+                  decimals={2}
+                />
               </div>
 
               {isExpanded && (

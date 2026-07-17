@@ -233,6 +233,8 @@ export type BranchDailySummaryRow = {
   prev_total_cups: number;
   coach_cup_total: number;
   prev_coach_cup_total: number;
+  consumption_vp: number;
+  prev_consumption_vp: number;
   new_5day: number;
   prev_new_5day: number;
   total_10day: number;
@@ -258,6 +260,7 @@ export type BranchWeeklySummaryRow = {
   window_end: string | null;
   total_cups: number;
   coach_cup_total: number;
+  consumption_vp: number;
   total_5day: number;
   total_10day: number;
   total_20day: number;
@@ -279,6 +282,7 @@ export type BranchMonthlySummaryRow = {
   operating_days: number;
   avg_daily_cups: number;
   coach_cup_avg_daily: number;
+  consumption_vp: number;
   total_5day: number;
   total_10day: number;
   total_20day: number;
