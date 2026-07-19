@@ -300,6 +300,22 @@ interface HistoryEntry {
   editor: { name: string } | null;
 }
 
+// Celebrate hitting a strong daily total — only for today's live report (not
+// while browsing a past date), and only once per club/day so it doesn't pop
+// again on every refresh.
+const CUP_MILESTONE = 25;
+
+const CONFETTI_COLORS = [
+  "#9ec835",
+  "#ffbd59",
+  "#ff6b6b",
+  "#4dabf7",
+  "#f06595",
+  "#9ec835",
+  "#ffbd59",
+  "#4dabf7",
+];
+
 export function DailyReportClient({
   date,
   hasExplicitDate,
@@ -344,6 +360,7 @@ export function DailyReportClient({
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null);
   const [hideVoided, setHideVoided] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState<"plugin" | "dine-in" | "takeaway" | null>(null);
+  const [showMilestone, setShowMilestone] = useState(false);
   const excludedCustomerIdSet = useMemo(() => new Set(excludedCustomerIds), [excludedCustomerIds]);
   const pluginCustomerIdSet = useMemo(() => new Set(pluginCustomerIds), [pluginCustomerIds]);
 
@@ -401,6 +418,18 @@ export function DailyReportClient({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Pop the confetti once per club/day, only for today's live total — not
+  // when just browsing back through a past date that also cleared 25.
+  useEffect(() => {
+    if (totals.total_cups < CUP_MILESTONE) return;
+    if (date !== format(new Date(), "yyyy-MM-dd")) return;
+
+    const key = `nc-cup-milestone-${clubId}-${date}`;
+    if (window.localStorage.getItem(key)) return;
+    window.localStorage.setItem(key, "1");
+    setShowMilestone(true);
+  }, [clubId, date, totals.total_cups]);
 
   function goToDate(d: string) {
     const clubQuery = viewingBranch ? `&club=${clubId}` : "";
@@ -703,6 +732,42 @@ export function DailyReportClient({
           ))}
         </div>
       </div>
+
+      <Dialog open={showMilestone} onOpenChange={setShowMilestone}>
+        <DialogContent className="overflow-hidden sm:max-w-sm">
+          {CONFETTI_COLORS.map((color, i) => (
+            <span
+              key={i}
+              aria-hidden
+              className="pointer-events-none absolute top-0 h-2.5 w-2.5 rounded-sm"
+              style={{
+                left: `${(i * 13 + 5) % 100}%`,
+                backgroundColor: color,
+                animation: "confetti-fall 1.8s ease-in forwards",
+                animationDelay: `${(i % 6) * 0.15}s`,
+              }}
+            />
+          ))}
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl">🎉 Great day! 🎉</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-2 py-2 text-center">
+            <span
+              className="text-6xl"
+              style={{ display: "inline-block", animation: "cake-bounce 1s ease-in-out infinite" }}
+            >
+              🔥
+            </span>
+            <p className="text-xl font-semibold">{totals.total_cups} cups today</p>
+            <p className="text-base text-muted-foreground">
+              Past {CUP_MILESTONE} cups — great work, team!
+            </p>
+          </div>
+          <Button className="w-full py-6 text-lg" onClick={() => setShowMilestone(false)}>
+            OK
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
