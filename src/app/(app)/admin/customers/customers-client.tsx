@@ -93,6 +93,24 @@ type SortKey =
   | "remark"
   | "status";
 
+const NC_LEVEL_LABEL: Record<string, string> = {
+  "5-day": "5-Day",
+  "10-day": "10-Day",
+  "20-day": "20-Day",
+  "30-day": "30-Day",
+};
+
+const CONFETTI_COLORS = [
+  "#9ec835",
+  "#ffbd59",
+  "#ff6b6b",
+  "#4dabf7",
+  "#f06595",
+  "#9ec835",
+  "#ffbd59",
+  "#4dabf7",
+];
+
 function invitedByLabel(c: CustomerRow) {
   if (c.invited_by_type === "plugin") return "Plug-in";
   if (c.invited_by_type === "coach") return c.invited_by_coach?.name ?? "—";
@@ -187,6 +205,7 @@ export function CustomersClient({
   const [renewing, setRenewing] = useState<CustomerRow | null>(null);
   const [viewing, setViewing] = useState<CustomerRow | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+  const [newSignup, setNewSignup] = useState<{ name: string; ncLevel: CustomerNcLevel } | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -281,9 +300,10 @@ export function CustomersClient({
                 customers={initialCustomers}
                 editing={editing}
                 members={editing ? members.filter((m) => m.customer_id === editing.id) : []}
-                onDone={() => {
+                onDone={(celebration) => {
                   setDialogOpen(false);
                   router.refresh();
+                  if (celebration) setNewSignup(celebration);
                 }}
               />
             </DialogContent>
@@ -501,6 +521,45 @@ export function CustomersClient({
         members={viewing ? members.filter((m) => m.customer_id === viewing.id) : []}
         onOpenChange={(open) => !open && setViewing(null)}
       />
+
+      <Dialog open={!!newSignup} onOpenChange={(open) => !open && setNewSignup(null)}>
+        <DialogContent className="overflow-hidden sm:max-w-sm">
+          {CONFETTI_COLORS.map((color, i) => (
+            <span
+              key={i}
+              aria-hidden
+              className="pointer-events-none absolute top-0 h-2.5 w-2.5 rounded-sm"
+              style={{
+                left: `${(i * 13 + 5) % 100}%`,
+                backgroundColor: color,
+                animation: "confetti-fall 1.8s ease-in forwards",
+                animationDelay: `${(i % 6) * 0.15}s`,
+              }}
+            />
+          ))}
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl">🎉 Congratulations! 🎉</DialogTitle>
+          </DialogHeader>
+          {newSignup && (
+            <div className="flex flex-col items-center gap-2 py-2 text-center">
+              <span
+                className="text-6xl"
+                style={{ display: "inline-block", animation: "cake-bounce 1s ease-in-out infinite" }}
+              >
+                🎊
+              </span>
+              <p className="text-xl font-semibold">{newSignup.name}</p>
+              <p className="text-base text-muted-foreground">
+                Just signed up for the {NC_LEVEL_LABEL[newSignup.ncLevel] ?? newSignup.ncLevel}{" "}
+                package — great work!
+              </p>
+            </div>
+          )}
+          <Button className="w-full py-6 text-lg" onClick={() => setNewSignup(null)}>
+            OK
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

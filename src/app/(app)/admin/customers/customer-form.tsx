@@ -45,6 +45,10 @@ function invitedByValue(customer?: CustomerRow | null) {
   return PLUGIN_VALUE;
 }
 
+// Packages worth a congratulations pop — Ala Carte is a one-off walk-in, not
+// a package sign-up, so it's deliberately excluded.
+const CELEBRATE_LEVELS: CustomerNcLevel[] = ["5-day", "10-day", "20-day", "30-day"];
+
 export function CustomerForm({
   coaches,
   customers,
@@ -56,7 +60,7 @@ export function CustomerForm({
   customers: CustomerRow[];
   editing?: CustomerRow | null;
   members: CustomerMemberRow[];
-  onDone: () => void;
+  onDone: (celebration?: { name: string; ncLevel: CustomerNcLevel }) => void;
 }) {
   const [name, setName] = useState(editing?.name ?? "");
   const [gender, setGender] = useState<CustomerGender | "">(editing?.gender ?? "");
@@ -193,7 +197,8 @@ export function CustomerForm({
     }
 
     toast.success(editing ? "Customer updated." : "Customer added.");
-    onDone();
+    const shouldCelebrate = !editing && CELEBRATE_LEVELS.includes(ncLevel as CustomerNcLevel);
+    onDone(shouldCelebrate ? { name, ncLevel: ncLevel as CustomerNcLevel } : undefined);
   }
 
   return (
