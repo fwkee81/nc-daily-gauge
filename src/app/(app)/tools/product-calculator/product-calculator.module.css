@@ -182,7 +182,6 @@
   position: relative;
   border: 2px solid transparent;
   min-width: 0;
-  overflow: hidden;
 }
 .card:active {
   transform: scale(0.96);
