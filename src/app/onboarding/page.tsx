@@ -24,6 +24,8 @@ export default async function OnboardingPage() {
     .eq("active", true)
     .order("name");
 
+  const { data: clubs } = await supabase.from("nc_clubs").select("id, name").order("name");
+
   return (
     <div className="mx-auto w-full max-w-xl px-4 py-10">
       <h1 className="text-2xl font-semibold">Complete your coach profile</h1>
@@ -31,7 +33,11 @@ export default async function OnboardingPage() {
         This is a one-time setup so we can attach your check-ins, customers, and reports to the
         right nutrition club.
       </p>
-      <OnboardingForm coaches={coaches ?? []} isFirstCoach={(coaches ?? []).length === 0} />
+      <OnboardingForm
+        coaches={coaches ?? []}
+        clubs={clubs ?? []}
+        isFirstCoach={(coaches ?? []).length === 0}
+      />
     </div>
   );
 }

@@ -22,18 +22,6 @@ export const COACH_LEVELS: CoachLevel[] = [
 
 export const NC_POSITIONS: NcPosition[] = ["Owner", "Internship", "NC Partner", "Junior Coach"];
 
-// Fixed set of nutrition clubs a coach can register under. Not open-ended —
-// these are the only branches, pre-seeded into nc_clubs (see
-// supabase/schema.sql and migrations/009_seed_nc_clubs.sql).
-export const NC_CLUBS = [
-  "Wellness Plus+",
-  "Wellness Garden",
-  "Wellness Seed",
-  "Wellness Talk",
-  "Wellness Star",
-  "Wellness Hub",
-] as const;
-
 export const ADMIN_POSITIONS: NcPosition[] = ["Owner", "Internship"];
 
 // The one account allowed to edit/deactivate any coach across the whole

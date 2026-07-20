@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Combobox, type ComboboxOption } from "@/components/combobox";
-import { COACH_LEVELS, NC_CLUBS, NC_POSITIONS } from "@/lib/constants";
+import { COACH_LEVELS, NC_POSITIONS } from "@/lib/constants";
 import { completeOnboarding } from "./actions";
 import type { CoachLevel, NcPosition } from "@/lib/types/database";
 
@@ -23,11 +23,18 @@ interface CoachOption {
   nc_position: string;
 }
 
+interface ClubOption {
+  id: string;
+  name: string;
+}
+
 export function OnboardingForm({
   coaches,
+  clubs,
   isFirstCoach,
 }: {
   coaches: CoachOption[];
+  clubs: ClubOption[];
   isFirstCoach: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -40,7 +47,10 @@ export function OnboardingForm({
   const [sponsorId, setSponsorId] = useState<string | null>(null);
   const [memberId, setMemberId] = useState("");
   const [level, setLevel] = useState<CoachLevel | "">("");
-  const [clubName, setClubName] = useState<(typeof NC_CLUBS)[number] | "">("");
+  const [clubName, setClubName] = useState("");
+  const [clubOptions, setClubOptions] = useState<ComboboxOption[]>(() =>
+    clubs.map((c) => ({ value: c.name, label: c.name }))
+  );
   const [ncPosition, setNcPosition] = useState<NcPosition | "">("");
 
   const sponsorOptions: ComboboxOption[] = coaches.map((c) => ({
@@ -48,6 +58,11 @@ export function OnboardingForm({
     label: c.name,
     description: c.nc_position,
   }));
+
+  function handleCreateClub(name: string) {
+    setClubOptions((prev) => (prev.some((o) => o.value === name) ? prev : [...prev, { value: name, label: name }]));
+    setClubName(name);
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -74,7 +89,7 @@ export function OnboardingForm({
         sponsorId: noSponsor ? null : sponsorId,
         memberId,
         level: level as CoachLevel,
-        clubName,
+        clubName: clubName.trim(),
         ncPosition: ncPosition as NcPosition,
       });
       if (result?.error) {
@@ -158,18 +173,19 @@ export function OnboardingForm({
 
       <div className="space-y-1">
         <Label>Nutrition Club *</Label>
-        <Select value={clubName} onValueChange={(v) => setClubName(v as (typeof NC_CLUBS)[number])}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select your club" />
-          </SelectTrigger>
-          <SelectContent>
-            {NC_CLUBS.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Combobox
+          options={clubOptions}
+          value={clubName || null}
+          onChange={setClubName}
+          allowCreate
+          onCreate={handleCreateClub}
+          placeholder="Select your club"
+          searchPlaceholder="Search or add a club..."
+          emptyText="No clubs found."
+        />
+        <p className="text-xs text-muted-foreground">
+          Don&apos;t see your club? Type its name and choose &quot;Create&quot; to add it.
+        </p>
       </div>
 
       <div className="space-y-1">
