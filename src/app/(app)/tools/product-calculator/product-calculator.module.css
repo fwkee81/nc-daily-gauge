@@ -73,12 +73,6 @@
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
-.panelLabel .en {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--muted-foreground);
-  letter-spacing: 0.04em;
-}
 
 .tierRow {
   display: flex;
@@ -135,13 +129,6 @@
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
-.popTitle .en {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--muted-foreground);
-  letter-spacing: 0.04em;
-  text-transform: none;
-}
 
 .catToggle {
   background: var(--card);
@@ -164,10 +151,6 @@
 .catToggle .chev {
   color: var(--secondary);
   font-size: 12.5px;
-}
-.catToggle .en {
-  font-weight: 600;
-  color: var(--muted-foreground);
 }
 .catBody {
   overflow: hidden;
@@ -233,18 +216,6 @@
   overflow-wrap: break-word;
   word-break: break-word;
 }
-.card .cSub {
-  font-family: var(--font-heading), sans-serif;
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--muted-foreground);
-  margin-top: 3px;
-  line-height: 1.2;
-  text-transform: uppercase;
-  letter-spacing: 0.005em;
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
 .card .cFlat {
   font-size: 9px;
   font-weight: 800;
@@ -288,13 +259,6 @@
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
-.selectedHead .st .en {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--muted-foreground);
-  letter-spacing: 0.04em;
-  text-transform: none;
-}
 .clearLink {
   background: none;
   border: none;
@@ -331,13 +295,6 @@
   font-size: 15px;
   font-weight: 700;
   color: var(--foreground);
-}
-.cartRow .crName .sb {
-  font-size: 11.5px;
-  color: var(--muted-foreground);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
 }
 .cartRow .crStep {
   display: flex;
@@ -393,10 +350,6 @@
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-}
-.totalLine .lblEn {
-  font-weight: 600;
-  text-transform: none;
 }
 .totalRm {
   font-family: var(--font-sans), sans-serif;
@@ -507,13 +460,6 @@
 .rLine .rn {
   font-weight: 700;
   color: var(--foreground);
-}
-.rLine .rs {
-  display: block;
-  font-size: 11.5px;
-  color: var(--muted-foreground);
-  font-weight: 600;
-  text-transform: uppercase;
 }
 .rLine .ramt {
   font-family: var(--font-sans), sans-serif;

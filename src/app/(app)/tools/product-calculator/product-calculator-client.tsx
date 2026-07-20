@@ -20,10 +20,10 @@ import styles from "./product-calculator.module.css";
 
 type SectionKey = "other" | "outer" | "promo";
 
-const SECTIONS: { key: SectionKey; label: string; en: string; products: Product[] }[] = [
-  { key: "other", label: "其他产品", en: "· More Products", products: OTHER },
-  { key: "outer", label: "💆 外在营养护理", en: "· Outer Nutrition", products: OUTER },
-  { key: "promo", label: "🛒 辅销工具", en: "· Promo Tools (统一零售价)", products: PROMO },
+const SECTIONS: { key: SectionKey; label: string; products: Product[] }[] = [
+  { key: "other", label: "More Products", products: OTHER },
+  { key: "outer", label: "💆 Outer Nutrition", products: OUTER },
+  { key: "promo", label: "🛒 Promo Tools (Flat Retail Price)", products: PROMO },
 ];
 
 export function ProductCalculatorClient() {
@@ -75,15 +75,13 @@ export function ProductCalculatorClient() {
   return (
     <div className={styles.root}>
       <div className={styles.header}>
-        <h1 className={styles.disp}>Happy Wellness Family</h1>
-        <p>Herbalife Malaysia 产品价格计算器 · 点击添加产品</p>
+        <h1 className={styles.disp}>Product VP Calculator</h1>
+        <p>Herbalife Malaysia Product Price Calculator · Tap a product to add it</p>
       </div>
 
       <div className={styles.wrap}>
         <div className={styles.panel}>
-          <p className={styles.panelLabel}>
-            价格层级 <span className={styles.en}>/ PRICE TIER</span>
-          </p>
+          <p className={styles.panelLabel}>Price Tier</p>
           <div className={styles.tierRow}>
             {TIERS.map((t) => (
               <div
@@ -98,9 +96,7 @@ export function ProductCalculatorClient() {
           </div>
         </div>
 
-        <p className={styles.popTitle}>
-          常用产品 <span className={styles.en}>· POPULAR PRODUCTS</span>
-        </p>
+        <p className={styles.popTitle}>Popular Products</p>
         <div className={styles.grid}>
           {POPULAR.map((p) => (
             <ProductCard key={p.id} p={p} tier={tier} qty={cart[p.id] ?? 0} onAdd={addItem} />
@@ -111,7 +107,7 @@ export function ProductCalculatorClient() {
           <div key={section.key}>
             <div className={styles.catToggle} onClick={() => toggleSection(section.key)}>
               <span className={styles.chev}>{openSections[section.key] ? "▲" : "▼"}</span>{" "}
-              {section.label} <span className={styles.en}>{section.en}</span>
+              {section.label}
             </div>
             <div className={cn(styles.catBody, openSections[section.key] && styles.open)}>
               <div className={styles.catBodyInner}>
@@ -127,27 +123,24 @@ export function ProductCalculatorClient() {
 
         <div className={styles.panel}>
           <div className={styles.selectedHead}>
-            <span className={styles.st}>
-              已选产品 <span className={styles.en}>· SELECTED</span>
-            </span>
+            <span className={styles.st}>Selected</span>
             <button className={styles.clearLink} onClick={clearAll}>
-              全部清除
+              Clear All
             </button>
           </div>
 
           {cartEntries.length === 0 ? (
             <div className={styles.emptyCart}>
-              还没有添加产品
+              No products added yet.
               <br />
-              点击上方产品格子添加 / Tap a product above
+              Tap a product above to add it.
             </div>
           ) : (
             <div>
               {cartEntries.map((e) => (
                 <div key={e.p.id} className={styles.cartRow}>
                   <div className={styles.crName}>
-                    <div className={styles.nm}>{e.p.n}</div>
-                    <div className={styles.sb}>{e.p.s}</div>
+                    <div className={styles.nm}>{e.p.s}</div>
                   </div>
                   <div className={styles.crStep}>
                     <button onClick={() => decItem(e.p.id)}>−</button>
@@ -164,16 +157,12 @@ export function ProductCalculatorClient() {
           )}
 
           <div className={styles.totals}>
-            <p className={styles.totalLine}>
-              总价格 <span className={styles.lblEn}>/ Total RM</span>
-            </p>
+            <p className={styles.totalLine}>Total RM</p>
             <div className={styles.totalRm}>{fmtRM(totalRM)}</div>
-            <p className={styles.totalLine}>
-              总分数 <span className={styles.lblEn}>/ Total VP</span>
-            </p>
+            <p className={styles.totalLine}>Total VP</p>
             <div className={styles.totalVp}>{fmtVP(totalVP)} VP</div>
             <button className={styles.btnShare} onClick={() => setReceiptOpen(true)}>
-              📋 生成截图 / Share Summary
+              📋 Share Summary
             </button>
           </div>
         </div>
@@ -187,40 +176,33 @@ export function ProductCalculatorClient() {
       >
         <div className={styles.receipt}>
           <div className={styles.rTop}>
-            <h3 className={styles.disp}>Happy Wellness Family</h3>
-            <p>Herbalife Malaysia · 产品订单 / Product Order</p>
-            <div className={styles.rTierBadge}>价格层级 / {TIER_NAME[tier]}</div>
+            <h3 className={styles.disp}>Product VP Calculator</h3>
+            <p>Herbalife Malaysia · Product Order</p>
+            <div className={styles.rTierBadge}>{TIER_NAME[tier]}</div>
           </div>
           <div className={styles.rList}>
             {cartEntries.length === 0 ? (
-              <div className={styles.emptyCart}>没有产品</div>
+              <div className={styles.emptyCart}>No products</div>
             ) : (
               cartEntries.map((e) => (
                 <div key={e.p.id} className={styles.rLine}>
-                  <div>
-                    <span className={styles.rn}>
-                      {e.p.n}
-                      {e.qty > 1 ? ` x${e.qty}` : ""}
-                    </span>
-                    <span className={styles.rs}>{e.p.s}</span>
-                  </div>
+                  <span className={styles.rn}>
+                    {e.p.s}
+                    {e.qty > 1 ? ` x${e.qty}` : ""}
+                  </span>
                   <span className={styles.ramt}>RM {fmtRM(priceOf(e.p, tier) * e.qty)}</span>
                 </div>
               ))
             )}
           </div>
           <div className={styles.rTotals}>
-            <p className={styles.totalLine}>
-              总价格 <span className={styles.lblEn}>/ Total RM</span>
-            </p>
+            <p className={styles.totalLine}>Total RM</p>
             <div className={styles.totalRm}>{fmtRM(totalRM)}</div>
-            <p className={styles.totalLine}>
-              总分数 <span className={styles.lblEn}>/ Total VP</span>
-            </p>
+            <p className={styles.totalLine}>Total VP</p>
             <div className={styles.totalVp}>{fmtVP(totalVP)} VP</div>
           </div>
           <button className={styles.rClose} onClick={() => setReceiptOpen(false)}>
-            ✕ 关闭 / Close
+            ✕ Close
           </button>
         </div>
       </div>
@@ -245,9 +227,8 @@ function ProductCard({
       onClick={() => onAdd(p.id)}
     >
       {qty > 0 && <span className={styles.badge}>{qty}</span>}
-      <div className={styles.cName}>{p.n}</div>
-      <div className={styles.cSub}>{p.s}</div>
-      {p.flat && <div className={styles.cFlat}>统一零售价</div>}
+      <div className={styles.cName}>{p.s}</div>
+      {p.flat && <div className={styles.cFlat}>Flat Retail Price</div>}
       <div className={styles.cPriceRow}>
         <span className={styles.cRm}>RM {fmtRM(priceOf(p, tier))}</span>
         <span className={styles.cVp}>{fmtVP(p.vp)} VP</span>

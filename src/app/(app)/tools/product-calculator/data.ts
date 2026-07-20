@@ -101,19 +101,19 @@ export const PRODUCT_BY_ID: Record<string, Product> = Object.fromEntries(
 );
 
 export const TIERS: { key: TierKey; top: string; bottom: string }[] = [
-  { key: "r", top: "零售", bottom: "Retail" },
-  { key: "d", top: "25%", bottom: "直销商" },
-  { key: "c", top: "35%", bottom: "资深顾问" },
-  { key: "q", top: "42%", bottom: "合格生产者" },
-  { key: "u", top: "50%", bottom: "直销领班" },
+  { key: "r", top: "0%", bottom: "Retail" },
+  { key: "d", top: "25%", bottom: "Member" },
+  { key: "c", top: "35%", bottom: "SC" },
+  { key: "q", top: "42%", bottom: "SB/QP" },
+  { key: "u", top: "50%", bottom: "Supervisor" },
 ];
 
 export const TIER_NAME: Record<TierKey, string> = {
-  r: "零售价 Retail",
-  d: "直销商 Distributor 25%",
-  c: "资深顾问 Senior Consultant 35%",
-  q: "合格生产者 Qualifying Producer 42%",
-  u: "直销领班 Supervisor 50%",
+  r: "Retail",
+  d: "Member 25%",
+  c: "SC 35%",
+  q: "SB/QP 42%",
+  u: "Supervisor 50%",
 };
 
 export function fmtRM(n: number): string {
