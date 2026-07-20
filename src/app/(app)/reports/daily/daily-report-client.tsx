@@ -428,6 +428,7 @@ export function DailyReportClient({
     const key = `nc-cup-milestone-${clubId}-${date}`;
     if (window.localStorage.getItem(key)) return;
     window.localStorage.setItem(key, "1");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowMilestone(true);
   }, [clubId, date, totals.total_cups]);
 
