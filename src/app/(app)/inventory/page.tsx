@@ -1,24 +1,11 @@
 import { redirect } from "next/navigation";
-import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
+import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { InventoryClient } from "./inventory-client";
 
 export default async function InventoryPage() {
   const coach = await getCurrentCoach();
   if (!coach) redirect("/onboarding");
-
-  // Soft-launch: Inventory is only visible to the super admin for now, not
-  // rolled out to every coach yet. Remove this gate (and the matching one in
-  // NavLinks) when it's ready for general use.
-  const user = await getCurrentUser();
-  if (user?.email !== SUPER_ADMIN_EMAIL) {
-    return (
-      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        Inventory isn&apos;t available yet.
-      </div>
-    );
-  }
 
   if (!coach.nc_club_id) {
     return (

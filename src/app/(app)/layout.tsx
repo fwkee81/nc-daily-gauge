@@ -3,7 +3,6 @@ import Link from "next/link";
 import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
-import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { NavLinks } from "./nav-links";
 import { signOut } from "./actions";
 
@@ -26,7 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/dashboard">
               <Logo />
             </Link>
-            <NavLinks isAdmin={coach.is_admin} isSuperAdmin={user.email === SUPER_ADMIN_EMAIL} />
+            <NavLinks isAdmin={coach.is_admin} />
           </div>
           <div className="flex items-center gap-3">
             <Link

@@ -24,22 +24,14 @@ function pillClass(active: boolean) {
   );
 }
 
-export function NavLinks({
-  isAdmin,
-  isSuperAdmin,
-}: {
-  isAdmin: boolean;
-  isSuperAdmin: boolean;
-}) {
+export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const inAdminGroup = ADMIN_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
 
   const primaryLinks = [
     { href: "/checkin", label: "Check-in" },
     { href: "/reports/daily", label: "Daily Report" },
-    // Soft-launch: only visible to the super admin for now — see the
-    // matching gate in inventory/page.tsx.
-    ...(isSuperAdmin ? [{ href: "/inventory", label: "Inventory" }] : []),
+    { href: "/inventory", label: "Inventory" },
     ...(isAdmin
       ? [{ href: "/admin/customers", label: "Customers" }]
       : [{ href: "/reports/metrics", label: "NC Metrics" }]),
