@@ -362,6 +362,7 @@
   font-size: 16.5px;
   line-height: 1.55;
   color: #e7ece9;
+  white-space: pre-line;
 }
 
 .statusTitle {

@@ -129,7 +129,7 @@ export function WellnessEvaluationClient() {
     const inIframe = window.self !== window.top;
     if (inIframe) {
       alert(
-        "当前是预览模式，浏览器的打印/导出PDF功能在这里无法使用。\n\n请先把网址在手机浏览器（Safari/Chrome）直接打开，这个按钮就能正常导出PDF。"
+        "当前是预览模式，浏览器的打印/导出PDF功能在这里无法使用。\n\n请先把网址在手机浏览器（Safari/Chrome）直接打开，这个按钮就能正常导出PDF。\n\n---\n\nThis is preview mode — the browser's print/export PDF feature isn't available here.\n\nPlease open this link directly in your phone's browser (Safari/Chrome) first, then this button will work."
       );
       return;
     }
@@ -138,14 +138,14 @@ export function WellnessEvaluationClient() {
     const isIOSNonSafari = isIOS && /CriOS|FxiOS|EdgiOS/.test(ua);
     if (isIOSNonSafari) {
       alert(
-        "iPhone 上的 Chrome / Firefox / Edge 不支持打印功能，这是苹果系统的限制（只有 Safari 有这个权限）。\n\n请改用 Safari 打开这个网页，再按一次「⬇ PDF」即可。"
+        "iPhone 上的 Chrome / Firefox / Edge 不支持打印功能，这是苹果系统的限制（只有 Safari 有这个权限）。\n\n请改用 Safari 打开这个网页，再按一次「⬇ PDF」即可。\n\n---\n\nChrome / Firefox / Edge on iPhone don't support printing — this is an Apple system restriction (only Safari has this permission).\n\nPlease open this page in Safari instead, then tap \"⬇ PDF\" again."
       );
       return;
     }
     try {
       window.print();
     } catch {
-      alert("导出PDF时发生问题，请改用浏览器分享/打印功能手动导出。");
+      alert("导出PDF时发生问题，请改用浏览器分享/打印功能手动导出。\n\nSomething went wrong exporting the PDF — please use your browser's share/print feature to export manually.");
     }
   }
 
@@ -159,7 +159,7 @@ export function WellnessEvaluationClient() {
       <div className={styles.root}>
         <div className={styles.topmark}>
           <div className={styles.word}>WELLNESS EVALUATION</div>
-          <div className={styles.sub}>健康评估表 · 体测数据分析</div>
+          <div className={styles.sub}>健康评估表 Health Report · 体测数据分析 Body Composition Analysis</div>
           <div className={styles.rule} />
         </div>
 
@@ -167,12 +167,12 @@ export function WellnessEvaluationClient() {
           <div className={styles.reportTopbar}>
             <div className={styles.rName}>{meta.name}</div>
             <div className={styles.rMetaRow}>
-              {meta.gender === "F" ? "女 Female" : "男 Male"} · {meta.age}岁 · {meta.height}cm
+              {meta.gender === "F" ? "女 Female" : "男 Male"} · {meta.age}岁 yrs · {meta.height}cm
             </div>
             <div className={styles.rMetaRow}>
               📅 {meta.date}
               {meta.contact ? `  ·  📞 ${meta.contact}` : ""}
-              {meta.coachName ? `  ·  教练 ${meta.coachName}` : ""}
+              {meta.coachName ? `  ·  教练 Coach ${meta.coachName}` : ""}
             </div>
             <div className={styles.topbarBtns}>
               <button className={styles.btnEdit} onClick={handleExport}>
@@ -217,8 +217,8 @@ export function WellnessEvaluationClient() {
               <span className={styles.k}>差距 Difference</span>
               <span className={cn(styles.v, diffDone ? styles.diffGood : styles.diffBad)}>
                 {diffDone
-                  ? "已达标 ✓"
-                  : `${report.weightDiff > 0 ? "需减 " : "需增 "}${diffAbs.toFixed(1)} kg`}
+                  ? "已达标 Achieved ✓"
+                  : `${report.weightDiff > 0 ? "需减 To Lose " : "需增 To Gain "}${diffAbs.toFixed(1)} kg`}
               </span>
             </div>
           </div>
@@ -248,7 +248,7 @@ export function WellnessEvaluationClient() {
 
             <div className={styles.heroMain}>
               <div className={styles.heroMainValue}>{kcal}</div>
-              <div className={styles.heroMainLabel}>KCAL / 天 · 每日建议摄取</div>
+              <div className={styles.heroMainLabel}>KCAL / 天 Day · 每日建议摄取 Daily Recommended Intake</div>
             </div>
 
             <div className={styles.heroSubGrid}>
@@ -271,6 +271,9 @@ export function WellnessEvaluationClient() {
 
           <div className={styles.footerNote}>
             本报告依据体测仪数据与一般健康参考值计算，仅供生活方式建议参考，不作为医疗诊断。
+            <br />
+            This report is calculated from body composition scanner data and general health
+            reference values. For lifestyle guidance only — not a medical diagnosis.
           </div>
         </div>
       </div>
@@ -281,7 +284,7 @@ export function WellnessEvaluationClient() {
     <div className={styles.root}>
       <div className={styles.topmark}>
         <div className={styles.word}>WELLNESS EVALUATION</div>
-        <div className={styles.sub}>健康评估表 · 体测数据分析</div>
+        <div className={styles.sub}>健康评估表 Health Report · 体测数据分析 Body Composition Analysis</div>
         <div className={styles.rule} />
       </div>
 
@@ -296,12 +299,12 @@ export function WellnessEvaluationClient() {
               type="text"
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
-              placeholder="客户姓名"
+              placeholder="客户姓名 Client Name"
             />
           </div>
           <div className={styles.field}>
             <label>
-              联络号码 Contact <span className={styles.optTag}>非必填</span>
+              联络号码 Contact <span className={styles.optTag}>非必填 Optional</span>
             </label>
             <input
               type="text"
@@ -318,13 +321,13 @@ export function WellnessEvaluationClient() {
             </div>
             <div className={styles.field}>
               <label>
-                教练 Coach <span className={styles.optTag}>非必填</span>
+                教练 Coach <span className={styles.optTag}>非必填 Optional</span>
               </label>
               <input
                 type="text"
                 value={form.coachName}
                 onChange={(e) => set("coachName", e.target.value)}
-                placeholder="教练姓名"
+                placeholder="教练姓名 Coach Name"
               />
             </div>
           </div>
@@ -474,7 +477,10 @@ export function WellnessEvaluationClient() {
                 </div>
               ))}
             </div>
-            <div className={styles.hint}>1-3 肥胖需减重 · 4 营养不良 · 5 标准 · 6,8,9 运动型 · 7 过瘦需增重</div>
+            <div className={styles.hint}>
+              1-3 肥胖需减重 Obese/Lose Weight · 4 营养不良 Undernourished · 5 标准 Standard · 6,8,9
+              运动型 Athletic · 7 过瘦需增重 Underweight/Gain Weight
+            </div>
           </div>
         </div>
 
@@ -482,7 +488,11 @@ export function WellnessEvaluationClient() {
           生成报告 Generate Report
         </button>
         {error && (
-          <div className={styles.errMsg}>请先填写姓名、性别、年龄、身高、体重与基础代谢率。</div>
+          <div className={styles.errMsg}>
+            请先填写姓名、性别、年龄、身高、体重与基础代谢率。
+            <br />
+            Please fill in name, gender, age, height, weight and BMR first.
+          </div>
         )}
       </div>
     </div>

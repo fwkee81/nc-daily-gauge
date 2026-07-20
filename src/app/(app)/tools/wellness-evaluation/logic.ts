@@ -47,9 +47,9 @@ export interface ReportResult {
 }
 
 export const GOAL_LABELS: Record<Goal, string> = {
-  loss: "建议：减重",
-  maintain: "体重维持良好",
-  gain: "建议：增重",
+  loss: "建议：减重 Recommended: Weight Loss",
+  maintain: "体重维持良好 Weight Well Maintained",
+  gain: "建议：增重 Recommended: Weight Gain",
 };
 
 function gradeRange(value: number, lo: number, hi: number, tol = 5): Grade {
@@ -97,8 +97,9 @@ function dirPoint(value: number, ref: number): Dir {
 }
 
 export function verdictText(grade: Grade, dir: Dir): string {
-  if (grade === "good") return "✓ 标准";
-  const word = dir === "high" ? "偏高" : dir === "low" ? "偏低" : "需改善";
+  if (grade === "good") return "✓ 标准 Normal";
+  const word =
+    dir === "high" ? "偏高 High" : dir === "low" ? "偏低 Low" : "需改善 Needs Improvement";
   return (grade === "warn" ? "⚠ " : "✕ ") + word;
 }
 
@@ -149,7 +150,7 @@ export function computeReport(input: ReportInputs): ReportResult {
       key: "weight",
       nm: "体重 Weight",
       val: `${weight.toFixed(1)} kg`,
-      ref: `理想 ${targetWeight.toFixed(1)} kg`,
+      ref: `理想 Ideal ${targetWeight.toFixed(1)} kg`,
       grade: gradePoint(weight, targetWeight, false),
       dir: dirPoint(weight, targetWeight),
     },
@@ -157,7 +158,7 @@ export function computeReport(input: ReportInputs): ReportResult {
       key: "bodyfat",
       nm: "体脂% Body Fat",
       val: bodyFat == null ? "—" : `${bodyFat.toFixed(1)}%`,
-      ref: `标准 ${fatRange[0]}-${fatRange[1]}%`,
+      ref: `标准 Normal ${fatRange[0]}-${fatRange[1]}%`,
       grade: bodyFat == null ? "warn" : gradeRange(bodyFat, fatRange[0], fatRange[1]),
       dir: bodyFat == null ? null : dirRange(bodyFat, fatRange[0], fatRange[1]),
     },
@@ -165,7 +166,7 @@ export function computeReport(input: ReportInputs): ReportResult {
       key: "visceral",
       nm: "内脏脂肪 Visceral Fat",
       val: visceral == null ? "—" : String(visceral),
-      ref: "数值越低越好",
+      ref: "数值越低越好 Lower is Better",
       grade: visceral == null ? "warn" : gradeVisceral(visceral, gender),
       dir: "high",
     },
@@ -173,7 +174,7 @@ export function computeReport(input: ReportInputs): ReportResult {
       key: "metaage",
       nm: "代谢年龄 Metabolic Age",
       val: metaAge == null ? "—" : String(metaAge),
-      ref: `实际年龄 ${age} 岁`,
+      ref: `实际年龄 Actual Age ${age}`,
       grade: metaAge == null ? "warn" : gradeMetaAge(metaAge, age),
       dir: "high",
     },
@@ -181,7 +182,7 @@ export function computeReport(input: ReportInputs): ReportResult {
       key: "muscle",
       nm: "肌肉量 Muscle Mass",
       val: muscle == null ? "—" : `${muscle.toFixed(1)} kg`,
-      ref: `理想 ${idealMuscle.toFixed(1)} kg`,
+      ref: `理想 Ideal ${idealMuscle.toFixed(1)} kg`,
       grade: muscle == null ? "warn" : gradePoint(muscle, idealMuscle, true),
       dir: "low",
     },
@@ -189,7 +190,7 @@ export function computeReport(input: ReportInputs): ReportResult {
       key: "rating",
       nm: "身体体格 Physical Rating",
       val: String(rating),
-      ref: "1-9 等级",
+      ref: "1-9 等级 Scale",
       grade: gradePhysical(rating),
       dir: [1, 2, 3].includes(rating) ? "high" : [4, 7].includes(rating) ? "low" : null,
     },
@@ -197,7 +198,7 @@ export function computeReport(input: ReportInputs): ReportResult {
       key: "water",
       nm: "水分% Body Water",
       val: water == null ? "—" : `${water.toFixed(1)}%`,
-      ref: `标准 ${waterRange[0]}-${waterRange[1]}%`,
+      ref: `标准 Normal ${waterRange[0]}-${waterRange[1]}%`,
       grade: water == null ? "warn" : gradeRange(water, waterRange[0], waterRange[1]),
       dir: water == null ? null : dirRange(water, waterRange[0], waterRange[1]),
     },
@@ -205,21 +206,31 @@ export function computeReport(input: ReportInputs): ReportResult {
       key: "bone",
       nm: "骨量 Bone Mass",
       val: bone == null ? "—" : `${bone.toFixed(2)} kg`,
-      ref: `参考 ${boneReference.toFixed(2)} kg`,
+      ref: `参考 Reference ${boneReference.toFixed(2)} kg`,
       grade: bone == null ? "warn" : gradePoint(bone, boneReference, false),
       dir: bone == null ? null : dirPoint(bone, boneReference),
     },
   ];
 
-  const bads = cards.filter((c) => c.grade === "bad").map((c) => c.nm.split(" ")[0]);
-  const warns = cards.filter((c) => c.grade === "warn").map((c) => c.nm.split(" ")[0]);
+  const bads = cards.filter((c) => c.grade === "bad");
+  const warns = cards.filter((c) => c.grade === "warn");
+  const zhNames = (list: StatusCard[]) => list.slice(0, 2).map((c) => c.nm.split(" ")[0]).join("、");
+  const enNames = (list: StatusCard[]) =>
+    list.slice(0, 2).map((c) => c.nm.split(" ").slice(1).join(" ")).join(", ");
+
   let summary: string;
   if (bads.length) {
-    summary = `今天的重点：${bads.slice(0, 2).join("、")} 偏离标准较多，建议优先调整。`;
+    summary =
+      `今天的重点：${zhNames(bads)} 偏离标准较多，建议优先调整。\n` +
+      `Today's focus: ${enNames(bads)} deviate most from standard — adjust these first.`;
   } else if (warns.length) {
-    summary = `整体状况不错，${warns.slice(0, 2).join("、")} 还有提升空间。`;
+    summary =
+      `整体状况不错，${zhNames(warns)} 还有提升空间。\n` +
+      `Overall in good shape — ${enNames(warns)} still has room to improve.`;
   } else {
-    summary = "各项指标都在标准范围内，状况非常理想，保持现有习惯即可！";
+    summary =
+      "各项指标都在标准范围内，状况非常理想，保持现有习惯即可！\n" +
+      "All metrics are within the normal range — great shape, just keep up the good habits!";
   }
 
   return {
