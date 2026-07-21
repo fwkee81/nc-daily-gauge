@@ -27,7 +27,7 @@ export async function submitCheckin(
 
   const { data: customer, error: customerError } = await supabase
     .from("customers")
-    .select("name, consumption_balance")
+    .select("name, consumption_balance, nc_level")
     .eq("id", customerId)
     .single();
 
@@ -52,6 +52,7 @@ export async function submitCheckin(
     checkin: data,
     name: displayName,
     balance: customer.consumption_balance,
+    ncLevel: customer.nc_level,
     isBirthdayShake,
   };
 }

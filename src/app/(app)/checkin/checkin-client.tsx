@@ -14,8 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { playChime, sayHappyBirthday } from "@/lib/chime";
-import { CONSUMPTION_TYPES, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
-import type { ConsumptionType } from "@/lib/types/database";
+import { CONSUMPTION_TYPES, NC_LEVEL_CUPS, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
+import type { ConsumptionType, CustomerNcLevel } from "@/lib/types/database";
 import { submitCheckin } from "./actions";
 import { WalkinDialog } from "./walkin-dialog";
 
@@ -75,6 +75,33 @@ const CONFETTI_COLORS = [
   "#4dabf7",
 ];
 
+// Visual stand-in for the customer's physical punch card — balance is an
+// open-ended top-up counter (see NC_LEVEL_CUPS), so a renewed card can show
+// more remaining than the card size; the bar just clamps at full in that case.
+function CardBalance({ ncLevel, balance }: { ncLevel: CustomerNcLevel; balance: number }) {
+  const cardSize = NC_LEVEL_CUPS[ncLevel];
+  const used = Math.max(0, cardSize - balance);
+  const percentUsed = Math.min(100, Math.round((used / cardSize) * 100));
+
+  return (
+    <div className="space-y-1.5 rounded-lg border p-3">
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm text-muted-foreground">{ncLevel} card</span>
+        <span className="text-lg font-bold text-primary">{balance} left</span>
+      </div>
+      <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary transition-[width]"
+          style={{ width: `${percentUsed}%` }}
+        />
+      </div>
+      <p className="text-right text-xs text-muted-foreground">
+        {Math.min(used, cardSize)} / {cardSize} used
+      </p>
+    </div>
+  );
+}
+
 export function CheckinClient({
   checkinOptions,
   customers,
@@ -101,6 +128,7 @@ export function CheckinClient({
   const [result, setResult] = useState<{
     name: string;
     balance: number;
+    ncLevel?: CustomerNcLevel;
     isBirthdayShake?: boolean;
   } | null>(null);
   const [walkinOpen, setWalkinOpen] = useState(false);
@@ -166,7 +194,12 @@ export function CheckinClient({
 
     playChime();
     if (res.isBirthdayShake) sayHappyBirthday(res.name!);
-    setResult({ name: res.name!, balance: res.balance!, isBirthdayShake: res.isBirthdayShake });
+    setResult({
+      name: res.name!,
+      balance: res.balance!,
+      ncLevel: res.ncLevel ?? undefined,
+      isBirthdayShake: res.isBirthdayShake,
+    });
     setSelectedKey(null);
     setCups(1);
     setIsBirthdayShake(false);
@@ -425,11 +458,15 @@ export function CheckinClient({
                 <DialogTitle className="text-2xl">Checked in!</DialogTitle>
               </DialogHeader>
               {result && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <p className="text-xl font-semibold">{result.name}</p>
-                  <p className="text-base text-muted-foreground">
-                    Consumption balance left: {result.balance}
-                  </p>
+                  {result.ncLevel && NC_LEVEL_CUPS[result.ncLevel] > 1 ? (
+                    <CardBalance ncLevel={result.ncLevel} balance={result.balance} />
+                  ) : (
+                    <p className="text-base text-muted-foreground">
+                      Consumption balance left: {result.balance}
+                    </p>
+                  )}
                   {result.balance < RENEWAL_REMINDER_THRESHOLD && (
                     <p className="text-base font-medium text-destructive">
                       Gentle reminder {result.name}, to renew your nutrition breakfast card.
