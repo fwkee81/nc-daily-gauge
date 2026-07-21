@@ -9,13 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { playChime, sayHappyBirthday } from "@/lib/chime";
-import { CONSUMPTION_TYPES, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
-import type { ConsumptionType } from "@/lib/types/database";
+import { CONSUMPTION_TYPES, NC_LEVEL_CUPS, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
+import type { ConsumptionType, CustomerNcLevel } from "@/lib/types/database";
 import { submitCheckin } from "./actions";
 import { WalkinDialog } from "./walkin-dialog";
 
@@ -75,6 +74,33 @@ const CONFETTI_COLORS = [
   "#4dabf7",
 ];
 
+// Visual stand-in for the customer's physical punch card — balance is an
+// open-ended top-up counter (see NC_LEVEL_CUPS), so a renewed card can show
+// more remaining than the card size; the bar just clamps at full in that case.
+function CardBalance({ ncLevel, balance }: { ncLevel: CustomerNcLevel; balance: number }) {
+  const cardSize = NC_LEVEL_CUPS[ncLevel];
+  const used = Math.max(0, cardSize - balance);
+  const percentUsed = Math.min(100, Math.round((used / cardSize) * 100));
+
+  return (
+    <div className="space-y-1.5 rounded-lg border p-3">
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm text-muted-foreground">{ncLevel} card</span>
+        <span className="text-lg font-bold text-primary">{balance} left</span>
+      </div>
+      <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary transition-[width]"
+          style={{ width: `${percentUsed}%` }}
+        />
+      </div>
+      <p className="text-right text-xs text-muted-foreground">
+        {Math.min(used, cardSize)} / {cardSize} used
+      </p>
+    </div>
+  );
+}
+
 export function CheckinClient({
   checkinOptions,
   customers,
@@ -101,6 +127,7 @@ export function CheckinClient({
   const [result, setResult] = useState<{
     name: string;
     balance: number;
+    ncLevel?: CustomerNcLevel;
     isBirthdayShake?: boolean;
   } | null>(null);
   const [walkinOpen, setWalkinOpen] = useState(false);
@@ -166,7 +193,12 @@ export function CheckinClient({
 
     playChime();
     if (res.isBirthdayShake) sayHappyBirthday(res.name!);
-    setResult({ name: res.name!, balance: res.balance!, isBirthdayShake: res.isBirthdayShake });
+    setResult({
+      name: res.name!,
+      balance: res.balance!,
+      ncLevel: res.ncLevel ?? undefined,
+      isBirthdayShake: res.isBirthdayShake,
+    });
     setSelectedKey(null);
     setCups(1);
     setIsBirthdayShake(false);
@@ -297,15 +329,15 @@ export function CheckinClient({
           to the top of its column on desktop instead, where it already sits
           beside (not below) the list. */}
       <div className="fixed inset-x-0 bottom-0 z-40 rounded-t-xl border-t bg-background p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.12)] lg:sticky lg:top-4 lg:inset-x-auto lg:bottom-auto lg:z-auto lg:h-fit lg:rounded-md lg:border lg:shadow-none">
-        <h2 className="text-lg font-semibold">Selection</h2>
+        <h2 className="text-xl font-semibold">Selection</h2>
         {selected ? (
-          <div className="mt-3 space-y-4">
+          <div className="mt-3 space-y-5">
             <div>
-              <p className="text-xl font-medium">{selected.name}</p>
+              <p className="text-2xl font-medium">{selected.name}</p>
               <p className="text-base text-muted-foreground">
                 Click their name again to switch between 1 and 2 cups.
               </p>
-              <Badge className="mt-2 text-base">
+              <Badge className="mt-2 text-lg">
                 {cups} cup{cups > 1 ? "s" : ""}
               </Badge>
             </div>
@@ -314,22 +346,23 @@ export function CheckinClient({
               {!showBackfill ? (
                 <button
                   type="button"
-                  className="text-sm text-muted-foreground underline underline-offset-4"
+                  className="text-base text-muted-foreground underline underline-offset-4"
                   onClick={() => setShowBackfill(true)}
                 >
                   Not today? Backfill a different date
                 </button>
               ) : (
                 <div className="space-y-1">
-                  <Label className="text-base">Check-in date</Label>
+                  <Label className="text-lg">Check-in date</Label>
                   <Input
                     type="date"
                     max={todayStr}
                     value={checkinDate}
                     onChange={(e) => setCheckinDate(e.target.value)}
+                    className="h-12 text-lg"
                   />
                   {checkinDate !== todayStr && (
-                    <p className="text-sm font-medium text-destructive">
+                    <p className="text-base font-medium text-destructive">
                       Backfilling for {format(new Date(`${checkinDate}T00:00:00`), "d MMM yyyy")} —
                       not today.
                     </p>
@@ -339,20 +372,24 @@ export function CheckinClient({
             </div>
 
             <div>
-              <Label className="mb-2 block text-base">Consumption type</Label>
-              <RadioGroup
-                value={consumptionType}
-                onValueChange={(v) => setConsumptionType(v as ConsumptionType)}
-              >
+              <Label className="mb-2 block text-lg">Consumption type</Label>
+              <div className="grid grid-cols-2 gap-3">
                 {CONSUMPTION_TYPES.map((type) => (
-                  <div key={type} className="flex items-center gap-2">
-                    <RadioGroupItem value={type} id={`type-${type}`} />
-                    <Label htmlFor={`type-${type}`} className="text-lg font-normal">
-                      {type}
-                    </Label>
-                  </div>
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setConsumptionType(type)}
+                    className={cn(
+                      "rounded-xl border-2 px-4 py-4 text-lg font-semibold transition-colors",
+                      consumptionType === type
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-input hover:bg-accent"
+                    )}
+                  >
+                    {type}
+                  </button>
                 ))}
-              </RadioGroup>
+              </div>
             </div>
 
             {birthdayShakeEligible && (
@@ -425,11 +462,15 @@ export function CheckinClient({
                 <DialogTitle className="text-2xl">Checked in!</DialogTitle>
               </DialogHeader>
               {result && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <p className="text-xl font-semibold">{result.name}</p>
-                  <p className="text-base text-muted-foreground">
-                    Consumption balance left: {result.balance}
-                  </p>
+                  {result.ncLevel && NC_LEVEL_CUPS[result.ncLevel] > 1 ? (
+                    <CardBalance ncLevel={result.ncLevel} balance={result.balance} />
+                  ) : (
+                    <p className="text-base text-muted-foreground">
+                      Consumption balance left: {result.balance}
+                    </p>
+                  )}
                   {result.balance < RENEWAL_REMINDER_THRESHOLD && (
                     <p className="text-base font-medium text-destructive">
                       Gentle reminder {result.name}, to renew your nutrition breakfast card.
