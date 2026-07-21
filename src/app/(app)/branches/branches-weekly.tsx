@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
+import { getMilestoneTier } from "@/lib/cup-milestones";
 import type { BranchWeeklyDailyRow, BranchWeeklySummaryRow } from "@/lib/types/database";
 
 function Stat({
@@ -35,24 +36,25 @@ function DailyBars({ daily }: { daily: BranchWeeklyDailyRow[] }) {
       className="mb-4 grid items-end gap-2 rounded-md border bg-muted/30 p-3"
       style={{ gridTemplateColumns: `repeat(${daily.length}, minmax(0, 1fr))` }}
     >
-      {daily.map((d) => (
-        <div key={d.date} className="flex flex-col items-center gap-1">
-          <span className="text-xs font-medium">{d.total_cups}</span>
-          <div
-            className="flex w-full items-end justify-center"
-            style={{ height: BAR_HEIGHT_PX }}
-          >
-            <div
-              className="w-6 rounded-t bg-primary"
-              style={{ height: Math.max(4, Math.round((d.total_cups / max) * BAR_HEIGHT_PX)) }}
-              title={`${format(parseISO(d.date), "d MMM")} · ${d.total_cups} cups`}
-            />
+      {daily.map((d) => {
+        const tierEmoji = getMilestoneTier(d.total_cups)?.emoji;
+        return (
+          <div key={d.date} className="flex flex-col items-center gap-1">
+            <span className="flex items-center gap-0.5 text-xs font-medium">
+              {d.total_cups}
+              {tierEmoji && <span aria-hidden>{tierEmoji}</span>}
+            </span>
+            <div className="flex w-full items-end justify-center" style={{ height: BAR_HEIGHT_PX }}>
+              <div
+                className="w-6 rounded-t bg-primary"
+                style={{ height: Math.max(4, Math.round((d.total_cups / max) * BAR_HEIGHT_PX)) }}
+                title={`${format(parseISO(d.date), "d MMM")} · ${d.total_cups} cups`}
+              />
+            </div>
+            <span className="text-[11px] text-muted-foreground">{format(parseISO(d.date), "EEE")}</span>
           </div>
-          <span className="text-[11px] text-muted-foreground">
-            {format(parseISO(d.date), "EEE")}
-          </span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

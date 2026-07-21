@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getMilestoneTier } from "@/lib/cup-milestones";
 import type { BranchCoachCupsCompareRow, BranchDailySummaryRow } from "@/lib/types/database";
 
 type DiffColor = "green" | "yellow" | "red";
@@ -38,17 +39,22 @@ function Stat({
   value,
   previous,
   decimals = 0,
+  milestoneEmoji,
 }: {
   label: string;
   value: number;
   previous: number;
   decimals?: number;
+  milestoneEmoji?: string;
 }) {
   const diff = diffInfo(Number(value), Number(previous), decimals);
   return (
     <div className="rounded-md border px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-lg font-semibold">{Number(value).toFixed(decimals)}</p>
+      <p className="flex items-center gap-1 text-lg font-semibold">
+        {Number(value).toFixed(decimals)}
+        {milestoneEmoji && <span aria-hidden>{milestoneEmoji}</span>}
+      </p>
       <p className={cn("text-xs font-medium", DIFF_COLOR_CLASS[diff.color])}>{diff.text}</p>
     </div>
   );
@@ -109,7 +115,12 @@ export function BranchesList({
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                <Stat label="Total Cups" value={branch.total_cups} previous={branch.prev_total_cups} />
+                <Stat
+                  label="Total Cups"
+                  value={branch.total_cups}
+                  previous={branch.prev_total_cups}
+                  milestoneEmoji={getMilestoneTier(branch.total_cups)?.emoji}
+                />
                 <button
                   type="button"
                   className="rounded-md border px-3 py-2 text-left transition-colors hover:bg-accent"
