@@ -45,7 +45,7 @@ import {
   voidCheckinAction,
   getCheckinHistory,
   getCustomerProfile,
-  saveDailyReportNoteAction,
+  addDailyReportLogAction,
 } from "./actions";
 
 interface CoachCupRow {
@@ -291,8 +291,16 @@ export interface LedgerRow {
   newBalance: number;
   byCoachName: string | null;
   createdAt: string;
-  note: string | null;
-  noteByCoachName: string | null;
+}
+
+// One free-text entry in a club's "what happened today" log — not tied to
+// any customer or ledger row, shown as its own section right after the
+// New/Renewals table.
+export interface DailyLogEntry {
+  id: string;
+  note: string;
+  coachName: string | null;
+  createdAt: string;
 }
 
 interface HistoryEntry {
@@ -331,6 +339,7 @@ export function DailyReportClient({
   excludedCustomerIds,
   pluginCustomerIds,
   ledger,
+  dailyLogs,
 }: {
   date: string;
   hasExplicitDate: boolean;
@@ -352,6 +361,7 @@ export function DailyReportClient({
   excludedCustomerIds: string[];
   pluginCustomerIds: string[];
   ledger: LedgerRow[];
+  dailyLogs: DailyLogEntry[];
 }) {
   const router = useRouter();
   const [checkinSort, setCheckinSort] = useState<{ key: CheckinSortKey; dir: "asc" | "desc" } | null>(
@@ -694,7 +704,6 @@ export function DailyReportClient({
                 <TableHead>Balance</TableHead>
                 <TableHead>By Coach</TableHead>
                 <TableHead>Time</TableHead>
-                <TableHead>Remark / Post Meeting</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -715,14 +724,11 @@ export function DailyReportClient({
                   </TableCell>
                   <TableCell>{r.byCoachName ?? "—"}</TableCell>
                   <TableCell>{format(new Date(r.createdAt), "p")}</TableCell>
-                  <TableCell>
-                    <LedgerNoteCell row={r} />
-                  </TableCell>
                 </TableRow>
               ))}
               {ledger.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No new customers or renewals on this day.
                   </TableCell>
                 </TableRow>
@@ -730,6 +736,14 @@ export function DailyReportClient({
             </TableBody>
           </Table>
         </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold">Remark / Post Meeting</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          What happened today — not tied to any one customer.
+        </p>
+        <DailyLogSection clubId={clubId} date={date} logs={dailyLogs} />
       </div>
 
       <div>
@@ -788,57 +802,66 @@ export function DailyReportClient({
   );
 }
 
-function LedgerNoteCell({ row }: { row: LedgerRow }) {
+function DailyLogSection({
+  clubId,
+  date,
+  logs,
+}: {
+  clubId: string;
+  date: string;
+  logs: DailyLogEntry[];
+}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [note, setNote] = useState(row.note ?? "");
+  const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
-  async function handleSave() {
+  async function handleAdd() {
+    if (!note.trim()) {
+      toast.error("Please enter a note.");
+      return;
+    }
     setSaving(true);
-    const res = await saveDailyReportNoteAction(row.kind, row.id, note);
+    const res = await addDailyReportLogAction(clubId, date, note);
     setSaving(false);
     if (res.error) {
       toast.error(res.error);
       return;
     }
-    toast.success("Note saved.");
-    setOpen(false);
+    setNote("");
+    toast.success("Note added.");
     router.refresh();
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : setOpen(false))}>
-      <DialogTrigger
-        render={<button type="button" className="max-w-56 text-left text-sm" />}
-      >
-        {row.note ? (
-          <span className="line-clamp-2 whitespace-pre-wrap">{row.note}</span>
-        ) : (
-          <span className="text-muted-foreground underline underline-offset-4">Add note</span>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Remark / Post Meeting — {row.customerName}</DialogTitle>
-        </DialogHeader>
+    <div className="mt-2 space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="What happened today..."
+          rows={2}
+          className="flex-1"
+        />
+        <Button onClick={handleAdd} disabled={saving} className="sm:self-end">
+          {saving ? "Adding..." : "Add"}
+        </Button>
+      </div>
 
-        <div className="space-y-3">
-          <Textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Notes from a post-signup or post-renewal meeting..."
-            rows={5}
-          />
-          {row.noteByCoachName && (
-            <p className="text-xs text-muted-foreground">Last saved by {row.noteByCoachName}</p>
-          )}
-          <Button onClick={handleSave} disabled={saving} className="w-full">
-            {saving ? "Saving..." : "Save"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      {logs.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No notes yet today.</p>
+      ) : (
+        <ul className="space-y-2">
+          {logs.map((l) => (
+            <li key={l.id} className="rounded-md border px-3 py-2 text-sm">
+              <p className="whitespace-pre-wrap">{l.note}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {l.coachName ?? "—"} · {format(new Date(l.createdAt), "p")}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

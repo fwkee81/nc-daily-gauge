@@ -50,50 +50,25 @@ export async function getCheckinHistory(checkinId: string) {
   return { data: data ?? [] };
 }
 
-// Saves a coach's remark against one New/Renewals ledger row (upserts on
-// whichever of customer_id/renewal_id matches `kind`). nc_club_id and
-// updated_by_coach_id are always derived server-side — never trust the
-// client for either, since RLS on daily_report_notes checks both.
-export async function saveDailyReportNoteAction(
-  kind: "new" | "renewal",
-  refId: string,
-  note: string
-) {
+// Appends one entry to the day's "what happened today" log for a club — not
+// tied to any customer or ledger row. nc_club_id comes from the caller (the
+// club the Daily Report page is currently showing), but created_by_coach_id
+// is always derived server-side — never trust the client for that, since
+// RLS on daily_report_logs checks it.
+export async function addDailyReportLogAction(clubId: string, date: string, note: string) {
   const coach = await getCurrentCoach();
   if (!coach) return { error: "Not authorized." };
 
+  const trimmed = note.trim();
+  if (!trimmed) return { error: "Please enter a note." };
+
   const supabase = await createClient();
-
-  let ncClubId: string | null = null;
-  if (kind === "new") {
-    const { data } = await supabase
-      .from("customers")
-      .select("nc_club_id")
-      .eq("id", refId)
-      .maybeSingle();
-    ncClubId = data?.nc_club_id ?? null;
-  } else {
-    const { data } = await supabase
-      .from("customer_renewals")
-      .select("customer:customers!inner(nc_club_id)")
-      .eq("id", refId)
-      .maybeSingle();
-    const raw = data as unknown as { customer: { nc_club_id: string } } | null;
-    ncClubId = raw?.customer?.nc_club_id ?? null;
-  }
-  if (!ncClubId) return { error: "Could not find the related record." };
-
-  const { error } = await supabase.from("daily_report_notes").upsert(
-    {
-      nc_club_id: ncClubId,
-      customer_id: kind === "new" ? refId : null,
-      renewal_id: kind === "renewal" ? refId : null,
-      note: note.trim(),
-      updated_by_coach_id: coach.id,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: kind === "new" ? "customer_id" : "renewal_id" }
-  );
+  const { error } = await supabase.from("daily_report_logs").insert({
+    nc_club_id: clubId,
+    log_date: date,
+    note: trimmed,
+    created_by_coach_id: coach.id,
+  });
 
   if (error) return { error: error.message };
   revalidatePath("/reports/daily");

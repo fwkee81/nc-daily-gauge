@@ -226,19 +226,15 @@ export function BranchesList({
                   </p>
                   <ul className="divide-y">
                     {clubRemarks.map((r) => (
-                      <li key={`${r.kind}-${r.customer_name}-${r.created_at}`} className="px-3 py-2 text-sm">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium">{r.customer_name}</span>
-                          <Badge variant={r.kind === "new" ? "default" : "secondary"}>
-                            {r.kind === "new" ? "New" : "Renewal"}
-                          </Badge>
-                        </div>
-                        <p className="mt-0.5 whitespace-pre-wrap text-muted-foreground">{r.note}</p>
-                        {r.updated_by_coach_name && (
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            — {r.updated_by_coach_name}
-                          </p>
-                        )}
+                      <li key={`${r.created_at}-${r.note}`} className="px-3 py-2 text-sm">
+                        <p className="whitespace-pre-wrap">{r.note}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {r.created_by_coach_name ?? "—"} ·{" "}
+                          {new Date(r.created_at).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </p>
                       </li>
                     ))}
                   </ul>

@@ -2,7 +2,12 @@ import { redirect } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
 import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { DailyReportClient, type CheckinRow, type LedgerRow } from "./daily-report-client";
+import {
+  DailyReportClient,
+  type CheckinRow,
+  type DailyLogEntry,
+  type LedgerRow,
+} from "./daily-report-client";
 
 export default async function DailyReportPage({
   searchParams,
@@ -31,6 +36,7 @@ export default async function DailyReportPage({
     clubRes,
     excludedCustomersRes,
     pluginLineageRes,
+    dailyLogsRes,
   ] = await Promise.all([
     supabase.rpc("daily_totals", { p_date: date, p_club_id: clubId }),
     supabase.rpc("daily_coach_cups", { p_date: date, p_club_id: clubId }),
@@ -74,6 +80,14 @@ export default async function DailyReportPage({
     // Every customer descended from a Plug-in-invited root, any number of
     // generations — mirrors the exclusion query above but for Plug-in Cups.
     supabase.rpc("plugin_lineage_customer_ids", { p_club_id: clubId }),
+    // "What happened today" log — a running list of free-text entries for
+    // this club/date, not tied to any customer or ledger row.
+    supabase
+      .from("daily_report_logs")
+      .select("id, note, created_at, created_by_coach:coaches(name)")
+      .eq("nc_club_id", clubId)
+      .eq("log_date", date)
+      .order("created_at", { ascending: false }),
   ]);
 
   interface RawRenewal {
@@ -99,43 +113,6 @@ export default async function DailyReportPage({
   const rawRenewals = (renewalsRes.data ?? []) as unknown as RawRenewal[];
   const rawNewCustomers = (newCustomersRes.data ?? []) as unknown as RawNewCustomer[];
 
-  interface RawNote {
-    note: string;
-    updated_at: string;
-    updated_by_coach: { name: string } | null;
-  }
-
-  const renewalIds = rawRenewals.map((r) => r.id);
-  const newCustomerIds = rawNewCustomers.map((c) => c.id);
-
-  const [renewalNotesRes, newNotesRes] = await Promise.all([
-    renewalIds.length
-      ? supabase
-          .from("daily_report_notes")
-          .select("renewal_id, note, updated_at, updated_by_coach:coaches(name)")
-          .in("renewal_id", renewalIds)
-      : Promise.resolve({ data: [] as unknown[] }),
-    newCustomerIds.length
-      ? supabase
-          .from("daily_report_notes")
-          .select("customer_id, note, updated_at, updated_by_coach:coaches(name)")
-          .in("customer_id", newCustomerIds)
-      : Promise.resolve({ data: [] as unknown[] }),
-  ]);
-
-  const renewalNoteMap = new Map(
-    ((renewalNotesRes.data ?? []) as unknown as (RawNote & { renewal_id: string })[]).map((n) => [
-      n.renewal_id,
-      n,
-    ])
-  );
-  const customerNoteMap = new Map(
-    ((newNotesRes.data ?? []) as unknown as (RawNote & { customer_id: string })[]).map((n) => [
-      n.customer_id,
-      n,
-    ])
-  );
-
   const renewalEntries: LedgerRow[] = rawRenewals.map((r) => ({
     id: r.id,
     kind: "renewal",
@@ -146,8 +123,6 @@ export default async function DailyReportPage({
     newBalance: r.new_balance,
     byCoachName: r.renewed_by_coach?.name ?? null,
     createdAt: r.created_at,
-    note: renewalNoteMap.get(r.id)?.note ?? null,
-    noteByCoachName: renewalNoteMap.get(r.id)?.updated_by_coach?.name ?? null,
   }));
 
   const newCustomerEntries: LedgerRow[] = rawNewCustomers.map((c) => ({
@@ -160,12 +135,26 @@ export default async function DailyReportPage({
     newBalance: c.consumption_balance,
     byCoachName: c.created_by_coach?.name ?? null,
     createdAt: c.created_at,
-    note: customerNoteMap.get(c.id)?.note ?? null,
-    noteByCoachName: customerNoteMap.get(c.id)?.updated_by_coach?.name ?? null,
   }));
 
   const ledger = [...renewalEntries, ...newCustomerEntries].sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt)
+  );
+
+  interface RawDailyLog {
+    id: string;
+    note: string;
+    created_at: string;
+    created_by_coach: { name: string } | null;
+  }
+
+  const dailyLogs: DailyLogEntry[] = ((dailyLogsRes.data ?? []) as unknown as RawDailyLog[]).map(
+    (l) => ({
+      id: l.id,
+      note: l.note,
+      coachName: l.created_by_coach?.name ?? null,
+      createdAt: l.created_at,
+    })
   );
 
   return (
@@ -192,6 +181,7 @@ export default async function DailyReportPage({
       excludedCustomerIds={(excludedCustomersRes.data ?? []).map((c) => c.customer_id)}
       pluginCustomerIds={(pluginLineageRes.data ?? []).map((c) => c.customer_id)}
       ledger={ledger}
+      dailyLogs={dailyLogs}
     />
   );
 }

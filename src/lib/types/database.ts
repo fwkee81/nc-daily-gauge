@@ -127,14 +127,13 @@ export type CustomerRenewal = {
   created_at: string;
 };
 
-export type DailyReportNote = {
+export type DailyReportLog = {
   id: string;
   nc_club_id: string;
-  customer_id: string | null;
-  renewal_id: string | null;
+  log_date: string;
   note: string;
-  updated_by_coach_id: string | null;
-  updated_at: string;
+  created_by_coach_id: string | null;
+  created_at: string;
 };
 
 export type InventoryDirection = "in" | "out";
@@ -258,10 +257,8 @@ export type BranchDailySummaryRow = {
 
 export type BranchDailyRemarkRow = {
   club_id: string;
-  kind: "new" | "renewal";
-  customer_name: string;
   note: string;
-  updated_by_coach_name: string | null;
+  created_by_coach_name: string | null;
   created_at: string;
 };
 
@@ -435,10 +432,10 @@ export type Database = {
         Insert: Partial<CustomerRenewal>;
         Update: Partial<CustomerRenewal>;
       } & NoRelationships;
-      daily_report_notes: {
-        Row: DailyReportNote;
-        Insert: Partial<DailyReportNote>;
-        Update: Partial<DailyReportNote>;
+      daily_report_logs: {
+        Row: DailyReportLog;
+        Insert: Partial<DailyReportLog>;
+        Update: Partial<DailyReportLog>;
       } & NoRelationships;
       customer_members: {
         Row: CustomerMember;

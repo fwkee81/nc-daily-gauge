@@ -174,31 +174,22 @@ create table customer_renewals (
   created_at timestamptz not null default now()
 );
 
--- A coach's free-text remark against one entry in the Daily Report's
--- New/Renewals ledger (e.g. notes from a post-signup or post-renewal
--- meeting). Polymorphic on purpose: a "new" ledger row is keyed by
--- customer_id, a "renewal" row by renewal_id — exactly one is set, matching
--- LedgerRow's kind+id in the client. nc_club_id is denormalized (rather than
--- derived via a join) purely so the RLS policies below stay simple, same
--- reasoning as checkins.nc_club_id.
-create table daily_report_notes (
+-- A running log of notable events for the day on a club's Daily Report —
+-- sits right after the New/Renewals ledger. NOT tied to any one customer or
+-- ledger row (that was an earlier, wrong design) — just free-text entries a
+-- coach adds over the course of the day, append-only like a journal.
+-- log_date is set explicitly from whichever date the Daily Report page is
+-- viewing (not always "today"), so backfilling a past day's notes works the
+-- same way backfilling check-ins does.
+create table daily_report_logs (
   id uuid primary key default gen_random_uuid(),
   nc_club_id uuid not null references nc_clubs (id),
-  customer_id uuid references customers (id) on delete cascade,
-  renewal_id uuid references customer_renewals (id) on delete cascade,
-  note text not null default '',
-  updated_by_coach_id uuid references coaches (id),
-  updated_at timestamptz not null default now(),
-  constraint daily_report_notes_one_ref check (
-    (customer_id is not null and renewal_id is null)
-    or (customer_id is null and renewal_id is not null)
-  )
+  log_date date not null,
+  note text not null,
+  created_by_coach_id uuid references coaches (id),
+  created_at timestamptz not null default now()
 );
-create unique index daily_report_notes_customer_uidx on daily_report_notes (customer_id)
-  where customer_id is not null;
-create unique index daily_report_notes_renewal_uidx on daily_report_notes (renewal_id)
-  where renewal_id is not null;
-create index idx_daily_report_notes_club on daily_report_notes (nc_club_id);
+create index idx_daily_report_logs_club_date on daily_report_logs (nc_club_id, log_date);
 
 -- Global catalog (Volume Points are fixed by Herbalife's price list, not
 -- club-specific) — only admins may add new products, any coach can read the
@@ -394,7 +385,7 @@ alter table customer_members enable row level security;
 alter table checkins enable row level security;
 alter table checkin_edits enable row level security;
 alter table customer_renewals enable row level security;
-alter table daily_report_notes enable row level security;
+alter table daily_report_logs enable row level security;
 alter table products enable row level security;
 alter table inventory_transactions enable row level security;
 
@@ -519,25 +510,21 @@ create policy "customer_renewals_select" on customer_renewals
     )
   );
 
--- daily_report_notes: same club-scoped visibility as everything else, but
+-- daily_report_logs: same club-scoped visibility as everything else, but
 -- writable directly (not via an RPC) since there's no balance/atomicity
--- concern here — just enforce that a coach can only ever attribute a note to
--- themselves.
-create policy "daily_report_notes_select" on daily_report_notes
+-- concern here — just enforce that a coach can only ever attribute an entry
+-- to themselves. Append-only: no update/delete policy, matching the
+-- journal-entry intent (log entries aren't edited after the fact).
+create policy "daily_report_logs_select" on daily_report_logs
   for select to authenticated
   using (nc_club_id in (select visible_club_ids(current_coach_id())));
 
-create policy "daily_report_notes_insert" on daily_report_notes
+create policy "daily_report_logs_insert" on daily_report_logs
   for insert to authenticated
   with check (
-    updated_by_coach_id = current_coach_id()
+    created_by_coach_id = current_coach_id()
     and nc_club_id in (select visible_club_ids(current_coach_id()))
   );
-
-create policy "daily_report_notes_update" on daily_report_notes
-  for update to authenticated
-  using (nc_club_id in (select visible_club_ids(current_coach_id())))
-  with check (updated_by_coach_id = current_coach_id());
 
 -- products: readable by any signed-in coach (needed to populate the picker
 -- when recording a movement); only admins may add new ones. No update/delete
@@ -1403,18 +1390,14 @@ as $$
     mc.club_name;
 $$;
 
--- Remark/Post Meeting notes across every visible branch club for one day —
--- feeds the "Remarks" list under each club card on the Branches Daily tab.
--- Only rows with a non-empty note are returned (a ledger entry with no
--- saved remark has nothing to show here); editing still happens on that
--- club's own Daily Report page.
+-- Daily report log entries ("what happened today") across every visible
+-- branch club for one day — feeds the list under each club card on the
+-- Branches Daily tab.
 create or replace function branches_daily_remarks(p_date date)
 returns table (
   club_id uuid,
-  kind text,
-  customer_name text,
   note text,
-  updated_by_coach_name text,
+  created_by_coach_name text,
   created_at timestamptz
 )
 language sql
@@ -1422,28 +1405,12 @@ stable
 security definer
 set search_path = public
 as $$
-  select cu.nc_club_id as club_id, 'new' as kind, cu.name as customer_name, n.note,
-    co.name as updated_by_coach_name, cu.created_at
-  from customers cu
-  join daily_report_notes n on n.customer_id = cu.id
-  left join coaches co on co.id = n.updated_by_coach_id
-  where cu.nc_club_id in (select visible_club_ids(current_coach_id()))
-    and cu.created_at::date = p_date
-    and length(trim(n.note)) > 0
-
-  union all
-
-  select cu.nc_club_id as club_id, 'renewal' as kind, cu.name as customer_name, n.note,
-    co.name as updated_by_coach_name, cr.created_at
-  from customer_renewals cr
-  join customers cu on cu.id = cr.customer_id
-  join daily_report_notes n on n.renewal_id = cr.id
-  left join coaches co on co.id = n.updated_by_coach_id
-  where cu.nc_club_id in (select visible_club_ids(current_coach_id()))
-    and cr.created_at::date = p_date
-    and length(trim(n.note)) > 0
-
-  order by created_at desc;
+  select l.nc_club_id as club_id, l.note, co.name as created_by_coach_name, l.created_at
+  from daily_report_logs l
+  left join coaches co on co.id = l.created_by_coach_id
+  where l.nc_club_id in (select visible_club_ids(current_coach_id()))
+    and l.log_date = p_date
+  order by l.created_at desc;
 $$;
 
 -- Weekly per-club rollup for the Branches "Weekly" tab: own club + every
