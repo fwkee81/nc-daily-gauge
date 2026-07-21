@@ -4,6 +4,7 @@ import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type {
   BranchCoachCupsCompareRow,
+  BranchDailyRemarkRow,
   BranchDailySummaryRow,
   BranchLeaderboardRow,
   BranchMonthlySummaryRow,
@@ -32,16 +33,18 @@ export default async function BranchesPage({
   const month = monthParam ?? format(new Date(), "yyyy-MM");
 
   const supabase = await createClient();
-  const [summaryRes, coachCupsRes, weeklySummaryRes, monthlySummaryRes, leaderboardsRes] =
+  const [summaryRes, coachCupsRes, remarksRes, weeklySummaryRes, monthlySummaryRes, leaderboardsRes] =
     await Promise.all([
       supabase.rpc("branches_daily_summary", { p_date: date }),
       supabase.rpc("branches_coach_cups_compare", { p_date: date }),
+      supabase.rpc("branches_daily_remarks", { p_date: date }),
       supabase.rpc("branches_weekly_summary", { p_date: date }),
       supabase.rpc("branches_monthly_summary", { p_month: `${month}-01` }),
       supabase.rpc("branches_monthly_leaderboards", { p_month: `${month}-01` }),
     ]);
   const branches = (summaryRes.data ?? []) as BranchDailySummaryRow[];
   const coachCups = (coachCupsRes.data ?? []) as BranchCoachCupsCompareRow[];
+  const remarks = (remarksRes.data ?? []) as BranchDailyRemarkRow[];
   const weeklySummary = (weeklySummaryRes.data ?? []) as BranchWeeklySummaryRow[];
   const monthlySummary = (monthlySummaryRes.data ?? []) as BranchMonthlySummaryRow[];
   const leaderboards = (leaderboardsRes.data ?? []) as BranchLeaderboardRow[];
@@ -63,6 +66,7 @@ export default async function BranchesPage({
         ownClubId={coach.nc_club_id}
         branches={branches}
         coachCups={coachCups}
+        remarks={remarks}
         weeklySummary={weeklySummary}
         monthlySummary={monthlySummary}
         leaderboards={leaderboards}

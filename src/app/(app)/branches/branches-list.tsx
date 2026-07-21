@@ -7,7 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getMilestoneTier } from "@/lib/cup-milestones";
-import type { BranchCoachCupsCompareRow, BranchDailySummaryRow } from "@/lib/types/database";
+import type {
+  BranchCoachCupsCompareRow,
+  BranchDailyRemarkRow,
+  BranchDailySummaryRow,
+} from "@/lib/types/database";
 
 type DiffColor = "green" | "yellow" | "red";
 
@@ -63,17 +67,20 @@ function Stat({
 export function BranchesList({
   branches,
   coachCups,
+  remarks,
   ownClubId,
   date,
   month,
 }: {
   branches: BranchDailySummaryRow[];
   coachCups: BranchCoachCupsCompareRow[];
+  remarks: BranchDailyRemarkRow[];
   ownClubId: string | null;
   date: string;
   month: string;
 }) {
   const [expandedClubId, setExpandedClubId] = useState<string | null>(null);
+  const [hideAllRemarks, setHideAllRemarks] = useState(false);
 
   const coachCupsByClub = useMemo(() => {
     const map = new Map<string, BranchCoachCupsCompareRow[]>();
@@ -84,6 +91,15 @@ export function BranchesList({
     return map;
   }, [coachCups]);
 
+  const remarksByClub = useMemo(() => {
+    const map = new Map<string, BranchDailyRemarkRow[]>();
+    for (const row of remarks) {
+      if (!map.has(row.club_id)) map.set(row.club_id, []);
+      map.get(row.club_id)!.push(row);
+    }
+    return map;
+  }, [remarks]);
+
   if (branches.length === 0) {
     return (
       <p className="mt-6 text-sm text-muted-foreground">
@@ -92,12 +108,25 @@ export function BranchesList({
     );
   }
 
+  const hasAnyRemarks = remarks.length > 0;
+
   return (
     <div className="mt-6 space-y-3">
+      {hasAnyRemarks && (
+        <label className="flex w-fit items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={hideAllRemarks}
+            onChange={(e) => setHideAllRemarks(e.target.checked)}
+          />
+          Hide all remarks
+        </label>
+      )}
       {branches.map((branch) => {
         const isOwn = branch.club_id === ownClubId;
         const isExpanded = expandedClubId === branch.club_id;
         const clubCoachCups = coachCupsByClub.get(branch.club_id) ?? [];
+        const clubRemarks = remarksByClub.get(branch.club_id) ?? [];
 
         return (
           <Card key={branch.club_id}>
@@ -187,6 +216,32 @@ export function BranchesList({
                       })}
                     </ul>
                   )}
+                </div>
+              )}
+
+              {!hideAllRemarks && clubRemarks.length > 0 && (
+                <div className="mt-3 rounded-md border">
+                  <p className="border-b bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                    Remark / Post Meeting
+                  </p>
+                  <ul className="divide-y">
+                    {clubRemarks.map((r) => (
+                      <li key={`${r.kind}-${r.customer_name}-${r.created_at}`} className="px-3 py-2 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium">{r.customer_name}</span>
+                          <Badge variant={r.kind === "new" ? "default" : "secondary"}>
+                            {r.kind === "new" ? "New" : "Renewal"}
+                          </Badge>
+                        </div>
+                        <p className="mt-0.5 whitespace-pre-wrap text-muted-foreground">{r.note}</p>
+                        {r.updated_by_coach_name && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            — {r.updated_by_coach_name}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </CardContent>

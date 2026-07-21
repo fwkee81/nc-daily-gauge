@@ -5,6 +5,7 @@ import { format, parseISO } from "date-fns";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type {
   BranchCoachCupsCompareRow,
+  BranchDailyRemarkRow,
   BranchDailySummaryRow,
   BranchLeaderboardRow,
   BranchMonthlySummaryRow,
@@ -26,6 +27,7 @@ export function BranchesTabs({
   ownClubId,
   branches,
   coachCups,
+  remarks,
   weeklySummary,
   monthlySummary,
   leaderboards,
@@ -38,6 +40,7 @@ export function BranchesTabs({
   ownClubId: string | null;
   branches: BranchDailySummaryRow[];
   coachCups: BranchCoachCupsCompareRow[];
+  remarks: BranchDailyRemarkRow[];
   weeklySummary: BranchWeeklySummaryRow[];
   monthlySummary: BranchMonthlySummaryRow[];
   leaderboards: BranchLeaderboardRow[];
@@ -68,6 +71,7 @@ export function BranchesTabs({
         <BranchesList
           branches={branches}
           coachCups={coachCups}
+          remarks={remarks}
           ownClubId={ownClubId}
           date={date}
           month={month}

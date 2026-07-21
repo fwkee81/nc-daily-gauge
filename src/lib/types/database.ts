@@ -256,6 +256,15 @@ export type BranchDailySummaryRow = {
   prev_date: string | null;
 };
 
+export type BranchDailyRemarkRow = {
+  club_id: string;
+  kind: "new" | "renewal";
+  customer_name: string;
+  note: string;
+  updated_by_coach_name: string | null;
+  created_at: string;
+};
+
 export type BranchWeeklyDailyRow = {
   date: string;
   total_cups: number;
@@ -548,6 +557,10 @@ export type Database = {
       branches_daily_summary: {
         Args: { p_date: string };
         Returns: BranchDailySummaryRow[];
+      };
+      branches_daily_remarks: {
+        Args: { p_date: string };
+        Returns: BranchDailyRemarkRow[];
       };
       branches_weekly_summary: {
         Args: { p_date?: string };
