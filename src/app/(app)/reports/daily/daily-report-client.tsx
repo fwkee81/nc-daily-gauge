@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addDays, differenceInYears, format, parseISO } from "date-fns";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, PartyPopper } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -301,9 +301,30 @@ interface HistoryEntry {
 }
 
 // Celebrate hitting a strong daily total — only for today's live report (not
-// while browsing a past date), and only once per club/day so it doesn't pop
-// again on every refresh.
-const CUP_MILESTONE = 25;
+// while browsing a past date), and re-pops whenever a new, higher tier is
+// reached (not on every refresh at the same total).
+interface MilestoneTier {
+  cups: number;
+  emoji: string;
+  title: string;
+  message: string;
+}
+
+const CUP_MILESTONES: MilestoneTier[] = [
+  { cups: 25, emoji: "🎉", title: "Great day!", message: "Past 25 cups — great start, team!" },
+  { cups: 35, emoji: "🔥", title: "On fire!", message: "Past 35 cups — the team is really cooking!" },
+  { cups: 50, emoji: "🦸", title: "Hero day!", message: "50 cups — certified hero performance!" },
+  { cups: 75, emoji: "💎", title: "Elite squad!", message: "75 cups — this is rare air, incredible work!" },
+  { cups: 100, emoji: "🏆", title: "Legendary!", message: "100 cups — once-in-a-blue-moon legendary day!" },
+];
+
+function getMilestoneTier(totalCups: number): MilestoneTier | null {
+  let reached: MilestoneTier | null = null;
+  for (const tier of CUP_MILESTONES) {
+    if (totalCups >= tier.cups) reached = tier;
+  }
+  return reached;
+}
 
 const CONFETTI_COLORS = [
   "#9ec835",
@@ -360,9 +381,10 @@ export function DailyReportClient({
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null);
   const [hideVoided, setHideVoided] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState<"plugin" | "dine-in" | "takeaway" | null>(null);
-  const [showMilestone, setShowMilestone] = useState(false);
+  const [celebratingTier, setCelebratingTier] = useState<MilestoneTier | null>(null);
   const excludedCustomerIdSet = useMemo(() => new Set(excludedCustomerIds), [excludedCustomerIds]);
   const pluginCustomerIdSet = useMemo(() => new Set(pluginCustomerIds), [pluginCustomerIds]);
+  const currentTier = useMemo(() => getMilestoneTier(totals.total_cups), [totals.total_cups]);
 
   const breakdowns = useMemo(() => {
     const active = checkins.filter((c) => !c.voided);
@@ -420,19 +442,19 @@ export function DailyReportClient({
   }, []);
 
   // Pop the confetti for today's live total whenever the cup count reaches a
-  // new high past 25 — not when just browsing back through a past date, and
-  // not again on refresh unless new check-ins pushed the total higher.
+  // new, higher tier (25/35/50/75/100) — not when just browsing back through
+  // a past date, and not again on refresh unless a new tier was reached.
   useEffect(() => {
-    if (totals.total_cups < CUP_MILESTONE) return;
+    if (!currentTier) return;
     if (date !== format(new Date(), "yyyy-MM-dd")) return;
 
     const key = `nc-cup-milestone-${clubId}-${date}`;
-    const lastCelebrated = Number(window.localStorage.getItem(key) ?? "0");
-    if (totals.total_cups <= lastCelebrated) return;
-    window.localStorage.setItem(key, String(totals.total_cups));
+    const lastCelebratedTier = Number(window.localStorage.getItem(key) ?? "0");
+    if (currentTier.cups <= lastCelebratedTier) return;
+    window.localStorage.setItem(key, String(currentTier.cups));
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setShowMilestone(true);
-  }, [clubId, date, totals.total_cups]);
+    setCelebratingTier(currentTier);
+  }, [clubId, date, currentTier]);
 
   function goToDate(d: string) {
     const clubQuery = viewingBranch ? `&club=${clubId}` : "";
@@ -479,10 +501,10 @@ export function DailyReportClient({
           <CardDescription>Total NC Cups</CardDescription>
           <div className="flex items-center gap-2">
             <CardTitle className="text-2xl font-bold text-primary">{totals.total_cups}</CardTitle>
-            {totals.total_cups >= CUP_MILESTONE && (
+            {currentTier && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
-                <PartyPopper className="h-3.5 w-3.5" />
-                Great day!
+                <span aria-hidden>{currentTier.emoji}</span>
+                {currentTier.title}
               </span>
             )}
           </div>
@@ -744,7 +766,7 @@ export function DailyReportClient({
         </div>
       </div>
 
-      <Dialog open={showMilestone} onOpenChange={setShowMilestone}>
+      <Dialog open={!!celebratingTier} onOpenChange={(open) => !open && setCelebratingTier(null)}>
         <DialogContent className="overflow-hidden sm:max-w-sm">
           {CONFETTI_COLORS.map((color, i) => (
             <span
@@ -760,21 +782,21 @@ export function DailyReportClient({
             />
           ))}
           <DialogHeader>
-            <DialogTitle className="text-center text-2xl">🎉 Great day! 🎉</DialogTitle>
+            <DialogTitle className="text-center text-2xl">
+              {celebratingTier?.emoji} {celebratingTier?.title} {celebratingTier?.emoji}
+            </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-2 py-2 text-center">
             <span
               className="text-6xl"
               style={{ display: "inline-block", animation: "cake-bounce 1s ease-in-out infinite" }}
             >
-              🔥
+              {celebratingTier?.emoji}
             </span>
             <p className="text-xl font-semibold">{totals.total_cups} cups today</p>
-            <p className="text-base text-muted-foreground">
-              Past {CUP_MILESTONE} cups — great work, team!
-            </p>
+            <p className="text-base text-muted-foreground">{celebratingTier?.message}</p>
           </div>
-          <Button className="w-full py-6 text-lg" onClick={() => setShowMilestone(false)}>
+          <Button className="w-full py-6 text-lg" onClick={() => setCelebratingTier(null)}>
             OK
           </Button>
         </DialogContent>
