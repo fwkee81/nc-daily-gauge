@@ -174,6 +174,32 @@ create table customer_renewals (
   created_at timestamptz not null default now()
 );
 
+-- A coach's free-text remark against one entry in the Daily Report's
+-- New/Renewals ledger (e.g. notes from a post-signup or post-renewal
+-- meeting). Polymorphic on purpose: a "new" ledger row is keyed by
+-- customer_id, a "renewal" row by renewal_id — exactly one is set, matching
+-- LedgerRow's kind+id in the client. nc_club_id is denormalized (rather than
+-- derived via a join) purely so the RLS policies below stay simple, same
+-- reasoning as checkins.nc_club_id.
+create table daily_report_notes (
+  id uuid primary key default gen_random_uuid(),
+  nc_club_id uuid not null references nc_clubs (id),
+  customer_id uuid references customers (id) on delete cascade,
+  renewal_id uuid references customer_renewals (id) on delete cascade,
+  note text not null default '',
+  updated_by_coach_id uuid references coaches (id),
+  updated_at timestamptz not null default now(),
+  constraint daily_report_notes_one_ref check (
+    (customer_id is not null and renewal_id is null)
+    or (customer_id is null and renewal_id is not null)
+  )
+);
+create unique index daily_report_notes_customer_uidx on daily_report_notes (customer_id)
+  where customer_id is not null;
+create unique index daily_report_notes_renewal_uidx on daily_report_notes (renewal_id)
+  where renewal_id is not null;
+create index idx_daily_report_notes_club on daily_report_notes (nc_club_id);
+
 -- Global catalog (Volume Points are fixed by Herbalife's price list, not
 -- club-specific) — only admins may add new products, any coach can read the
 -- list and pick from it when recording a stock movement.
@@ -368,6 +394,7 @@ alter table customer_members enable row level security;
 alter table checkins enable row level security;
 alter table checkin_edits enable row level security;
 alter table customer_renewals enable row level security;
+alter table daily_report_notes enable row level security;
 alter table products enable row level security;
 alter table inventory_transactions enable row level security;
 
@@ -491,6 +518,26 @@ create policy "customer_renewals_select" on customer_renewals
       select id from customers where nc_club_id in (select visible_club_ids(current_coach_id()))
     )
   );
+
+-- daily_report_notes: same club-scoped visibility as everything else, but
+-- writable directly (not via an RPC) since there's no balance/atomicity
+-- concern here — just enforce that a coach can only ever attribute a note to
+-- themselves.
+create policy "daily_report_notes_select" on daily_report_notes
+  for select to authenticated
+  using (nc_club_id in (select visible_club_ids(current_coach_id())));
+
+create policy "daily_report_notes_insert" on daily_report_notes
+  for insert to authenticated
+  with check (
+    updated_by_coach_id = current_coach_id()
+    and nc_club_id in (select visible_club_ids(current_coach_id()))
+  );
+
+create policy "daily_report_notes_update" on daily_report_notes
+  for update to authenticated
+  using (nc_club_id in (select visible_club_ids(current_coach_id())))
+  with check (updated_by_coach_id = current_coach_id());
 
 -- products: readable by any signed-in coach (needed to populate the picker
 -- when recording a movement); only admins may add new ones. No update/delete

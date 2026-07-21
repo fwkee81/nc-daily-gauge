@@ -99,6 +99,43 @@ export default async function DailyReportPage({
   const rawRenewals = (renewalsRes.data ?? []) as unknown as RawRenewal[];
   const rawNewCustomers = (newCustomersRes.data ?? []) as unknown as RawNewCustomer[];
 
+  interface RawNote {
+    note: string;
+    updated_at: string;
+    updated_by_coach: { name: string } | null;
+  }
+
+  const renewalIds = rawRenewals.map((r) => r.id);
+  const newCustomerIds = rawNewCustomers.map((c) => c.id);
+
+  const [renewalNotesRes, newNotesRes] = await Promise.all([
+    renewalIds.length
+      ? supabase
+          .from("daily_report_notes")
+          .select("renewal_id, note, updated_at, updated_by_coach:coaches(name)")
+          .in("renewal_id", renewalIds)
+      : Promise.resolve({ data: [] as unknown[] }),
+    newCustomerIds.length
+      ? supabase
+          .from("daily_report_notes")
+          .select("customer_id, note, updated_at, updated_by_coach:coaches(name)")
+          .in("customer_id", newCustomerIds)
+      : Promise.resolve({ data: [] as unknown[] }),
+  ]);
+
+  const renewalNoteMap = new Map(
+    ((renewalNotesRes.data ?? []) as unknown as (RawNote & { renewal_id: string })[]).map((n) => [
+      n.renewal_id,
+      n,
+    ])
+  );
+  const customerNoteMap = new Map(
+    ((newNotesRes.data ?? []) as unknown as (RawNote & { customer_id: string })[]).map((n) => [
+      n.customer_id,
+      n,
+    ])
+  );
+
   const renewalEntries: LedgerRow[] = rawRenewals.map((r) => ({
     id: r.id,
     kind: "renewal",
@@ -109,6 +146,8 @@ export default async function DailyReportPage({
     newBalance: r.new_balance,
     byCoachName: r.renewed_by_coach?.name ?? null,
     createdAt: r.created_at,
+    note: renewalNoteMap.get(r.id)?.note ?? null,
+    noteByCoachName: renewalNoteMap.get(r.id)?.updated_by_coach?.name ?? null,
   }));
 
   const newCustomerEntries: LedgerRow[] = rawNewCustomers.map((c) => ({
@@ -121,6 +160,8 @@ export default async function DailyReportPage({
     newBalance: c.consumption_balance,
     byCoachName: c.created_by_coach?.name ?? null,
     createdAt: c.created_at,
+    note: customerNoteMap.get(c.id)?.note ?? null,
+    noteByCoachName: customerNoteMap.get(c.id)?.updated_by_coach?.name ?? null,
   }));
 
   const ledger = [...renewalEntries, ...newCustomerEntries].sort((a, b) =>

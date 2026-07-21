@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,7 @@ import {
   voidCheckinAction,
   getCheckinHistory,
   getCustomerProfile,
+  saveDailyReportNoteAction,
 } from "./actions";
 
 interface CoachCupRow {
@@ -289,6 +291,8 @@ export interface LedgerRow {
   newBalance: number;
   byCoachName: string | null;
   createdAt: string;
+  note: string | null;
+  noteByCoachName: string | null;
 }
 
 interface HistoryEntry {
@@ -690,6 +694,7 @@ export function DailyReportClient({
                 <TableHead>Balance</TableHead>
                 <TableHead>By Coach</TableHead>
                 <TableHead>Time</TableHead>
+                <TableHead>Remark / Post Meeting</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -710,11 +715,14 @@ export function DailyReportClient({
                   </TableCell>
                   <TableCell>{r.byCoachName ?? "—"}</TableCell>
                   <TableCell>{format(new Date(r.createdAt), "p")}</TableCell>
+                  <TableCell>
+                    <LedgerNoteCell row={r} />
+                  </TableCell>
                 </TableRow>
               ))}
               {ledger.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No new customers or renewals on this day.
                   </TableCell>
                 </TableRow>
@@ -777,6 +785,60 @@ export function DailyReportClient({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function LedgerNoteCell({ row }: { row: LedgerRow }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState(row.note ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const res = await saveDailyReportNoteAction(row.kind, row.id, note);
+    setSaving(false);
+    if (res.error) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success("Note saved.");
+    setOpen(false);
+    router.refresh();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : setOpen(false))}>
+      <DialogTrigger
+        render={<button type="button" className="max-w-56 text-left text-sm" />}
+      >
+        {row.note ? (
+          <span className="line-clamp-2 whitespace-pre-wrap">{row.note}</span>
+        ) : (
+          <span className="text-muted-foreground underline underline-offset-4">Add note</span>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Remark / Post Meeting — {row.customerName}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <Textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Notes from a post-signup or post-renewal meeting..."
+            rows={5}
+          />
+          {row.noteByCoachName && (
+            <p className="text-xs text-muted-foreground">Last saved by {row.noteByCoachName}</p>
+          )}
+          <Button onClick={handleSave} disabled={saving} className="w-full">
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
