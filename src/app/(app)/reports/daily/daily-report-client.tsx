@@ -740,9 +740,7 @@ export function DailyReportClient({
 
       <div>
         <h2 className="text-lg font-semibold">Remark / Post Meeting</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          What happened today — not tied to any one customer.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">What happened today.</p>
         <DailyLogSection clubId={clubId} date={date} logs={dailyLogs} />
       </div>
 
