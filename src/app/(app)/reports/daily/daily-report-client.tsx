@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addDays, differenceInYears, format, parseISO } from "date-fns";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, PartyPopper } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -419,15 +419,17 @@ export function DailyReportClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pop the confetti once per club/day, only for today's live total — not
-  // when just browsing back through a past date that also cleared 25.
+  // Pop the confetti for today's live total whenever the cup count reaches a
+  // new high past 25 — not when just browsing back through a past date, and
+  // not again on refresh unless new check-ins pushed the total higher.
   useEffect(() => {
     if (totals.total_cups < CUP_MILESTONE) return;
     if (date !== format(new Date(), "yyyy-MM-dd")) return;
 
     const key = `nc-cup-milestone-${clubId}-${date}`;
-    if (window.localStorage.getItem(key)) return;
-    window.localStorage.setItem(key, "1");
+    const lastCelebrated = Number(window.localStorage.getItem(key) ?? "0");
+    if (totals.total_cups <= lastCelebrated) return;
+    window.localStorage.setItem(key, String(totals.total_cups));
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowMilestone(true);
   }, [clubId, date, totals.total_cups]);
@@ -475,7 +477,15 @@ export function DailyReportClient({
       <Card className="border-2 border-primary bg-primary/5 sm:max-w-xs">
         <CardHeader>
           <CardDescription>Total NC Cups</CardDescription>
-          <CardTitle className="text-2xl font-bold text-primary">{totals.total_cups}</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-2xl font-bold text-primary">{totals.total_cups}</CardTitle>
+            {totals.total_cups >= CUP_MILESTONE && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                <PartyPopper className="h-3.5 w-3.5" />
+                Great day!
+              </span>
+            )}
+          </div>
         </CardHeader>
       </Card>
 
