@@ -311,11 +311,11 @@ interface MilestoneTier {
 }
 
 const CUP_MILESTONES: MilestoneTier[] = [
-  { cups: 25, emoji: "🎉", title: "Great day!", message: "Past 25 cups — great work, team!" },
-  { cups: 35, emoji: "🔥", title: "On fire!", message: "Past 35 cups — the team is crushing it!" },
-  { cups: 50, emoji: "🚀", title: "Halfway hero!", message: "Past 50 cups — outstanding momentum!" },
-  { cups: 75, emoji: "💪", title: "Almost there!", message: "Past 75 cups — incredible hustle!" },
-  { cups: 100, emoji: "🏆", title: "Century Club!", message: "Past 100 cups — legendary day!" },
+  { cups: 25, emoji: "🎉", title: "Great day!", message: "Past 25 cups — great start, team!" },
+  { cups: 35, emoji: "🔥", title: "On fire!", message: "Past 35 cups — the team is really cooking!" },
+  { cups: 50, emoji: "🦸", title: "Hero day!", message: "50 cups — certified hero performance!" },
+  { cups: 75, emoji: "💎", title: "Elite squad!", message: "75 cups — this is rare air, incredible work!" },
+  { cups: 100, emoji: "🏆", title: "Legendary!", message: "100 cups — once-in-a-blue-moon legendary day!" },
 ];
 
 function getMilestoneTier(totalCups: number): MilestoneTier | null {
