@@ -164,6 +164,39 @@ export type InventoryTransaction = {
   voided_at: string | null;
 };
 
+export type FinanceDirection = "in" | "out";
+export type FinancePaymentMethod = "Cash" | "QR" | "Transfer";
+export type FinanceCategory =
+  | "5-Day Card"
+  | "10-Day Card"
+  | "30-Day Card"
+  | "Ala Carte"
+  | "Power Cup"
+  | "Fit Club"
+  | "PJS"
+  | "Membership"
+  | "Product Purchased"
+  | "Ingredients"
+  | "Stock-in"
+  | "Claim"
+  | "Rental"
+  | "Cleaning"
+  | "Others";
+
+export type FinanceTransaction = {
+  id: string;
+  nc_club_id: string;
+  txn_date: string;
+  direction: FinanceDirection;
+  category: FinanceCategory;
+  amount: number;
+  payment_method: FinancePaymentMethod;
+  customer_name: string | null;
+  responsible_coach_id: string | null;
+  recorded_by: string | null;
+  created_at: string;
+};
+
 export type InventoryStockLevelRow = {
   product_id: string;
   product_name: string;
@@ -464,6 +497,11 @@ export type Database = {
         Row: InventoryTransaction;
         Insert: Partial<InventoryTransaction>;
         Update: Partial<InventoryTransaction>;
+      } & NoRelationships;
+      finance_transactions: {
+        Row: FinanceTransaction;
+        Insert: Partial<FinanceTransaction>;
+        Update: Partial<FinanceTransaction>;
       } & NoRelationships;
     };
     Views: Record<string, never>;

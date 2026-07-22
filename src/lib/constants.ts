@@ -3,6 +3,8 @@ import type {
   ConsumptionType,
   CustomerGender,
   CustomerNcLevel,
+  FinanceCategory,
+  FinancePaymentMethod,
   MemberType,
   NcPosition,
 } from "@/lib/types/database";
@@ -72,4 +74,37 @@ export const NC_LEVEL_CUPS: Record<CustomerNcLevel, number> = {
   "20-day": 20,
   "30-day": 30,
   "Ala Carte": 1,
+};
+
+export const FINANCE_INCOME_CATEGORIES: FinanceCategory[] = [
+  "5-Day Card",
+  "10-Day Card",
+  "30-Day Card",
+  "Ala Carte",
+  "Power Cup",
+  "Fit Club",
+  "PJS",
+  "Membership",
+  "Product Purchased",
+  "Others",
+];
+
+export const FINANCE_EXPENSE_CATEGORIES: FinanceCategory[] = [
+  "Ingredients",
+  "Stock-in",
+  "Claim",
+  "Rental",
+  "Cleaning",
+  "Others",
+];
+
+export const FINANCE_PAYMENT_METHODS: FinancePaymentMethod[] = ["Cash", "QR", "Transfer"];
+
+// Fixed package prices — auto-filled into the Amount field when one of
+// these income categories is picked, but still editable (e.g. a discount).
+export const FINANCE_INCOME_DEFAULT_AMOUNT: Partial<Record<FinanceCategory, number>> = {
+  "5-Day Card": 98,
+  "10-Day Card": 198,
+  "30-Day Card": 518,
+  "Ala Carte": 23,
 };

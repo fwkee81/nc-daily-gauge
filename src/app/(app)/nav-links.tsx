@@ -24,9 +24,21 @@ function pillClass(active: boolean) {
   );
 }
 
-export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
+export function NavLinks({
+  isAdmin,
+  isSuperAdmin,
+}: {
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+}) {
   const pathname = usePathname();
-  const inAdminGroup = ADMIN_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
+  // Soft-launch: Finance is only visible to the super admin for now — see
+  // the matching gate in finance/page.tsx. Remove this filter once it's
+  // ready for general use.
+  const adminDropdownLinks = isSuperAdmin
+    ? [...ADMIN_DROPDOWN_LINKS, { href: "/finance", label: "Finance" }]
+    : ADMIN_DROPDOWN_LINKS;
+  const inAdminGroup = adminDropdownLinks.some((link) => pathname.startsWith(link.href));
 
   const primaryLinks = [
     { href: "/checkin", label: "Check-in" },
@@ -55,7 +67,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
             Admin <ChevronDown className="size-3.5" />
           </PopoverTrigger>
           <PopoverContent className="w-48 p-1.5" align="start">
-            {ADMIN_DROPDOWN_LINKS.map((link) => (
+            {adminDropdownLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
