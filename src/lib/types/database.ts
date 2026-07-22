@@ -189,6 +189,7 @@ export type FinanceTransaction = {
   txn_date: string;
   direction: FinanceDirection;
   category: FinanceCategory;
+  detail: string | null;
   amount: number;
   payment_method: FinancePaymentMethod;
   customer_name: string | null;

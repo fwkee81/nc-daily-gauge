@@ -9,6 +9,7 @@ export interface FinanceTransactionInput {
   date: string;
   direction: FinanceDirection;
   category: FinanceCategory;
+  detail: string | null;
   amount: number;
   paymentMethod: FinancePaymentMethod;
   customerName: string | null;
@@ -30,6 +31,9 @@ export async function addFinanceTransaction(input: FinanceTransactionInput) {
   if (input.direction === "out" && !input.responsibleCoachId) {
     return { error: "Please choose the responsible coach." };
   }
+  if (input.category === "Others" && !input.detail?.trim()) {
+    return { error: "Please specify what this 'Others' entry is." };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("finance_transactions").insert({
@@ -37,6 +41,7 @@ export async function addFinanceTransaction(input: FinanceTransactionInput) {
     txn_date: input.date,
     direction: input.direction,
     category: input.category,
+    detail: input.category === "Others" ? input.detail!.trim() : null,
     amount: input.amount,
     payment_method: input.paymentMethod,
     customer_name: input.direction === "in" ? input.customerName!.trim() : null,

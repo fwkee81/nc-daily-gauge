@@ -41,7 +41,7 @@ export default async function FinancePage({
     supabase
       .from("finance_transactions")
       .select(
-        "id, direction, category, amount, payment_method, customer_name, created_at, voided, void_reason, responsible_coach:coaches!finance_transactions_responsible_coach_id_fkey(name), recorded_by_coach:coaches!finance_transactions_recorded_by_fkey(name), voided_by_coach:coaches!finance_transactions_voided_by_fkey(name)"
+        "id, direction, category, detail, amount, payment_method, customer_name, created_at, voided, void_reason, responsible_coach:coaches!finance_transactions_responsible_coach_id_fkey(name), recorded_by_coach:coaches!finance_transactions_recorded_by_fkey(name), voided_by_coach:coaches!finance_transactions_voided_by_fkey(name)"
       )
       .eq("nc_club_id", coach.nc_club_id)
       .eq("txn_date", date)
@@ -58,6 +58,7 @@ export default async function FinancePage({
     id: string;
     direction: "in" | "out";
     category: string;
+    detail: string | null;
     amount: number;
     payment_method: string;
     customer_name: string | null;
@@ -73,6 +74,7 @@ export default async function FinancePage({
     id: t.id,
     direction: t.direction,
     category: t.category,
+    detail: t.detail,
     amount: t.amount,
     paymentMethod: t.payment_method,
     customerName: t.customer_name,

@@ -40,6 +40,7 @@ export interface FinanceTxnRow {
   id: string;
   direction: FinanceDirection;
   category: string;
+  detail: string | null;
   amount: number;
   paymentMethod: string;
   customerName: string | null;
@@ -145,6 +146,7 @@ export function FinanceClient({
   const router = useRouter();
   const [direction, setDirection] = useState<FinanceDirection>("in");
   const [category, setCategory] = useState<FinanceCategory>("5-Day Card");
+  const [detail, setDetail] = useState("");
   const [amount, setAmount] = useState("98");
   const [paymentMethod, setPaymentMethod] = useState<FinancePaymentMethod>("Cash");
   const [customerName, setCustomerName] = useState("");
@@ -173,12 +175,14 @@ export function FinanceClient({
     setDirection(next);
     const firstCategory = (next === "in" ? FINANCE_INCOME_CATEGORIES : FINANCE_EXPENSE_CATEGORIES)[0];
     setCategory(firstCategory);
+    setDetail("");
     const defaultAmount = FINANCE_INCOME_DEFAULT_AMOUNT[firstCategory];
     setAmount(defaultAmount != null ? String(defaultAmount) : "");
   }
 
   function handleCategoryChange(next: FinanceCategory) {
     setCategory(next);
+    setDetail("");
     const defaultAmount = FINANCE_INCOME_DEFAULT_AMOUNT[next];
     setAmount(defaultAmount != null ? String(defaultAmount) : "");
   }
@@ -202,12 +206,17 @@ export function FinanceClient({
       setError("Please choose the responsible coach.");
       return;
     }
+    if (category === "Others" && !detail.trim()) {
+      setError("Please specify what this 'Others' entry is.");
+      return;
+    }
 
     setIsPending(true);
     const result = await addFinanceTransaction({
       date,
       direction,
       category,
+      detail: category === "Others" ? detail.trim() : null,
       amount: amt,
       paymentMethod,
       customerName: direction === "in" ? customerName.trim() : null,
@@ -224,6 +233,7 @@ export function FinanceClient({
     toast.success(direction === "in" ? "Income recorded." : "Expense recorded.");
     setCustomerName("");
     setResponsibleCoachId(null);
+    setDetail("");
     router.refresh();
   }
 
@@ -232,18 +242,6 @@ export function FinanceClient({
     const totalIn = active.filter((t) => t.direction === "in").reduce((s, t) => s + t.amount, 0);
     const totalOut = active.filter((t) => t.direction === "out").reduce((s, t) => s + t.amount, 0);
     return { totalIn, totalOut, net: totalIn - totalOut };
-  }, [transactions]);
-
-  const categoryBreakdown = useMemo(() => {
-    const map = new Map<string, { direction: FinanceDirection; category: string; total: number }>();
-    for (const t of transactions) {
-      if (t.voided) continue;
-      const key = `${t.direction}-${t.category}`;
-      const existing = map.get(key);
-      if (existing) existing.total += t.amount;
-      else map.set(key, { direction: t.direction, category: t.category, total: t.amount });
-    }
-    return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [transactions]);
 
   const parsedDate = parseISO(date);
@@ -332,6 +330,17 @@ export function FinanceClient({
             </div>
           </div>
 
+          {category === "Others" && (
+            <div className="space-y-1">
+              <Label>What is it? *</Label>
+              <Input
+                value={detail}
+                onChange={(e) => setDetail(e.target.value)}
+                placeholder="Specify what this 'Others' entry is"
+              />
+            </div>
+          )}
+
           {direction === "in" ? (
             <div className="space-y-1">
               <Label>Customer Name</Label>
@@ -400,35 +409,6 @@ export function FinanceClient({
                 <p className="text-lg font-semibold">RM {totals.net.toFixed(2)}</p>
               </div>
             </div>
-
-            {categoryBreakdown.length > 0 && (
-              <div className="overflow-x-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categoryBreakdown.map((c) => (
-                      <TableRow key={`${c.direction}-${c.category}`}>
-                        <TableCell>{c.category}</TableCell>
-                        <TableCell>
-                          {c.direction === "in" ? (
-                            <Badge>In</Badge>
-                          ) : (
-                            <Badge variant="secondary">Out</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">RM {c.total.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
@@ -458,7 +438,9 @@ export function FinanceClient({
                       {t.voided && <Badge variant="destructive">Voided</Badge>}
                     </div>
                   </TableCell>
-                  <TableCell>{t.category}</TableCell>
+                  <TableCell>
+                    {t.category === "Others" && t.detail ? `Others — ${t.detail}` : t.category}
+                  </TableCell>
                   <TableCell className={t.direction === "in" ? "text-primary" : "text-destructive"}>
                     {t.direction === "in" ? "+" : "-"}RM {t.amount.toFixed(2)}
                   </TableCell>

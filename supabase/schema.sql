@@ -288,6 +288,9 @@ create table finance_transactions (
   txn_date date not null,
   direction finance_direction not null,
   category finance_category not null,
+  -- Required when category = 'Others' (either direction) — what it actually
+  -- is, since 'Others' alone isn't useful in the ledger. Null otherwise.
+  detail text,
   amount numeric(10, 2) not null check (amount > 0),
   payment_method finance_payment_method not null,
   -- Required for an income entry, always null for an expense entry.
@@ -320,6 +323,9 @@ create table finance_transactions (
   ),
   constraint finance_txn_coach_for_out check (
     direction <> 'out' or responsible_coach_id is not null
+  ),
+  constraint finance_txn_detail_for_others check (
+    category <> 'Others' or (detail is not null and length(trim(detail)) > 0)
   )
 );
 
