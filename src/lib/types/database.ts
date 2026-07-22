@@ -195,6 +195,7 @@ export type FinanceTransaction = {
   customer_name: string | null;
   responsible_coach_id: string | null;
   recorded_by: string | null;
+  remark: string | null;
   created_at: string;
   voided: boolean;
   voided_by: string | null;

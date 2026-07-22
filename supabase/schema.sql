@@ -299,6 +299,9 @@ create table finance_transactions (
   -- distinct from recorded_by, the coach who actually typed this entry in.
   responsible_coach_id uuid references coaches (id),
   recorded_by uuid references coaches (id),
+  -- Optional free-text note on any entry, independent of `detail` above
+  -- (which is specifically the required "what is it" for category = 'Others').
+  remark text,
   created_at timestamptz not null default now(),
   -- A mis-entered transaction is never edited in place — it's voided
   -- (admin-only, reason required), same correction model as

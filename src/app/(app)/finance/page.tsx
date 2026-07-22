@@ -41,7 +41,7 @@ export default async function FinancePage({
     supabase
       .from("finance_transactions")
       .select(
-        "id, direction, category, detail, amount, payment_method, customer_name, created_at, voided, void_reason, responsible_coach:coaches!finance_transactions_responsible_coach_id_fkey(name), recorded_by_coach:coaches!finance_transactions_recorded_by_fkey(name), voided_by_coach:coaches!finance_transactions_voided_by_fkey(name)"
+        "id, direction, category, detail, amount, payment_method, customer_name, remark, created_at, voided, void_reason, responsible_coach:coaches!finance_transactions_responsible_coach_id_fkey(name), recorded_by_coach:coaches!finance_transactions_recorded_by_fkey(name), voided_by_coach:coaches!finance_transactions_voided_by_fkey(name)"
       )
       .eq("nc_club_id", coach.nc_club_id)
       .eq("txn_date", date)
@@ -62,6 +62,7 @@ export default async function FinancePage({
     amount: number;
     payment_method: string;
     customer_name: string | null;
+    remark: string | null;
     created_at: string;
     voided: boolean;
     void_reason: string | null;
@@ -78,6 +79,7 @@ export default async function FinancePage({
     amount: t.amount,
     paymentMethod: t.payment_method,
     customerName: t.customer_name,
+    remark: t.remark,
     responsibleCoachName: t.responsible_coach?.name ?? null,
     recordedByCoachName: t.recorded_by_coach?.name ?? null,
     createdAt: t.created_at,

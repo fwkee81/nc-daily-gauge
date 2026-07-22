@@ -14,6 +14,7 @@ export interface FinanceTransactionInput {
   paymentMethod: FinancePaymentMethod;
   customerName: string | null;
   responsibleCoachId: string | null;
+  remark: string | null;
 }
 
 export async function addFinanceTransaction(input: FinanceTransactionInput) {
@@ -46,6 +47,7 @@ export async function addFinanceTransaction(input: FinanceTransactionInput) {
     payment_method: input.paymentMethod,
     customer_name: input.direction === "in" ? input.customerName!.trim() : null,
     responsible_coach_id: input.direction === "out" ? input.responsibleCoachId : null,
+    remark: input.remark?.trim() || null,
     recorded_by: coach.id,
   });
 

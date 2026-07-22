@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -44,6 +45,7 @@ export interface FinanceTxnRow {
   amount: number;
   paymentMethod: string;
   customerName: string | null;
+  remark: string | null;
   responsibleCoachName: string | null;
   recordedByCoachName: string | null;
   createdAt: string;
@@ -151,6 +153,7 @@ export function FinanceClient({
   const [paymentMethod, setPaymentMethod] = useState<FinancePaymentMethod>("Cash");
   const [customerName, setCustomerName] = useState("");
   const [responsibleCoachId, setResponsibleCoachId] = useState<string | null>(null);
+  const [remark, setRemark] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [voidTarget, setVoidTarget] = useState<FinanceTxnRow | null>(null);
@@ -221,6 +224,7 @@ export function FinanceClient({
       paymentMethod,
       customerName: direction === "in" ? customerName.trim() : null,
       responsibleCoachId: direction === "out" ? responsibleCoachId : null,
+      remark: remark.trim() || null,
     });
     setIsPending(false);
 
@@ -234,6 +238,7 @@ export function FinanceClient({
     setCustomerName("");
     setResponsibleCoachId(null);
     setDetail("");
+    setRemark("");
     router.refresh();
   }
 
@@ -383,6 +388,16 @@ export function FinanceClient({
             </div>
           </div>
 
+          <div className="space-y-1">
+            <Label>Remark</Label>
+            <Textarea
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              placeholder="Any extra notes about this entry..."
+              rows={2}
+            />
+          </div>
+
           <Button onClick={handleSubmit} disabled={isPending} className="w-full">
             {isPending ? "Saving..." : direction === "in" ? "Record Income" : "Record Expense"}
           </Button>
@@ -426,6 +441,7 @@ export function FinanceClient({
                 <TableHead>Customer / Coach</TableHead>
                 <TableHead>Recorded By</TableHead>
                 <TableHead>Time</TableHead>
+                <TableHead>Remark</TableHead>
                 {isAdmin && <TableHead />}
               </TableRow>
             </TableHeader>
@@ -452,6 +468,9 @@ export function FinanceClient({
                       : t.recordedByCoachName ?? "—"}
                   </TableCell>
                   <TableCell>{format(new Date(t.createdAt), "p")}</TableCell>
+                  <TableCell className="max-w-56 whitespace-pre-wrap text-muted-foreground">
+                    {t.remark ?? "—"}
+                  </TableCell>
                   {isAdmin && (
                     <TableCell>
                       {!t.voided && (
@@ -465,7 +484,7 @@ export function FinanceClient({
               ))}
               {transactions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 8 : 7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={isAdmin ? 9 : 8} className="text-center text-muted-foreground">
                     No transactions recorded for this day.
                   </TableCell>
                 </TableRow>
