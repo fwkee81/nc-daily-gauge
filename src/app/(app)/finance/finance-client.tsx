@@ -495,7 +495,7 @@ export function FinanceClient({
                 <CardTitle>Finance Summary</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-md border px-3 py-2">
                     <p className="text-xs text-muted-foreground">Total In</p>
                     <p className="text-lg font-semibold text-primary">RM {totals.totalIn.toFixed(2)}</p>
@@ -505,10 +505,6 @@ export function FinanceClient({
                     <p className="text-lg font-semibold text-destructive">
                       RM {totals.totalOut.toFixed(2)}
                     </p>
-                  </div>
-                  <div className="rounded-md border px-3 py-2">
-                    <p className="text-xs text-muted-foreground">Net</p>
-                    <p className="text-lg font-semibold">RM {totals.net.toFixed(2)}</p>
                   </div>
                 </div>
               </CardContent>
