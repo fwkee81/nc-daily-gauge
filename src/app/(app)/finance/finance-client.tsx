@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Combobox, type ComboboxOption } from "@/components/combobox";
 import { cn } from "@/lib/utils";
 import {
@@ -33,7 +34,7 @@ import {
   FINANCE_PAYMENT_METHODS,
 } from "@/lib/constants";
 import type { FinanceCategory, FinanceDirection, FinancePaymentMethod } from "@/lib/types/database";
-import { addFinanceTransaction } from "./actions";
+import { addFinanceTransaction, voidFinanceTransaction } from "./actions";
 
 export interface FinanceTxnRow {
   id: string;
@@ -45,11 +46,85 @@ export interface FinanceTxnRow {
   responsibleCoachName: string | null;
   recordedByCoachName: string | null;
   createdAt: string;
+  voided: boolean;
+  voidReason: string | null;
+  voidedByCoachName: string | null;
 }
 
 interface CoachOption {
   id: string;
   name: string;
+}
+
+function VoidDialog({
+  transaction,
+  open,
+  onOpenChange,
+}: {
+  transaction: FinanceTxnRow;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const router = useRouter();
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleVoid() {
+    if (!reason.trim()) {
+      toast.error("Please enter a reason for voiding this record.");
+      return;
+    }
+    setSubmitting(true);
+    const result = await voidFinanceTransaction(transaction.id, reason.trim());
+    setSubmitting(false);
+
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success("Record voided.");
+    setReason("");
+    onOpenChange(false);
+    router.refresh();
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setReason("");
+        onOpenChange(next);
+      }}
+    >
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Void this record?</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {transaction.direction === "in" ? "+" : "-"}RM {transaction.amount.toFixed(2)} ·{" "}
+            {transaction.category}. It will no longer count toward the Finance Summary, but stays
+            visible in the ledger.
+          </p>
+
+          <div className="space-y-1">
+            <Label>Reason *</Label>
+            <Input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. entered wrong amount"
+            />
+          </div>
+
+          <Button className="w-full" variant="destructive" onClick={handleVoid} disabled={submitting}>
+            {submitting ? "Voiding..." : "Void record"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function FinanceClient({
@@ -58,12 +133,14 @@ export function FinanceClient({
   transactions,
   coaches,
   isOwner,
+  isAdmin,
 }: {
   date: string;
   hasExplicitDate: boolean;
   transactions: FinanceTxnRow[];
   coaches: CoachOption[];
   isOwner: boolean;
+  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [direction, setDirection] = useState<FinanceDirection>("in");
@@ -74,6 +151,7 @@ export function FinanceClient({
   const [responsibleCoachId, setResponsibleCoachId] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [voidTarget, setVoidTarget] = useState<FinanceTxnRow | null>(null);
 
   // The server defaults "today" using its own clock (Vercel runs in UTC),
   // which can be a day off from the club's actual local date for several
@@ -150,14 +228,16 @@ export function FinanceClient({
   }
 
   const totals = useMemo(() => {
-    const totalIn = transactions.filter((t) => t.direction === "in").reduce((s, t) => s + t.amount, 0);
-    const totalOut = transactions.filter((t) => t.direction === "out").reduce((s, t) => s + t.amount, 0);
+    const active = transactions.filter((t) => !t.voided);
+    const totalIn = active.filter((t) => t.direction === "in").reduce((s, t) => s + t.amount, 0);
+    const totalOut = active.filter((t) => t.direction === "out").reduce((s, t) => s + t.amount, 0);
     return { totalIn, totalOut, net: totalIn - totalOut };
   }, [transactions]);
 
   const categoryBreakdown = useMemo(() => {
     const map = new Map<string, { direction: FinanceDirection; category: string; total: number }>();
     for (const t of transactions) {
+      if (t.voided) continue;
       const key = `${t.direction}-${t.category}`;
       const existing = map.get(key);
       if (existing) existing.total += t.amount;
@@ -366,13 +446,17 @@ export function FinanceClient({
                 <TableHead>Customer / Coach</TableHead>
                 <TableHead>Recorded By</TableHead>
                 <TableHead>Time</TableHead>
+                {isAdmin && <TableHead />}
               </TableRow>
             </TableHeader>
             <TableBody>
               {transactions.map((t) => (
-                <TableRow key={t.id}>
+                <TableRow key={t.id} className={t.voided ? "opacity-50" : undefined}>
                   <TableCell>
-                    {t.direction === "in" ? <Badge>In</Badge> : <Badge variant="secondary">Out</Badge>}
+                    <div className="flex items-center gap-1.5">
+                      {t.direction === "in" ? <Badge>In</Badge> : <Badge variant="secondary">Out</Badge>}
+                      {t.voided && <Badge variant="destructive">Voided</Badge>}
+                    </div>
                   </TableCell>
                   <TableCell>{t.category}</TableCell>
                   <TableCell className={t.direction === "in" ? "text-primary" : "text-destructive"}>
@@ -380,13 +464,26 @@ export function FinanceClient({
                   </TableCell>
                   <TableCell>{t.paymentMethod}</TableCell>
                   <TableCell>{t.direction === "in" ? t.customerName : t.responsibleCoachName}</TableCell>
-                  <TableCell>{t.recordedByCoachName ?? "—"}</TableCell>
+                  <TableCell>
+                    {t.voided
+                      ? `Voided by ${t.voidedByCoachName ?? "—"} — ${t.voidReason}`
+                      : t.recordedByCoachName ?? "—"}
+                  </TableCell>
                   <TableCell>{format(new Date(t.createdAt), "p")}</TableCell>
+                  {isAdmin && (
+                    <TableCell>
+                      {!t.voided && (
+                        <Button variant="ghost" size="sm" onClick={() => setVoidTarget(t)}>
+                          Void
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
               {transactions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={isAdmin ? 8 : 7} className="text-center text-muted-foreground">
                     No transactions recorded for this day.
                   </TableCell>
                 </TableRow>
@@ -395,6 +492,14 @@ export function FinanceClient({
           </Table>
         </div>
       </div>
+
+      {voidTarget && (
+        <VoidDialog
+          transaction={voidTarget}
+          open={Boolean(voidTarget)}
+          onOpenChange={(open) => !open && setVoidTarget(null)}
+        />
+      )}
     </div>
   );
 }

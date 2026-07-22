@@ -195,6 +195,10 @@ export type FinanceTransaction = {
   responsible_coach_id: string | null;
   recorded_by: string | null;
   created_at: string;
+  voided: boolean;
+  voided_by: string | null;
+  void_reason: string | null;
+  voided_at: string | null;
 };
 
 export type InventoryStockLevelRow = {
@@ -632,6 +636,10 @@ export type Database = {
         Returns: InventoryStockLevelRow[];
       };
       void_inventory_transaction: {
+        Args: { p_transaction_id: string; p_reason: string };
+        Returns: void;
+      };
+      void_finance_transaction: {
         Args: { p_transaction_id: string; p_reason: string };
         Returns: void;
       };

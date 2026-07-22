@@ -41,7 +41,7 @@ export default async function FinancePage({
     supabase
       .from("finance_transactions")
       .select(
-        "id, direction, category, amount, payment_method, customer_name, created_at, responsible_coach:coaches!finance_transactions_responsible_coach_id_fkey(name), recorded_by_coach:coaches!finance_transactions_recorded_by_fkey(name)"
+        "id, direction, category, amount, payment_method, customer_name, created_at, voided, void_reason, responsible_coach:coaches!finance_transactions_responsible_coach_id_fkey(name), recorded_by_coach:coaches!finance_transactions_recorded_by_fkey(name), voided_by_coach:coaches!finance_transactions_voided_by_fkey(name)"
       )
       .eq("nc_club_id", coach.nc_club_id)
       .eq("txn_date", date)
@@ -62,8 +62,11 @@ export default async function FinancePage({
     payment_method: string;
     customer_name: string | null;
     created_at: string;
+    voided: boolean;
+    void_reason: string | null;
     responsible_coach: { name: string } | null;
     recorded_by_coach: { name: string } | null;
+    voided_by_coach: { name: string } | null;
   }
 
   const transactions: FinanceTxnRow[] = ((txnsRes.data ?? []) as unknown as RawTxn[]).map((t) => ({
@@ -76,6 +79,9 @@ export default async function FinancePage({
     responsibleCoachName: t.responsible_coach?.name ?? null,
     recordedByCoachName: t.recorded_by_coach?.name ?? null,
     createdAt: t.created_at,
+    voided: t.voided,
+    voidReason: t.void_reason,
+    voidedByCoachName: t.voided_by_coach?.name ?? null,
   }));
 
   return (
@@ -85,6 +91,7 @@ export default async function FinancePage({
       transactions={transactions}
       coaches={coachesRes.data ?? []}
       isOwner={coach.nc_position === "Owner"}
+      isAdmin={coach.is_admin}
     />
   );
 }

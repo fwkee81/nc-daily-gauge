@@ -49,3 +49,16 @@ export async function addFinanceTransaction(input: FinanceTransactionInput) {
   revalidatePath("/finance");
   return { success: true };
 }
+
+export async function voidFinanceTransaction(transactionId: string, reason: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("void_finance_transaction", {
+    p_transaction_id: transactionId,
+    p_reason: reason,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/finance");
+  return { success: true };
+}
