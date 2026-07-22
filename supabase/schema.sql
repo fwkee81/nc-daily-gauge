@@ -295,8 +295,10 @@ create table finance_transactions (
   payment_method finance_payment_method not null,
   -- Required for an income entry, always null for an expense entry.
   customer_name text,
-  -- Required for an expense entry (the coach responsible for/claiming it) —
-  -- distinct from recorded_by, the coach who actually typed this entry in.
+  -- Required on every entry (both directions) — for income, the coach
+  -- responsible for/credited with the sale; for expense, the coach
+  -- responsible for/claiming it. Distinct from recorded_by, the coach who
+  -- actually typed this entry in (may be a different person).
   responsible_coach_id uuid references coaches (id),
   recorded_by uuid references coaches (id),
   -- Optional free-text note on any entry, independent of `detail` above
@@ -324,8 +326,8 @@ create table finance_transactions (
   constraint finance_txn_customer_name_for_in check (
     direction <> 'in' or (customer_name is not null and length(trim(customer_name)) > 0)
   ),
-  constraint finance_txn_coach_for_out check (
-    direction <> 'out' or responsible_coach_id is not null
+  constraint finance_txn_responsible_coach_required check (
+    responsible_coach_id is not null
   ),
   constraint finance_txn_detail_for_others check (
     category <> 'Others' or (detail is not null and length(trim(detail)) > 0)

@@ -29,7 +29,7 @@ export async function addFinanceTransaction(input: FinanceTransactionInput) {
   if (input.direction === "in" && !input.customerName?.trim()) {
     return { error: "Please enter the customer's name." };
   }
-  if (input.direction === "out" && !input.responsibleCoachId) {
+  if (!input.responsibleCoachId) {
     return { error: "Please choose the responsible coach." };
   }
   if (input.category === "Others" && !input.detail?.trim()) {
@@ -46,7 +46,7 @@ export async function addFinanceTransaction(input: FinanceTransactionInput) {
     amount: input.amount,
     payment_method: input.paymentMethod,
     customer_name: input.direction === "in" ? input.customerName!.trim() : null,
-    responsible_coach_id: input.direction === "out" ? input.responsibleCoachId : null,
+    responsible_coach_id: input.responsibleCoachId,
     remark: input.remark?.trim() || null,
     recorded_by: coach.id,
   });
