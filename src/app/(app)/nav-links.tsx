@@ -32,13 +32,7 @@ export function NavLinks({
   isSuperAdmin: boolean;
 }) {
   const pathname = usePathname();
-  // Soft-launch: Finance is only visible to the super admin for now — see
-  // the matching gate in finance/page.tsx. Remove this filter once it's
-  // ready for general use.
-  const adminDropdownLinks = isSuperAdmin
-    ? [...ADMIN_DROPDOWN_LINKS, { href: "/finance", label: "Finance" }]
-    : ADMIN_DROPDOWN_LINKS;
-  const inAdminGroup = adminDropdownLinks.some((link) => pathname.startsWith(link.href));
+  const inAdminGroup = ADMIN_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
 
   const primaryLinks = [
     { href: "/checkin", label: "Check-in" },
@@ -47,6 +41,10 @@ export function NavLinks({
     ...(isAdmin
       ? [{ href: "/admin/customers", label: "Customers" }]
       : [{ href: "/reports/metrics", label: "NC Metrics" }]),
+    // Soft-launch: Finance is only visible to the super admin for now — see
+    // the matching gate in finance/page.tsx. Remove this filter once it's
+    // ready for general use.
+    ...(isSuperAdmin ? [{ href: "/finance", label: "Finance" }] : []),
   ];
 
   return (
@@ -67,7 +65,7 @@ export function NavLinks({
             Admin <ChevronDown className="size-3.5" />
           </PopoverTrigger>
           <PopoverContent className="w-48 p-1.5" align="start">
-            {adminDropdownLinks.map((link) => (
+            {ADMIN_DROPDOWN_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
