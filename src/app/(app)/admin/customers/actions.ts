@@ -79,7 +79,10 @@ export async function updateCustomer(id: string, input: CustomerFormInput) {
       dob: input.dob,
       age_override: input.ageOverride,
       nc_level: input.ncLevel,
-      consumption_balance: input.consumptionBalance,
+      // consumption_balance is intentionally not updatable here — it can
+      // only change via renewCustomer() (Renew dialog) or a check-in, both
+      // of which keep an audit trail. Editing it directly here would bypass
+      // that.
       invited_by_type: input.invitedByType,
       invited_by_coach_id: input.invitedByCoachId,
       invited_by_customer_id: input.invitedByCustomerId,
@@ -98,7 +101,12 @@ export async function updateCustomer(id: string, input: CustomerFormInput) {
   return { success: true };
 }
 
-export async function renewCustomer(id: string, ncLevel: CustomerNcLevel, cupsAdded: number) {
+export async function renewCustomer(
+  id: string,
+  ncLevel: CustomerNcLevel,
+  cupsAdded: number,
+  reason: string | null = null
+) {
   const coach = await getCurrentCoach();
   if (!coach || !coach.is_admin) {
     return { error: "Not authorized." };
@@ -109,6 +117,7 @@ export async function renewCustomer(id: string, ncLevel: CustomerNcLevel, cupsAd
     p_customer_id: id,
     p_nc_level: ncLevel,
     p_cups_added: cupsAdded,
+    p_reason: reason,
   });
 
   if (error) return { error: error.message };

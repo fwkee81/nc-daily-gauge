@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -34,12 +35,14 @@ export function RenewDialog({
 }) {
   const [levelOption, setLevelOption] = useState<LevelOption>(customer.nc_level);
   const [cupsAdded, setCupsAdded] = useState(String(NC_LEVEL_CUPS[customer.nc_level]));
+  const [reason, setReason] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function handleLevelChange(option: LevelOption) {
     setLevelOption(option);
     setCupsAdded(option === CUSTOM ? "" : String(NC_LEVEL_CUPS[option]));
+    if (option !== CUSTOM) setReason("");
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -51,13 +54,22 @@ export function RenewDialog({
       setError("Cups to add must be a positive number.");
       return;
     }
+    if (levelOption === CUSTOM && !reason.trim()) {
+      setError("Please enter a reason for this custom renewal.");
+      return;
+    }
 
     // "Custom" isn't a real NC level — it just unlocks manual cup entry.
     // The customer's actual package level stays whatever it already was.
     const ncLevel = levelOption === CUSTOM ? customer.nc_level : levelOption;
 
     setIsPending(true);
-    const result = await renewCustomer(customer.id, ncLevel, cups);
+    const result = await renewCustomer(
+      customer.id,
+      ncLevel,
+      cups,
+      levelOption === CUSTOM ? reason.trim() : null
+    );
     setIsPending(false);
 
     if (result?.error) {
@@ -112,6 +124,19 @@ export function RenewDialog({
               required
             />
           </div>
+
+          {levelOption === CUSTOM && (
+            <div className="space-y-1">
+              <Label>Reason *</Label>
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Why this custom cup count..."
+                rows={2}
+                required
+              />
+            </div>
+          )}
 
           <p className="text-sm text-muted-foreground">
             Balance: {customer.consumption_balance} → <span className="font-medium text-foreground">{newBalance}</span>

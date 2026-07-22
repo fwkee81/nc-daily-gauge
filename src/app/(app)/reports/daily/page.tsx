@@ -55,7 +55,7 @@ export default async function DailyReportPage({
     supabase
       .from("customer_renewals")
       .select(
-        "id, nc_level, cups_added, previous_balance, new_balance, created_at, customer:customers!inner(name, nc_club_id), renewed_by_coach:coaches(name)"
+        "id, nc_level, cups_added, previous_balance, new_balance, reason, created_at, customer:customers!inner(name, nc_club_id), renewed_by_coach:coaches(name)"
       )
       .gte("created_at", `${date}T00:00:00`)
       .lt("created_at", `${nextDate}T00:00:00`)
@@ -96,6 +96,7 @@ export default async function DailyReportPage({
     cups_added: number;
     previous_balance: number;
     new_balance: number;
+    reason: string | null;
     created_at: string;
     customer: { name: string } | null;
     renewed_by_coach: { name: string } | null;
@@ -123,6 +124,7 @@ export default async function DailyReportPage({
     newBalance: r.new_balance,
     byCoachName: r.renewed_by_coach?.name ?? null,
     createdAt: r.created_at,
+    reason: r.reason,
   }));
 
   const newCustomerEntries: LedgerRow[] = rawNewCustomers.map((c) => ({
@@ -135,6 +137,7 @@ export default async function DailyReportPage({
     newBalance: c.consumption_balance,
     byCoachName: c.created_by_coach?.name ?? null,
     createdAt: c.created_at,
+    reason: null,
   }));
 
   const ledger = [...renewalEntries, ...newCustomerEntries].sort((a, b) =>

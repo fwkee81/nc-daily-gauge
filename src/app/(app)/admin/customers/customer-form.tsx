@@ -282,8 +282,14 @@ export function CustomerForm({
             type="number"
             value={consumptionBalance}
             onChange={(e) => setConsumptionBalance(e.target.value)}
+            disabled={!!editing}
             required
           />
+          {editing && (
+            <p className="text-xs text-muted-foreground">
+              View only — use Renew to change a customer&apos;s balance.
+            </p>
+          )}
         </div>
       </div>
 

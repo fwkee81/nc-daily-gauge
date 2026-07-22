@@ -291,6 +291,9 @@ export interface LedgerRow {
   newBalance: number;
   byCoachName: string | null;
   createdAt: string;
+  // Only ever set for a "Custom" renewal — the reason a coach manually
+  // entered a cup count outside the fixed NC levels.
+  reason: string | null;
 }
 
 // One free-text entry in a club's "what happened today" log — not tied to
@@ -704,6 +707,7 @@ export function DailyReportClient({
                 <TableHead>Balance</TableHead>
                 <TableHead>By Coach</TableHead>
                 <TableHead>Time</TableHead>
+                <TableHead>Reason</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -724,11 +728,12 @@ export function DailyReportClient({
                   </TableCell>
                   <TableCell>{r.byCoachName ?? "—"}</TableCell>
                   <TableCell>{format(new Date(r.createdAt), "p")}</TableCell>
+                  <TableCell className="max-w-56 whitespace-pre-wrap">{r.reason ?? "—"}</TableCell>
                 </TableRow>
               ))}
               {ledger.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No new customers or renewals on this day.
                   </TableCell>
                 </TableRow>

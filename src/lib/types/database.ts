@@ -124,6 +124,7 @@ export type CustomerRenewal = {
   cups_added: number;
   previous_balance: number;
   new_balance: number;
+  reason: string | null;
   created_at: string;
 };
 
@@ -495,7 +496,12 @@ export type Database = {
         Returns: void;
       };
       renew_customer: {
-        Args: { p_customer_id: string; p_nc_level: CustomerNcLevel; p_cups_added: number };
+        Args: {
+          p_customer_id: string;
+          p_nc_level: CustomerNcLevel;
+          p_cups_added: number;
+          p_reason?: string | null;
+        };
         Returns: Customer;
       };
       record_walkin_checkin: {

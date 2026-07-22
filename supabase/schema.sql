@@ -171,6 +171,10 @@ create table customer_renewals (
   cups_added integer not null check (cups_added > 0),
   previous_balance integer not null,
   new_balance integer not null,
+  -- Only ever set for a "Custom" renewal (see renew-dialog.tsx) — the reason
+  -- a coach manually entered a cup count outside the fixed NC levels.
+  -- Surfaced on the Daily Report's New/Renewals ledger.
+  reason text,
   created_at timestamptz not null default now()
 );
 
@@ -788,10 +792,12 @@ $$;
 
 -- Adds cups to a customer's consumption balance when they renew their NC
 -- card, and records the renewal for audit purposes. Admin-only, own club.
+-- p_reason is only meaningful for a "Custom" renewal (see renew-dialog.tsx).
 create or replace function renew_customer(
   p_customer_id uuid,
   p_nc_level customer_nc_level,
-  p_cups_added integer
+  p_cups_added integer,
+  p_reason text default null
 )
 returns customers
 language plpgsql
@@ -821,8 +827,8 @@ begin
 
   v_new_balance := v_customer.consumption_balance + p_cups_added;
 
-  insert into customer_renewals (customer_id, renewed_by, nc_level, cups_added, previous_balance, new_balance)
-  values (p_customer_id, v_coach_id, p_nc_level, p_cups_added, v_customer.consumption_balance, v_new_balance);
+  insert into customer_renewals (customer_id, renewed_by, nc_level, cups_added, previous_balance, new_balance, reason)
+  values (p_customer_id, v_coach_id, p_nc_level, p_cups_added, v_customer.consumption_balance, v_new_balance, p_reason);
 
   update customers
   set consumption_balance = v_new_balance, nc_level = p_nc_level
@@ -836,7 +842,7 @@ $$;
 grant execute on function record_checkin(uuid, integer, consumption_type, date, uuid, boolean) to authenticated;
 grant execute on function correct_checkin(uuid, integer, consumption_type, text, boolean) to authenticated;
 grant execute on function void_checkin(uuid, text) to authenticated;
-grant execute on function renew_customer(uuid, customer_nc_level, integer) to authenticated;
+grant execute on function renew_customer(uuid, customer_nc_level, integer, text) to authenticated;
 grant execute on function record_walkin_checkin(text, text, invited_by_type, uuid, uuid, consumption_type, date) to authenticated;
 
 -- =========================================================================
