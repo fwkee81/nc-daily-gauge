@@ -1012,7 +1012,8 @@ returns table (
   plugin_cups bigint,
   coach_cup_total bigint,
   dine_in_cups bigint,
-  takeaway_cups bigint
+  takeaway_cups bigint,
+  consumption_vp numeric
 )
 language sql
 stable
@@ -1032,7 +1033,19 @@ as $$
         and cu.id not in (select customer_id from coach_cup_excluded_customer_ids(p_club_id))
     ), 0) as coach_cup_total,
     coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Dine-in'), 0) as dine_in_cups,
-    coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Take-away'), 0) as takeaway_cups
+    coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Take-away'), 0) as takeaway_cups,
+    -- Same definition as branches_daily_summary's consumption_vp: stock-out
+    -- with no customer_id (team's own consumption, not a sale/loan).
+    coalesce((
+      select sum(t.quantity * p.vp)
+      from inventory_transactions t
+      join products p on p.id = t.product_id
+      where t.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
+        and t.direction = 'out'
+        and not t.voided
+        and t.customer_id is null
+        and t.txn_date = p_date
+    ), 0) as consumption_vp
   from checkins ci
   join customers cu on cu.id = ci.customer_id
   where ci.checkin_date = p_date

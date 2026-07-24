@@ -7,6 +7,7 @@ import {
   type CheckinRow,
   type DailyLogEntry,
   type LedgerRow,
+  type StockTxnRow,
 } from "./daily-report-client";
 
 export default async function DailyReportPage({
@@ -37,6 +38,7 @@ export default async function DailyReportPage({
     excludedCustomersRes,
     pluginLineageRes,
     dailyLogsRes,
+    stockTxnsRes,
   ] = await Promise.all([
     supabase.rpc("daily_totals", { p_date: date, p_club_id: clubId }),
     supabase.rpc("daily_coach_cups", { p_date: date, p_club_id: clubId }),
@@ -87,6 +89,17 @@ export default async function DailyReportPage({
       .select("id, note, created_at, created_by_coach:coaches(name)")
       .eq("nc_club_id", clubId)
       .eq("log_date", date)
+      .order("created_at", { ascending: false }),
+    // Stock in/out for the day, shown below the Remark section — a mistaken
+    // (voided) movement is left out since it didn't actually happen.
+    supabase
+      .from("inventory_transactions")
+      .select(
+        "id, direction, quantity, created_at, product:products(name), recorded_by_coach:coaches!inventory_transactions_recorded_by_fkey(name)"
+      )
+      .eq("nc_club_id", clubId)
+      .eq("txn_date", date)
+      .eq("voided", false)
       .order("created_at", { ascending: false }),
   ]);
 
@@ -160,6 +173,26 @@ export default async function DailyReportPage({
     })
   );
 
+  interface RawStockTxn {
+    id: string;
+    direction: "in" | "out";
+    quantity: number;
+    created_at: string;
+    product: { name: string } | null;
+    recorded_by_coach: { name: string } | null;
+  }
+
+  const stockTransactions: StockTxnRow[] = ((stockTxnsRes.data ?? []) as unknown as RawStockTxn[]).map(
+    (t) => ({
+      id: t.id,
+      direction: t.direction,
+      quantity: t.quantity,
+      productName: t.product?.name ?? "—",
+      coachName: t.recorded_by_coach?.name ?? null,
+      createdAt: t.created_at,
+    })
+  );
+
   return (
     <DailyReportClient
       date={date}
@@ -175,6 +208,7 @@ export default async function DailyReportPage({
           coach_cup_total: 0,
           dine_in_cups: 0,
           takeaway_cups: 0,
+          consumption_vp: 0,
         }
       }
       coachCups={coachCupsRes.data ?? []}
@@ -185,6 +219,7 @@ export default async function DailyReportPage({
       pluginCustomerIds={(pluginLineageRes.data ?? []).map((c) => c.customer_id)}
       ledger={ledger}
       dailyLogs={dailyLogs}
+      stockTransactions={stockTransactions}
     />
   );
 }

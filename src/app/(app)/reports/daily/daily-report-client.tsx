@@ -296,6 +296,16 @@ export interface LedgerRow {
   reason: string | null;
 }
 
+// One stock in/out movement for the day, shown below the Remark section.
+export interface StockTxnRow {
+  id: string;
+  direction: "in" | "out";
+  quantity: number;
+  productName: string;
+  coachName: string | null;
+  createdAt: string;
+}
+
 // One free-text entry in a club's "what happened today" log — not tied to
 // any customer or ledger row, shown as its own section right after the
 // New/Renewals table.
@@ -343,6 +353,7 @@ export function DailyReportClient({
   pluginCustomerIds,
   ledger,
   dailyLogs,
+  stockTransactions,
 }: {
   date: string;
   hasExplicitDate: boolean;
@@ -356,6 +367,7 @@ export function DailyReportClient({
     coach_cup_total: number;
     dine_in_cups: number;
     takeaway_cups: number;
+    consumption_vp: number;
   };
   coachCups: CoachCupRow[];
   branchCoachCups: BranchCoachCupRow[];
@@ -365,6 +377,7 @@ export function DailyReportClient({
   pluginCustomerIds: string[];
   ledger: LedgerRow[];
   dailyLogs: DailyLogEntry[];
+  stockTransactions: StockTxnRow[];
 }) {
   const router = useRouter();
   const [checkinSort, setCheckinSort] = useState<{ key: CheckinSortKey; dir: "asc" | "desc" } | null>(
@@ -503,7 +516,7 @@ export function DailyReportClient({
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card
           className="cursor-pointer transition-colors hover:bg-accent/50"
           onClick={() => setBreakdownOpen("plugin")}
@@ -529,6 +542,12 @@ export function DailyReportClient({
           <CardHeader>
             <CardDescription>Take-away Cups</CardDescription>
             <CardTitle className="text-2xl">{totals.takeaway_cups}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Consumption VP</CardDescription>
+            <CardTitle className="text-2xl">{totals.consumption_vp.toFixed(2)}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -747,6 +766,43 @@ export function DailyReportClient({
         <h2 className="text-lg font-semibold">Remark / Post Meeting</h2>
         <p className="mt-1 text-sm text-muted-foreground">What happened today.</p>
         <DailyLogSection clubId={clubId} date={date} logs={dailyLogs} />
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold">Stock In / Out</h2>
+        <div className="mt-2 overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>By Coach</TableHead>
+                <TableHead>Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stockTransactions.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell>
+                    {t.direction === "in" ? <Badge>In</Badge> : <Badge variant="secondary">Out</Badge>}
+                  </TableCell>
+                  <TableCell>{t.productName}</TableCell>
+                  <TableCell>{t.quantity}</TableCell>
+                  <TableCell>{t.coachName ?? "—"}</TableCell>
+                  <TableCell>{format(new Date(t.createdAt), "p")}</TableCell>
+                </TableRow>
+              ))}
+              {stockTransactions.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    No stock movements recorded for this day.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <div>

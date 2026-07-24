@@ -216,6 +216,7 @@ export type DailyTotalsRow = {
   coach_cup_total: number;
   dine_in_cups: number;
   takeaway_cups: number;
+  consumption_vp: number;
 };
 
 export type DailyCoachCupsRow = {
