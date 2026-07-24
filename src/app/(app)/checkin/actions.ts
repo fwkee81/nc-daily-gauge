@@ -83,3 +83,32 @@ export async function submitWalkinCheckin(input: {
 
   return { success: true, name: input.name, balance: 0 };
 }
+
+export async function checkinExistingWalkin(
+  customerId: string,
+  consumptionType: ConsumptionType,
+  checkinDate: string
+) {
+  const supabase = await createClient();
+  const { data: customer, error: nameError } = await supabase
+    .from("customers")
+    .select("name")
+    .eq("id", customerId)
+    .single();
+
+  if (nameError || !customer) {
+    return { error: nameError?.message ?? "Customer not found." };
+  }
+
+  const { error } = await supabase.rpc("record_walkin_checkin_existing", {
+    p_customer_id: customerId,
+    p_consumption_type: consumptionType,
+    p_checkin_date: checkinDate,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true, name: customer.name, balance: 0 };
+}

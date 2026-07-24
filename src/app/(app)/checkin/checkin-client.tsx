@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from "@/lib/utils";
 import { playChime, sayHappyBirthday } from "@/lib/chime";
 import { CONSUMPTION_TYPES, NC_LEVEL_CUPS, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
-import type { ConsumptionType, CustomerNcLevel } from "@/lib/types/database";
+import type { ConsumptionType, CustomerNcLevel, RecentWalkinCustomer } from "@/lib/types/database";
 import { submitCheckin } from "./actions";
 import { WalkinDialog } from "./walkin-dialog";
 
@@ -105,12 +105,14 @@ export function CheckinClient({
   checkinOptions,
   customers,
   coaches,
+  recentWalkins,
   isAdmin,
   clubName,
 }: {
   checkinOptions: CheckinOption[];
   customers: CustomerOption[];
   coaches: CoachOption[];
+  recentWalkins: RecentWalkinCustomer[];
   isAdmin: boolean;
   clubName: string | null;
 }) {
@@ -492,6 +494,7 @@ export function CheckinClient({
           onOpenChange={setWalkinOpen}
           coaches={coaches}
           customers={customers}
+          recentWalkins={recentWalkins}
           onDone={handleWalkinDone}
         />
       )}

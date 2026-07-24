@@ -138,6 +138,12 @@ export type CustomerBalanceCorrection = {
   created_at: string;
 };
 
+export type RecentWalkinCustomer = {
+  id: string;
+  name: string;
+  contact: string;
+};
+
 export type DailyReportLog = {
   id: string;
   nc_club_id: string;
@@ -579,6 +585,18 @@ export type Database = {
           p_checkin_date: string;
         };
         Returns: Checkin;
+      };
+      record_walkin_checkin_existing: {
+        Args: {
+          p_customer_id: string;
+          p_consumption_type: ConsumptionType;
+          p_checkin_date: string;
+        };
+        Returns: Checkin;
+      };
+      recent_walkin_customers: {
+        Args: { p_club_id?: string | null };
+        Returns: RecentWalkinCustomer[];
       };
       coach_cup_excluded_customer_ids: {
         Args: { p_club_id?: string | null };
