@@ -80,9 +80,9 @@ export async function updateCustomer(id: string, input: CustomerFormInput) {
       age_override: input.ageOverride,
       nc_level: input.ncLevel,
       // consumption_balance is intentionally not updatable here — it can
-      // only change via renewCustomer() (Renew dialog) or a check-in, both
-      // of which keep an audit trail. Editing it directly here would bypass
-      // that.
+      // only change via renewCustomer() (Renew dialog), correctCustomerBalance()
+      // (Correct Balance dialog), or a check-in, all of which keep an audit
+      // trail. Editing it directly here would bypass that.
       invited_by_type: input.invitedByType,
       invited_by_coach_id: input.invitedByCoachId,
       invited_by_customer_id: input.invitedByCustomerId,
@@ -117,6 +117,29 @@ export async function renewCustomer(
     p_customer_id: id,
     p_nc_level: ncLevel,
     p_cups_added: cupsAdded,
+    p_reason: reason,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/customers");
+  return { success: true };
+}
+
+// Directly sets consumption_balance — for fixing a wrong starting balance,
+// not a package purchase. Kept separate from renewCustomer() so it never
+// shows up as a "renewal" on the Daily Report ledger / Coach's Cup / NC
+// Metrics.
+export async function correctCustomerBalance(id: string, newBalance: number, reason: string) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) {
+    return { error: "Not authorized." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("correct_customer_balance", {
+    p_customer_id: id,
+    p_new_balance: newBalance,
     p_reason: reason,
   });
 

@@ -32,6 +32,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CustomerForm } from "./customer-form";
 import { RenewDialog } from "./renew-dialog";
+import { CorrectBalanceDialog } from "./correct-balance-dialog";
 import { deactivateCustomer, reactivateCustomer } from "./actions";
 import type {
   CustomerGender,
@@ -203,6 +204,7 @@ export function CustomersClient({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerRow | null>(null);
   const [renewing, setRenewing] = useState<CustomerRow | null>(null);
+  const [correcting, setCorrecting] = useState<CustomerRow | null>(null);
   const [viewing, setViewing] = useState<CustomerRow | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [newSignup, setNewSignup] = useState<{ name: string; ncLevel: CustomerNcLevel } | null>(null);
@@ -456,6 +458,9 @@ export function CustomersClient({
                     <Button size="sm" variant="outline" onClick={() => setRenewing(c)}>
                       Renew
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => setCorrecting(c)}>
+                      Correct Balance
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -511,6 +516,18 @@ export function CustomersClient({
           onOpenChange={(open) => !open && setRenewing(null)}
           onDone={() => {
             setRenewing(null);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {correcting && (
+        <CorrectBalanceDialog
+          customer={correcting}
+          open={!!correcting}
+          onOpenChange={(open) => !open && setCorrecting(null)}
+          onDone={() => {
+            setCorrecting(null);
             router.refresh();
           }}
         />

@@ -128,6 +128,16 @@ export type CustomerRenewal = {
   created_at: string;
 };
 
+export type CustomerBalanceCorrection = {
+  id: string;
+  customer_id: string;
+  corrected_by: string;
+  previous_balance: number;
+  new_balance: number;
+  reason: string;
+  created_at: string;
+};
+
 export type DailyReportLog = {
   id: string;
   nc_club_id: string;
@@ -473,6 +483,11 @@ export type Database = {
         Insert: Partial<CustomerRenewal>;
         Update: Partial<CustomerRenewal>;
       } & NoRelationships;
+      customer_balance_corrections: {
+        Row: CustomerBalanceCorrection;
+        Insert: Partial<CustomerBalanceCorrection>;
+        Update: Partial<CustomerBalanceCorrection>;
+      } & NoRelationships;
       daily_report_logs: {
         Row: DailyReportLog;
         Insert: Partial<DailyReportLog>;
@@ -547,6 +562,10 @@ export type Database = {
           p_cups_added: number;
           p_reason?: string | null;
         };
+        Returns: Customer;
+      };
+      correct_customer_balance: {
+        Args: { p_customer_id: string; p_new_balance: number; p_reason: string };
         Returns: Customer;
       };
       record_walkin_checkin: {
