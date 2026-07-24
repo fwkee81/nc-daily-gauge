@@ -8,6 +8,8 @@ import {
   Calculator,
   HeartPulse,
   Activity,
+  Package,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,10 +53,24 @@ export default async function DashboardPage() {
       tint: "bg-secondary/25 text-[#8a5a00]",
     },
     {
+      href: "/inventory",
+      title: "Inventory",
+      description: "Track stock in/out for products and consumption VP.",
+      icon: Package,
+      tint: "bg-primary/15 text-primary",
+    },
+    {
       href: "/reports/metrics",
       title: "NC Metrics",
       description: "Monthly totals and averages, by club and by coach.",
       icon: TrendingUp,
+      tint: "bg-secondary/25 text-[#8a5a00]",
+    },
+    {
+      href: "/finance",
+      title: "Finance",
+      description: "Log daily income and expenses, and view monthly summaries.",
+      icon: Wallet,
       tint: "bg-primary/15 text-primary",
     },
     ...(coach?.is_admin
