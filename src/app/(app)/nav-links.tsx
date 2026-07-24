@@ -24,13 +24,7 @@ function pillClass(active: boolean) {
   );
 }
 
-export function NavLinks({
-  isAdmin,
-  isSuperAdmin,
-}: {
-  isAdmin: boolean;
-  isSuperAdmin: boolean;
-}) {
+export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const inAdminGroup = ADMIN_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
 
@@ -41,10 +35,7 @@ export function NavLinks({
     ...(isAdmin
       ? [{ href: "/admin/customers", label: "Customers" }]
       : [{ href: "/reports/metrics", label: "NC Metrics" }]),
-    // Soft-launch: Finance is only visible to the super admin for now — see
-    // the matching gate in finance/page.tsx. Remove this filter once it's
-    // ready for general use.
-    ...(isSuperAdmin ? [{ href: "/finance", label: "Finance" }] : []),
+    { href: "/finance", label: "Finance" },
   ];
 
   return (

@@ -1,12 +1,8 @@
 import { redirect } from "next/navigation";
 import { addMonths, format, parseISO } from "date-fns";
-import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
+import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import {
-  FINANCE_EXPENSE_CATEGORIES,
-  FINANCE_INCOME_CATEGORIES,
-  SUPER_ADMIN_EMAIL,
-} from "@/lib/constants";
+import { FINANCE_EXPENSE_CATEGORIES, FINANCE_INCOME_CATEGORIES } from "@/lib/constants";
 import {
   FinanceClient,
   type FinanceCategoryBreakdown,
@@ -21,18 +17,6 @@ export default async function FinancePage({
 }) {
   const coach = await getCurrentCoach();
   if (!coach) redirect("/onboarding");
-
-  // Soft-launch: Finance is only visible to the super admin for now, not
-  // rolled out to every coach yet. Remove this gate (and the matching one in
-  // NavLinks) when it's ready for general use.
-  const user = await getCurrentUser();
-  if (user?.email !== SUPER_ADMIN_EMAIL) {
-    return (
-      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        Finance isn&apos;t available yet.
-      </div>
-    );
-  }
 
   if (!coach.nc_club_id) {
     return (
