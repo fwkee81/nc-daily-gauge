@@ -33,6 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { CustomerForm } from "./customer-form";
 import { RenewDialog } from "./renew-dialog";
 import { CorrectBalanceDialog } from "./correct-balance-dialog";
+import { RecentCheckins } from "./recent-checkins";
 import { deactivateCustomer, reactivateCustomer } from "./actions";
 import type {
   CustomerGender,
@@ -667,6 +668,9 @@ function CustomerViewDialog({
                 </ul>
               </div>
             )}
+
+            {/* key remounts this on customer change so its state resets cleanly */}
+            <RecentCheckins key={customer.id} customerId={customer.id} />
           </div>
         )}
       </DialogContent>
