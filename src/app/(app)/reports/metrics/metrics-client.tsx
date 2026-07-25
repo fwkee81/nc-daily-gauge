@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { getCoachMilestoneTier } from "@/lib/cup-milestones";
 import type {
   CustomerGender,
   CustomerNcLevel,
@@ -176,13 +177,25 @@ export function MetricsClient({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {coachCups.map((row) => (
-                    <TableRow key={row.coach_id}>
-                      <TableCell>{row.coach_name}</TableCell>
-                      <TableCell className="text-right">{row.total_cups}</TableCell>
-                      <TableCell className="text-right">{row.avg_daily_cups}</TableCell>
-                    </TableRow>
-                  ))}
+                  {coachCups.map((row) => {
+                    const avgTier = getCoachMilestoneTier(Number(row.avg_daily_cups));
+                    return (
+                      <TableRow key={row.coach_id}>
+                        <TableCell>{row.coach_name}</TableCell>
+                        <TableCell className="text-right">{row.total_cups}</TableCell>
+                        <TableCell className="text-right">
+                          <span className="inline-flex items-center gap-1">
+                            {row.avg_daily_cups}
+                            {avgTier && (
+                              <span aria-hidden title={avgTier.title}>
+                                {avgTier.emoji}
+                              </span>
+                            )}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {coachCups.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={3} className="text-center text-muted-foreground">
