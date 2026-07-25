@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { getMilestoneTier } from "@/lib/cup-milestones";
+import { getMilestoneTier, getCoachMilestoneTier } from "@/lib/cup-milestones";
 import type {
   BranchCoachCupsCompareRow,
   BranchDailyRemarkRow,
@@ -197,12 +197,20 @@ export function BranchesList({
                     <ul className="divide-y">
                       {clubCoachCups.map((c) => {
                         const d = diffInfo(c.cups, c.prev_cups);
+                        const coachTier = getCoachMilestoneTier(c.cups);
                         return (
                           <li
                             key={c.coach_id}
                             className="flex items-center justify-between px-3 py-1.5 text-sm"
                           >
-                            <span>{c.coach_name}</span>
+                            <span className="inline-flex items-center gap-1">
+                              {c.coach_name}
+                              {coachTier && (
+                                <span aria-hidden title={coachTier.title}>
+                                  {coachTier.emoji}
+                                </span>
+                              )}
+                            </span>
                             <span className="flex items-center gap-2">
                               <span>
                                 {c.cups} cup{c.cups === 1 ? "" : "s"}
