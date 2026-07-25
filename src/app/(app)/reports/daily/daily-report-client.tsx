@@ -611,22 +611,21 @@ export function DailyReportClient({
         </div>
       </div>
 
-      <Card className="border-2 border-primary bg-primary/5 sm:max-w-xs">
-        <CardHeader>
-          <CardDescription>Total NC Cups</CardDescription>
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-2xl font-bold text-primary">{totals.total_cups}</CardTitle>
-            {currentTier && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
-                <span aria-hidden>{currentTier.emoji}</span>
-                {currentTier.title}
-              </span>
-            )}
-          </div>
-        </CardHeader>
-      </Card>
-
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <Card className="border-2 border-primary bg-primary/5">
+          <CardHeader>
+            <CardDescription>Total NC Cups</CardDescription>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-2xl font-bold text-primary">{totals.total_cups}</CardTitle>
+              {currentTier && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                  <span aria-hidden>{currentTier.emoji}</span>
+                  {currentTier.title}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+        </Card>
         <Card
           className="cursor-pointer transition-colors hover:bg-accent/50"
           onClick={() => setBreakdownOpen("plugin")}
@@ -660,46 +659,6 @@ export function DailyReportClient({
             <CardTitle className="text-2xl">{totals.consumption_vp.toFixed(2)}</CardTitle>
           </CardHeader>
         </Card>
-      </div>
-
-      <div>
-        <h2 className="text-lg font-semibold">Reminders</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Checked in today with balance under {RENEWAL_REMINDER_THRESHOLD} — follow up about renewing.
-        </p>
-        <div className="mt-2 overflow-x-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>NC Level</TableHead>
-                <TableHead>Balance</TableHead>
-                <TableHead>Coach</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {reminders.map((r) => (
-                <TableRow key={r.customerId}>
-                  <TableCell>
-                    <CustomerProfileTrigger customerId={r.customerId} name={r.name} />
-                  </TableCell>
-                  <TableCell>{r.ncLevel}</TableCell>
-                  <TableCell>
-                    <Badge variant="destructive">{r.balance}</Badge>
-                  </TableCell>
-                  <TableCell>{r.coachName ?? "—"}</TableCell>
-                </TableRow>
-              ))}
-              {reminders.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No low-balance customers checked in today.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
       </div>
 
       <Dialog open={!!breakdownOpen} onOpenChange={(open) => !open && setBreakdownOpen(null)}>
@@ -913,37 +872,37 @@ export function DailyReportClient({
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold">Balance Corrections</h2>
+        <h2 className="text-lg font-semibold">Reminders</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Admin fixes to a wrong balance — not counted as a renewal in New/Renewals or NC Metrics.
+          Checked in today with balance under {RENEWAL_REMINDER_THRESHOLD} — follow up about renewing.
         </p>
         <div className="mt-2 overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Customer</TableHead>
+                <TableHead>NC Level</TableHead>
                 <TableHead>Balance</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>By Coach</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>Coach</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {balanceCorrections.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>{c.customerName}</TableCell>
+              {reminders.map((r) => (
+                <TableRow key={r.customerId}>
                   <TableCell>
-                    {c.previousBalance} → {c.newBalance}
+                    <CustomerProfileTrigger customerId={r.customerId} name={r.name} />
                   </TableCell>
-                  <TableCell className="max-w-56 whitespace-pre-wrap">{c.reason}</TableCell>
-                  <TableCell>{c.correctedByName ?? "—"}</TableCell>
-                  <TableCell>{format(new Date(c.createdAt), "p")}</TableCell>
+                  <TableCell>{r.ncLevel}</TableCell>
+                  <TableCell>
+                    <Badge variant="destructive">{r.balance}</Badge>
+                  </TableCell>
+                  <TableCell>{r.coachName ?? "—"}</TableCell>
                 </TableRow>
               ))}
-              {balanceCorrections.length === 0 && (
+              {reminders.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    No balance corrections on this day.
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    No low-balance customers checked in today.
                   </TableCell>
                 </TableRow>
               )}
@@ -1015,6 +974,46 @@ export function DailyReportClient({
               </span>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold">Balance Corrections</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Admin fixes to a wrong balance — not counted as a renewal in New/Renewals or NC Metrics.
+        </p>
+        <div className="mt-2 overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>Balance</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead>By Coach</TableHead>
+                <TableHead>Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {balanceCorrections.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell>{c.customerName}</TableCell>
+                  <TableCell>
+                    {c.previousBalance} → {c.newBalance}
+                  </TableCell>
+                  <TableCell className="max-w-56 whitespace-pre-wrap">{c.reason}</TableCell>
+                  <TableCell>{c.correctedByName ?? "—"}</TableCell>
+                  <TableCell>{format(new Date(c.createdAt), "p")}</TableCell>
+                </TableRow>
+              ))}
+              {balanceCorrections.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    No balance corrections on this day.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
 
