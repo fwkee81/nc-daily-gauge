@@ -4,6 +4,7 @@ import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   DailyReportClient,
+  type BalanceCorrectionRow,
   type CheckinRow,
   type DailyLogEntry,
   type LedgerRow,
@@ -39,6 +40,7 @@ export default async function DailyReportPage({
     pluginLineageRes,
     dailyLogsRes,
     stockTxnsRes,
+    balanceCorrectionsRes,
   ] = await Promise.all([
     supabase.rpc("daily_totals", { p_date: date, p_club_id: clubId }),
     supabase.rpc("daily_coach_cups", { p_date: date, p_club_id: clubId }),
@@ -100,6 +102,18 @@ export default async function DailyReportPage({
       .eq("nc_club_id", clubId)
       .eq("txn_date", date)
       .eq("voided", false)
+      .order("created_at", { ascending: false }),
+    // Balance corrections for the day — shown for accountability only,
+    // deliberately kept separate from the New/Renewals ledger above so a
+    // typo fix never counts as a real renewal in NC Metrics/Coach's Cup.
+    supabase
+      .from("customer_balance_corrections")
+      .select(
+        "id, previous_balance, new_balance, reason, created_at, customer:customers!inner(name, nc_club_id), corrected_by_coach:coaches(name)"
+      )
+      .gte("created_at", `${date}T00:00:00`)
+      .lt("created_at", `${nextDate}T00:00:00`)
+      .eq("customer.nc_club_id", clubId)
       .order("created_at", { ascending: false }),
   ]);
 
@@ -195,6 +209,28 @@ export default async function DailyReportPage({
     })
   );
 
+  interface RawBalanceCorrection {
+    id: string;
+    previous_balance: number;
+    new_balance: number;
+    reason: string;
+    created_at: string;
+    customer: { name: string } | null;
+    corrected_by_coach: { name: string } | null;
+  }
+
+  const balanceCorrections: BalanceCorrectionRow[] = (
+    (balanceCorrectionsRes.data ?? []) as unknown as RawBalanceCorrection[]
+  ).map((c) => ({
+    id: c.id,
+    customerName: c.customer?.name ?? "—",
+    previousBalance: c.previous_balance,
+    newBalance: c.new_balance,
+    reason: c.reason,
+    correctedByName: c.corrected_by_coach?.name ?? null,
+    createdAt: c.created_at,
+  }));
+
   return (
     <DailyReportClient
       date={date}
@@ -221,6 +257,7 @@ export default async function DailyReportPage({
       excludedCustomerIds={(excludedCustomersRes.data ?? []).map((c) => c.customer_id)}
       pluginCustomerIds={(pluginLineageRes.data ?? []).map((c) => c.customer_id)}
       ledger={ledger}
+      balanceCorrections={balanceCorrections}
       dailyLogs={dailyLogs}
       stockTransactions={stockTransactions}
     />

@@ -297,6 +297,20 @@ export interface LedgerRow {
   reason: string | null;
 }
 
+// An admin's fix to a customer's starting/wrong balance — shown separately
+// from the New/Renewals ledger above (not "New"/"Renewal", so kept out of
+// that table) so a typo correction never gets counted as a real renewal in
+// NC Metrics/Coach's Cup, while still being visible for accountability.
+export interface BalanceCorrectionRow {
+  id: string;
+  customerName: string;
+  previousBalance: number;
+  newBalance: number;
+  reason: string;
+  correctedByName: string | null;
+  createdAt: string;
+}
+
 // One stock in/out movement for the day, shown below the Remark section.
 export interface StockTxnRow {
   id: string;
@@ -355,6 +369,7 @@ export function DailyReportClient({
   excludedCustomerIds,
   pluginCustomerIds,
   ledger,
+  balanceCorrections,
   dailyLogs,
   stockTransactions,
 }: {
@@ -380,6 +395,7 @@ export function DailyReportClient({
   excludedCustomerIds: string[];
   pluginCustomerIds: string[];
   ledger: LedgerRow[];
+  balanceCorrections: BalanceCorrectionRow[];
   dailyLogs: DailyLogEntry[];
   stockTransactions: StockTxnRow[];
 }) {
@@ -758,6 +774,46 @@ export function DailyReportClient({
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No new customers or renewals on this day.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold">Balance Corrections</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Admin fixes to a wrong balance — not counted as a renewal in New/Renewals or NC Metrics.
+        </p>
+        <div className="mt-2 overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>Balance</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead>By Coach</TableHead>
+                <TableHead>Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {balanceCorrections.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell>{c.customerName}</TableCell>
+                  <TableCell>
+                    {c.previousBalance} → {c.newBalance}
+                  </TableCell>
+                  <TableCell className="max-w-56 whitespace-pre-wrap">{c.reason}</TableCell>
+                  <TableCell>{c.correctedByName ?? "—"}</TableCell>
+                  <TableCell>{format(new Date(c.createdAt), "p")}</TableCell>
+                </TableRow>
+              ))}
+              {balanceCorrections.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    No balance corrections on this day.
                   </TableCell>
                 </TableRow>
               )}
