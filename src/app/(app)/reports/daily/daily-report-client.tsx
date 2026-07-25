@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { CONSUMPTION_TYPES } from "@/lib/constants";
+import { CONSUMPTION_TYPES, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
 import { getMilestoneTier, type MilestoneTier } from "@/lib/cup-milestones";
 import type { ConsumptionType } from "@/lib/types/database";
 import { CustomerProfileTrigger } from "@/components/customer-profile-dialog";
@@ -441,6 +441,36 @@ export function DailyReportClient({
     } as const;
   }, [checkins, pluginCustomerIdSet]);
 
+  // Today's checked-in customers running low on cups — a nudge to follow up
+  // about renewing while they're fresh in mind. Ala Carte is excluded: their
+  // balance always nets to 0 after every visit by design (see
+  // record_walkin_checkin in schema.sql), so it's never a renewal signal.
+  const reminders = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: {
+      customerId: string;
+      name: string;
+      ncLevel: string;
+      balance: number;
+      coachName: string | null;
+    }[] = [];
+    for (const c of checkins) {
+      if (c.voided || !c.customer) continue;
+      if (c.customer.nc_level === "Ala Carte") continue;
+      if (c.customer.consumption_balance >= RENEWAL_REMINDER_THRESHOLD) continue;
+      if (seen.has(c.customer_id)) continue;
+      seen.add(c.customer_id);
+      rows.push({
+        customerId: c.customer_id,
+        name: c.customer.name,
+        ncLevel: c.customer.nc_level,
+        balance: c.customer.consumption_balance,
+        coachName: c.customer.coach?.name ?? null,
+      });
+    }
+    return rows.sort((a, b) => a.balance - b.balance);
+  }, [checkins]);
+
   const sortedCheckins = useMemo(() => {
     const filtered = hideVoided ? checkins.filter((c) => !c.voided) : checkins;
     if (!checkinSort) return filtered;
@@ -582,6 +612,46 @@ export function DailyReportClient({
             <CardTitle className="text-2xl">{totals.consumption_vp.toFixed(2)}</CardTitle>
           </CardHeader>
         </Card>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold">Reminders</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Checked in today with balance under {RENEWAL_REMINDER_THRESHOLD} — follow up about renewing.
+        </p>
+        <div className="mt-2 overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>NC Level</TableHead>
+                <TableHead>Balance</TableHead>
+                <TableHead>Coach</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reminders.map((r) => (
+                <TableRow key={r.customerId}>
+                  <TableCell>
+                    <CustomerProfileTrigger customerId={r.customerId} name={r.name} />
+                  </TableCell>
+                  <TableCell>{r.ncLevel}</TableCell>
+                  <TableCell>
+                    <Badge variant="destructive">{r.balance}</Badge>
+                  </TableCell>
+                  <TableCell>{r.coachName ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+              {reminders.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    No low-balance customers checked in today.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <Dialog open={!!breakdownOpen} onOpenChange={(open) => !open && setBreakdownOpen(null)}>
