@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { differenceInYears, parseISO } from "date-fns";
-import { Activity, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCustomerProfile } from "@/lib/actions/customer-profile";
 import { RecentCheckins } from "@/components/recent-checkins";
+import { RecentWellnessLogs } from "@/components/recent-wellness-logs";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 
 interface CustomerProfile {
@@ -200,21 +201,12 @@ export function CustomerProfileDialog({
             )}
 
             {tab === "wellness" && (
-              <div className="pt-1">
-                <div className="flex items-center gap-3 rounded-lg border p-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                    <Activity className="size-4.5" strokeWidth={2.25} />
-                  </span>
-                  <div>
-                    <p className="font-medium">My Wellness profile</p>
-                    <p className="text-xs text-muted-foreground">
-                      Body composition history and Tanita readings.
-                    </p>
-                  </div>
-                </div>
+              <div className="space-y-2 pt-1">
+                <p className="text-xs text-muted-foreground">Last 5 readings</p>
+                <RecentWellnessLogs customerId={profile.id} />
                 <Link
                   href={`/wellness-report/${profile.id}`}
-                  className="mt-3 inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent"
+                  className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent"
                 >
                   Open Wellness Report <ChevronRight className="size-4 text-muted-foreground" />
                 </Link>
