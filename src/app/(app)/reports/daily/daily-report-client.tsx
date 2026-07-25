@@ -29,6 +29,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -47,6 +58,7 @@ import {
   getCheckinHistory,
   addDailyReportLogAction,
   updateDailyReportLogAction,
+  deleteDailyReportLogAction,
 } from "./actions";
 
 interface CoachCupRow {
@@ -998,6 +1010,7 @@ function DailyLogItem({ log, canEdit }: { log: DailyLogEntry; canEdit: boolean }
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(log.note);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function handleSave() {
     if (!draft.trim()) {
@@ -1013,6 +1026,18 @@ function DailyLogItem({ log, canEdit }: { log: DailyLogEntry; canEdit: boolean }
     }
     setEditing(false);
     toast.success("Note updated.");
+    router.refresh();
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    const res = await deleteDailyReportLogAction(log.id);
+    setDeleting(false);
+    if (res.error) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success("Note deleted.");
     router.refresh();
   }
 
@@ -1050,14 +1075,40 @@ function DailyLogItem({ log, canEdit }: { log: DailyLogEntry; canEdit: boolean }
       <div className="flex items-start justify-between gap-2">
         <p className="whitespace-pre-wrap">{log.note}</p>
         {canEdit && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-auto shrink-0 px-1.5 py-0.5 text-xs text-muted-foreground"
-            onClick={() => setEditing(true)}
-          >
-            Edit
-          </Button>
+          <div className="flex shrink-0 gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-auto px-1.5 py-0.5 text-xs text-muted-foreground"
+              onClick={() => setEditing(true)}
+            >
+              Edit
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto px-1.5 py-0.5 text-xs text-destructive"
+                    disabled={deleting}
+                  />
+                }
+              >
+                Delete
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+                  <AlertDialogDescription>This can&apos;t be undone.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         )}
       </div>
       <p className="mt-1 text-xs text-muted-foreground">

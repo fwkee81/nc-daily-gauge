@@ -210,9 +210,10 @@ create table customer_balance_corrections (
 -- A running log of notable events for the day on a club's Daily Report —
 -- sits right after the New/Renewals ledger. NOT tied to any one customer or
 -- ledger row (that was an earlier, wrong design) — just free-text entries a
--- coach adds over the course of the day. Editable (not a financial record,
--- so no audit trail needed) but only by whoever wrote it, or an admin fixing
--- a typo on someone else's behalf — see the update policy below.
+-- coach adds over the course of the day. Editable and deletable (not a
+-- financial record, so no audit trail needed) but only by whoever wrote it,
+-- or an admin acting on someone else's behalf — see the update/delete
+-- policies below.
 -- log_date is set explicitly from whichever date the Daily Report page is
 -- viewing (not always "today"), so backfilling a past day's notes works the
 -- same way backfilling check-ins does.
@@ -622,8 +623,9 @@ create policy "customer_balance_corrections_select" on customer_balance_correcti
 -- daily_report_logs: same club-scoped visibility as everything else, but
 -- writable directly (not via an RPC) since there's no balance/atomicity
 -- concern here — just enforce that a coach can only ever attribute an entry
--- to themselves. Editable by whoever wrote it (fixing a typo shouldn't need
--- an RPC or an audit trail), or by an admin on anyone's entry.
+-- to themselves. Editable/deletable by whoever wrote it (fixing a typo or
+-- pulling a wrong entry shouldn't need an RPC or an audit trail), or by an
+-- admin on anyone's entry.
 create policy "daily_report_logs_select" on daily_report_logs
   for select to authenticated
   using (nc_club_id in (select visible_club_ids(current_coach_id())));
@@ -642,6 +644,13 @@ create policy "daily_report_logs_update" on daily_report_logs
     and (created_by_coach_id = current_coach_id() or is_current_coach_admin())
   )
   with check (
+    nc_club_id in (select visible_club_ids(current_coach_id()))
+    and (created_by_coach_id = current_coach_id() or is_current_coach_admin())
+  );
+
+create policy "daily_report_logs_delete" on daily_report_logs
+  for delete to authenticated
+  using (
     nc_club_id in (select visible_club_ids(current_coach_id()))
     and (created_by_coach_id = current_coach_id() or is_current_coach_admin())
   );

@@ -89,3 +89,14 @@ export async function updateDailyReportLogAction(id: string, note: string) {
   revalidatePath("/reports/daily");
   return { success: true };
 }
+
+// Removes a log entry outright — RLS restricts this to whoever wrote it, or
+// an admin, same as updateDailyReportLogAction above.
+export async function deleteDailyReportLogAction(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("daily_report_logs").delete().eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/reports/daily");
+  return { success: true };
+}
