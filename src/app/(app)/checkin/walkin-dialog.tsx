@@ -217,12 +217,12 @@ export function WalkinDialog({
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="flex-1"
                 onClick={() => setSelectedExisting(null)}
               >
                 Back
               </Button>
-              <Button type="submit" disabled={isPending} className="w-full text-base">
+              <Button type="submit" disabled={isPending} className="flex-1 text-base">
                 {isPending ? "Checking in..." : "Check in"}
               </Button>
             </div>
@@ -279,12 +279,12 @@ export function WalkinDialog({
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="flex-1"
                 onClick={() => setCreatingNew(false)}
               >
                 Back
               </Button>
-              <Button type="submit" disabled={isPending} className="w-full text-base">
+              <Button type="submit" disabled={isPending} className="flex-1 text-base">
                 {isPending ? "Checking in..." : "Check in"}
               </Button>
             </div>
