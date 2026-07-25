@@ -210,7 +210,9 @@ create table customer_balance_corrections (
 -- A running log of notable events for the day on a club's Daily Report —
 -- sits right after the New/Renewals ledger. NOT tied to any one customer or
 -- ledger row (that was an earlier, wrong design) — just free-text entries a
--- coach adds over the course of the day, append-only like a journal.
+-- coach adds over the course of the day. Editable (not a financial record,
+-- so no audit trail needed) but only by whoever wrote it, or an admin fixing
+-- a typo on someone else's behalf — see the update policy below.
 -- log_date is set explicitly from whichever date the Daily Report page is
 -- viewing (not always "today"), so backfilling a past day's notes works the
 -- same way backfilling check-ins does.
@@ -296,8 +298,9 @@ create table inventory_transactions (
 -- is restricted to Owner-level coaches at the app layer (nc_position =
 -- 'Owner', narrower than is_admin which also includes Internship) — see
 -- the comment on the finance_transactions_select policy below for why that
--- restriction lives in the app rather than RLS. Append-only, same
--- reasoning as daily_report_logs: no update/delete policy.
+-- restriction lives in the app rather than RLS. Append-only: financial
+-- records are voided rather than edited, to keep an audit trail — no
+-- update/delete policy.
 create table finance_transactions (
   id uuid primary key default gen_random_uuid(),
   nc_club_id uuid not null references nc_clubs (id),
@@ -619,8 +622,8 @@ create policy "customer_balance_corrections_select" on customer_balance_correcti
 -- daily_report_logs: same club-scoped visibility as everything else, but
 -- writable directly (not via an RPC) since there's no balance/atomicity
 -- concern here — just enforce that a coach can only ever attribute an entry
--- to themselves. Append-only: no update/delete policy, matching the
--- journal-entry intent (log entries aren't edited after the fact).
+-- to themselves. Editable by whoever wrote it (fixing a typo shouldn't need
+-- an RPC or an audit trail), or by an admin on anyone's entry.
 create policy "daily_report_logs_select" on daily_report_logs
   for select to authenticated
   using (nc_club_id in (select visible_club_ids(current_coach_id())));
@@ -630,6 +633,17 @@ create policy "daily_report_logs_insert" on daily_report_logs
   with check (
     created_by_coach_id = current_coach_id()
     and nc_club_id in (select visible_club_ids(current_coach_id()))
+  );
+
+create policy "daily_report_logs_update" on daily_report_logs
+  for update to authenticated
+  using (
+    nc_club_id in (select visible_club_ids(current_coach_id()))
+    and (created_by_coach_id = current_coach_id() or is_current_coach_admin())
+  )
+  with check (
+    nc_club_id in (select visible_club_ids(current_coach_id()))
+    and (created_by_coach_id = current_coach_id() or is_current_coach_admin())
   );
 
 -- products: readable by any signed-in coach (needed to populate the picker

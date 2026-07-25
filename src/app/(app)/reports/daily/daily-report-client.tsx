@@ -46,6 +46,7 @@ import {
   voidCheckinAction,
   getCheckinHistory,
   addDailyReportLogAction,
+  updateDailyReportLogAction,
 } from "./actions";
 
 interface CoachCupRow {
@@ -313,6 +314,7 @@ export interface DailyLogEntry {
   id: string;
   note: string;
   coachName: string | null;
+  createdByCoachId: string | null;
   createdAt: string;
 }
 
@@ -344,6 +346,7 @@ export function DailyReportClient({
   clubName,
   viewingBranch,
   isAdmin,
+  currentCoachId,
   totals,
   coachCups,
   branchCoachCups,
@@ -361,6 +364,7 @@ export function DailyReportClient({
   clubName: string | null;
   viewingBranch: boolean;
   isAdmin: boolean;
+  currentCoachId: string;
   totals: {
     total_cups: number;
     plugin_cups: number;
@@ -765,7 +769,13 @@ export function DailyReportClient({
       <div>
         <h2 className="text-lg font-semibold">Remark / Post Meeting</h2>
         <p className="mt-1 text-sm text-muted-foreground">What happened today.</p>
-        <DailyLogSection clubId={clubId} date={date} logs={dailyLogs} />
+        <DailyLogSection
+          clubId={clubId}
+          date={date}
+          logs={dailyLogs}
+          currentCoachId={currentCoachId}
+          isAdmin={isAdmin}
+        />
       </div>
 
       <div>
@@ -865,10 +875,14 @@ function DailyLogSection({
   clubId,
   date,
   logs,
+  currentCoachId,
+  isAdmin,
 }: {
   clubId: string;
   date: string;
   logs: DailyLogEntry[];
+  currentCoachId: string;
+  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [note, setNote] = useState("");
@@ -911,16 +925,89 @@ function DailyLogSection({
       ) : (
         <ul className="space-y-2">
           {logs.map((l) => (
-            <li key={l.id} className="rounded-md border px-3 py-2 text-sm">
-              <p className="whitespace-pre-wrap">{l.note}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {l.coachName ?? "—"} · {format(new Date(l.createdAt), "p")}
-              </p>
-            </li>
+            <DailyLogItem
+              key={l.id}
+              log={l}
+              canEdit={l.createdByCoachId === currentCoachId || isAdmin}
+            />
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+function DailyLogItem({ log, canEdit }: { log: DailyLogEntry; canEdit: boolean }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(log.note);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!draft.trim()) {
+      toast.error("Please enter a note.");
+      return;
+    }
+    setSaving(true);
+    const res = await updateDailyReportLogAction(log.id, draft);
+    setSaving(false);
+    if (res.error) {
+      toast.error(res.error);
+      return;
+    }
+    setEditing(false);
+    toast.success("Note updated.");
+    router.refresh();
+  }
+
+  if (editing) {
+    return (
+      <li className="rounded-md border px-3 py-2 text-sm">
+        <Textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={2}
+          className="text-sm"
+          autoFocus
+        />
+        <div className="mt-2 flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setDraft(log.note);
+              setEditing(false);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li className="rounded-md border px-3 py-2 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="whitespace-pre-wrap">{log.note}</p>
+        {canEdit && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-auto shrink-0 px-1.5 py-0.5 text-xs text-muted-foreground"
+            onClick={() => setEditing(true)}
+          >
+            Edit
+          </Button>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {log.coachName ?? "—"} · {format(new Date(log.createdAt), "p")}
+      </p>
+    </li>
   );
 }
 

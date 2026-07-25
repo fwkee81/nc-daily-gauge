@@ -86,7 +86,7 @@ export default async function DailyReportPage({
     // this club/date, not tied to any customer or ledger row.
     supabase
       .from("daily_report_logs")
-      .select("id, note, created_at, created_by_coach:coaches(name)")
+      .select("id, note, created_at, created_by_coach_id, created_by_coach:coaches(name)")
       .eq("nc_club_id", clubId)
       .eq("log_date", date)
       .order("created_at", { ascending: false }),
@@ -161,6 +161,7 @@ export default async function DailyReportPage({
     id: string;
     note: string;
     created_at: string;
+    created_by_coach_id: string | null;
     created_by_coach: { name: string } | null;
   }
 
@@ -169,6 +170,7 @@ export default async function DailyReportPage({
       id: l.id,
       note: l.note,
       coachName: l.created_by_coach?.name ?? null,
+      createdByCoachId: l.created_by_coach_id,
       createdAt: l.created_at,
     })
   );
@@ -201,6 +203,7 @@ export default async function DailyReportPage({
       clubName={clubRes.data?.name ?? null}
       viewingBranch={viewingBranch}
       isAdmin={coach.is_admin && !viewingBranch}
+      currentCoachId={coach.id}
       totals={
         totalsRes.data?.[0] ?? {
           total_cups: 0,

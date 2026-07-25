@@ -74,3 +74,18 @@ export async function addDailyReportLogAction(clubId: string, date: string, note
   revalidatePath("/reports/daily");
   return { success: true };
 }
+
+// Fixes a typo/mistake on an existing log entry in place, instead of adding
+// a new one. RLS on daily_report_logs restricts this to whoever wrote the
+// entry, or an admin — enforced server-side, not just hidden in the UI.
+export async function updateDailyReportLogAction(id: string, note: string) {
+  const trimmed = note.trim();
+  if (!trimmed) return { error: "Please enter a note." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("daily_report_logs").update({ note: trimmed }).eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/reports/daily");
+  return { success: true };
+}
