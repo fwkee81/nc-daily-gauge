@@ -4,21 +4,43 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { BranchLeaderboardRow, BranchMonthlySummaryRow } from "@/lib/types/database";
+import type {
+  BranchLeaderboardRow,
+  BranchMonthlySummaryRow,
+  BranchNewRenewalRow,
+  CustomerNcLevel,
+} from "@/lib/types/database";
 
 const RANK_MEDAL = ["🥇", "🥈", "🥉"];
 
+// The 4 stats that drill down into a customer list — value column keeps
+// this key so BranchesMonthly can look their breakdown up in newRenewalsByKey.
+const NEW_RENEWAL_LEVELS: { level: CustomerNcLevel; label: string }[] = [
+  { level: "5-day", label: "5-Day" },
+  { level: "10-day", label: "10-Day" },
+  { level: "20-day", label: "20-Day" },
+  { level: "30-day", label: "30-Day" },
+];
+
 export function BranchesMonthly({
   summary,
+  newRenewals,
   leaderboards,
   ownClubId,
 }: {
   summary: BranchMonthlySummaryRow[];
+  newRenewals: BranchNewRenewalRow[];
   leaderboards: BranchLeaderboardRow[];
   ownClubId: string | null;
 }) {
   const [expandedClubId, setExpandedClubId] = useState<string | null>(null);
+  const [breakdownOpen, setBreakdownOpen] = useState<{
+    clubName: string;
+    label: string;
+    rows: BranchNewRenewalRow[];
+  } | null>(null);
 
   const coachCupAvgByClub = useMemo(() => {
     const map = new Map<string, BranchLeaderboardRow[]>();
@@ -29,6 +51,16 @@ export function BranchesMonthly({
     }
     return map;
   }, [leaderboards]);
+
+  const newRenewalsByKey = useMemo(() => {
+    const map = new Map<string, BranchNewRenewalRow[]>();
+    for (const row of newRenewals) {
+      const key = `${row.club_id}::${row.nc_level}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(row);
+    }
+    return map;
+  }, [newRenewals]);
 
   if (summary.length === 0) {
     return (
@@ -49,6 +81,13 @@ export function BranchesMonthly({
           const isOwn = row.club_id === ownClubId;
           const isExpanded = expandedClubId === row.club_id;
           const clubCoachCups = coachCupAvgByClub.get(row.club_id) ?? [];
+          const statByLevel: Record<CustomerNcLevel, number | undefined> = {
+            "5-day": row.total_5day,
+            "10-day": row.total_10day,
+            "20-day": row.total_20day,
+            "30-day": row.total_30day,
+            "Ala Carte": undefined,
+          };
 
           return (
             <Card key={row.club_id}>
@@ -81,10 +120,19 @@ export function BranchesMonthly({
                     </p>
                     <p className="text-lg font-semibold">{row.coach_cup_avg_daily}</p>
                   </button>
-                  <Stat label="5-Day" value={row.total_5day} />
-                  <Stat label="10-Day" value={row.total_10day} />
-                  <Stat label="20-Day" value={row.total_20day} />
-                  <Stat label="30-Day" value={row.total_30day} />
+                  {NEW_RENEWAL_LEVELS.map(({ level, label }) => {
+                    const value = statByLevel[level];
+                    if (value === undefined) return null;
+                    const rows = newRenewalsByKey.get(`${row.club_id}::${level}`) ?? [];
+                    return (
+                      <Stat
+                        key={level}
+                        label={label}
+                        value={value}
+                        onClick={() => setBreakdownOpen({ clubName: row.club_name, label, rows })}
+                      />
+                    );
+                  })}
                   <Stat label="Consumption VP" value={row.consumption_vp} decimals={2} />
                 </div>
 
@@ -138,6 +186,33 @@ export function BranchesMonthly({
           />
         </div>
       </div>
+
+      <Dialog open={!!breakdownOpen} onOpenChange={(open) => !open && setBreakdownOpen(null)}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {breakdownOpen?.clubName} — {breakdownOpen?.label}
+            </DialogTitle>
+          </DialogHeader>
+          <ul className="divide-y">
+            {breakdownOpen?.rows.map((r, i) => (
+              <li
+                key={`${r.customer_name}-${r.created_at}-${i}`}
+                className="flex items-center justify-between py-2 text-sm"
+              >
+                <span className="flex items-center gap-1.5">
+                  {r.kind === "new" ? <Badge>New</Badge> : <Badge variant="secondary">Renewal</Badge>}
+                  {r.customer_name}
+                </span>
+                <span className="text-muted-foreground">{r.coach_name ?? "—"}</span>
+              </li>
+            ))}
+            {breakdownOpen?.rows.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">No customers yet.</p>
+            )}
+          </ul>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -146,19 +221,38 @@ function Stat({
   label,
   value,
   decimals,
+  onClick,
 }: {
   label: string;
   value: number;
   decimals?: number;
+  onClick?: () => void;
 }) {
-  return (
-    <div className="rounded-md border px-3 py-2">
-      <p className="text-xs text-muted-foreground">{label}</p>
+  const content = (
+    <>
+      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+        {onClick && <ChevronRight className="size-3" />}
+        {label}
+      </p>
       <p className="text-lg font-semibold">
         {decimals != null ? Number(value).toFixed(decimals) : value}
       </p>
-    </div>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className="rounded-md border px-3 py-2 text-left transition-colors hover:bg-accent"
+        onClick={onClick}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className="rounded-md border px-3 py-2">{content}</div>;
 }
 
 function Leaderboard({

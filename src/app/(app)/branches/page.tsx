@@ -40,7 +40,9 @@ export default async function BranchesPage({
     newRenewalsRes,
     remarksRes,
     weeklySummaryRes,
+    weeklyNewRenewalsRes,
     monthlySummaryRes,
+    monthlyNewRenewalsRes,
     leaderboardsRes,
   ] = await Promise.all([
     supabase.rpc("branches_daily_summary", { p_date: date }),
@@ -48,7 +50,9 @@ export default async function BranchesPage({
     supabase.rpc("branches_new_renewals", { p_date: date }),
     supabase.rpc("branches_daily_remarks", { p_date: date }),
     supabase.rpc("branches_weekly_summary", { p_date: date }),
+    supabase.rpc("branches_weekly_new_renewals", { p_date: date }),
     supabase.rpc("branches_monthly_summary", { p_month: `${month}-01` }),
+    supabase.rpc("branches_monthly_new_renewals", { p_month: `${month}-01` }),
     supabase.rpc("branches_monthly_leaderboards", { p_month: `${month}-01` }),
   ]);
   const branches = (summaryRes.data ?? []) as BranchDailySummaryRow[];
@@ -56,7 +60,9 @@ export default async function BranchesPage({
   const newRenewals = (newRenewalsRes.data ?? []) as BranchNewRenewalRow[];
   const remarks = (remarksRes.data ?? []) as BranchDailyRemarkRow[];
   const weeklySummary = (weeklySummaryRes.data ?? []) as BranchWeeklySummaryRow[];
+  const weeklyNewRenewals = (weeklyNewRenewalsRes.data ?? []) as BranchNewRenewalRow[];
   const monthlySummary = (monthlySummaryRes.data ?? []) as BranchMonthlySummaryRow[];
+  const monthlyNewRenewals = (monthlyNewRenewalsRes.data ?? []) as BranchNewRenewalRow[];
   const leaderboards = (leaderboardsRes.data ?? []) as BranchLeaderboardRow[];
 
   return (
@@ -79,7 +85,9 @@ export default async function BranchesPage({
         newRenewals={newRenewals}
         remarks={remarks}
         weeklySummary={weeklySummary}
+        weeklyNewRenewals={weeklyNewRenewals}
         monthlySummary={monthlySummary}
+        monthlyNewRenewals={monthlyNewRenewals}
         leaderboards={leaderboards}
       />
     </div>

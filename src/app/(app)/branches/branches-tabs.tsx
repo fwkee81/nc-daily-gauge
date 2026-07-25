@@ -31,7 +31,9 @@ export function BranchesTabs({
   newRenewals,
   remarks,
   weeklySummary,
+  weeklyNewRenewals,
   monthlySummary,
+  monthlyNewRenewals,
   leaderboards,
 }: {
   tab: string;
@@ -45,7 +47,9 @@ export function BranchesTabs({
   newRenewals: BranchNewRenewalRow[];
   remarks: BranchDailyRemarkRow[];
   weeklySummary: BranchWeeklySummaryRow[];
+  weeklyNewRenewals: BranchNewRenewalRow[];
   monthlySummary: BranchMonthlySummaryRow[];
+  monthlyNewRenewals: BranchNewRenewalRow[];
   leaderboards: BranchLeaderboardRow[];
 }) {
   const router = useRouter();
@@ -89,7 +93,13 @@ export function BranchesTabs({
           </p>
           <BranchesDateNav date={date} hasExplicitDate={hasExplicitDate} />
         </div>
-        <BranchesWeekly summary={weeklySummary} ownClubId={ownClubId} date={date} month={month} />
+        <BranchesWeekly
+          summary={weeklySummary}
+          newRenewals={weeklyNewRenewals}
+          ownClubId={ownClubId}
+          date={date}
+          month={month}
+        />
       </TabsContent>
 
       <TabsContent value="monthly" className="mt-4">
@@ -100,7 +110,12 @@ export function BranchesTabs({
           </p>
           <BranchesMonthNav month={month} hasExplicitMonth={hasExplicitMonth} />
         </div>
-        <BranchesMonthly summary={monthlySummary} leaderboards={leaderboards} ownClubId={ownClubId} />
+        <BranchesMonthly
+          summary={monthlySummary}
+          newRenewals={monthlyNewRenewals}
+          leaderboards={leaderboards}
+          ownClubId={ownClubId}
+        />
       </TabsContent>
     </Tabs>
   );

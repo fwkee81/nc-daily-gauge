@@ -660,6 +660,10 @@ export type Database = {
         Args: { p_date?: string };
         Returns: BranchWeeklySummaryRow[];
       };
+      branches_weekly_new_renewals: {
+        Args: { p_date?: string };
+        Returns: BranchNewRenewalRow[];
+      };
       branches_coach_cups_compare: {
         Args: { p_date: string };
         Returns: BranchCoachCupsCompareRow[];
@@ -671,6 +675,10 @@ export type Database = {
       branches_monthly_summary: {
         Args: { p_month: string };
         Returns: BranchMonthlySummaryRow[];
+      };
+      branches_monthly_new_renewals: {
+        Args: { p_month: string };
+        Returns: BranchNewRenewalRow[];
       };
       branches_monthly_leaderboards: {
         Args: { p_month: string };
