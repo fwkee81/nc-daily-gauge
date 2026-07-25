@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCustomerProfile } from "@/lib/actions/customer-profile";
 import { RecentCheckins } from "@/components/recent-checkins";
+import { WhatsAppLink } from "@/components/whatsapp-link";
 
 interface CustomerProfile {
   id: string;
@@ -115,7 +116,7 @@ export function CustomerProfileDialog({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Contact</p>
-                <p>{profile.contact}</p>
+                <WhatsAppLink contact={profile.contact} />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Age</p>
@@ -166,9 +167,14 @@ export function CustomerProfileDialog({
                 <p className="text-xs text-muted-foreground">Shares account with</p>
                 <ul className="mt-1 space-y-0.5">
                   {profile.members.map((m) => (
-                    <li key={m.id}>
+                    <li key={m.id} className="flex items-center gap-1">
                       {m.name}
-                      {m.contact && <span className="text-muted-foreground"> · {m.contact}</span>}
+                      {m.contact && (
+                        <>
+                          <span className="text-muted-foreground">·</span>
+                          <WhatsAppLink contact={m.contact} />
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>
