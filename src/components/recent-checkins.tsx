@@ -16,9 +16,8 @@ interface CheckinEntry {
 
 // Quick "has this person been coming?" visual for a coach glancing at a
 // customer's profile — a 30-day activity strip (like a mini contribution
-// graph) plus the underlying visit list. Fetched on demand when the popup
-// opens rather than preloaded for the whole customer list, so the Customers
-// table itself stays fast.
+// graph) plus the underlying visit list. Fetched on demand when the tab
+// opens rather than preloaded for the whole customer list.
 export function RecentCheckins({ customerId }: { customerId: string }) {
   const [checkins, setCheckins] = useState<CheckinEntry[] | null>(null);
 
@@ -46,7 +45,7 @@ export function RecentCheckins({ customerId }: { customerId: string }) {
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between">
-        <p className="text-xs text-muted-foreground">Visit trend (last 30 days)</p>
+        <p className="text-xs text-muted-foreground">Last 30 days</p>
         {checkins && (
           <p className="text-xs text-muted-foreground">
             {checkins.length} visit{checkins.length === 1 ? "" : "s"}

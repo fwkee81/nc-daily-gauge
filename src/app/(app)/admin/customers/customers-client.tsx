@@ -33,7 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { CustomerForm } from "./customer-form";
 import { RenewDialog } from "./renew-dialog";
 import { CorrectBalanceDialog } from "./correct-balance-dialog";
-import { RecentCheckins } from "./recent-checkins";
+import { CustomerProfileDialog } from "@/components/customer-profile-dialog";
 import { deactivateCustomer, reactivateCustomer } from "./actions";
 import type {
   CustomerGender,
@@ -534,9 +534,9 @@ export function CustomersClient({
         />
       )}
 
-      <CustomerViewDialog
-        customer={viewing}
-        members={viewing ? members.filter((m) => m.customer_id === viewing.id) : []}
+      <CustomerProfileDialog
+        customerId={viewing?.id ?? null}
+        name={viewing?.name ?? ""}
         onOpenChange={(open) => !open && setViewing(null)}
       />
 
@@ -582,98 +582,3 @@ export function CustomersClient({
   );
 }
 
-function CustomerViewDialog({
-  customer,
-  members,
-  onOpenChange,
-}: {
-  customer: CustomerRow | null;
-  members: CustomerMemberRow[];
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Dialog open={!!customer} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{customer?.name}</DialogTitle>
-        </DialogHeader>
-
-        {customer && (
-          <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Gender</p>
-                <p>{customer.gender}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Contact</p>
-                <p>{customer.contact}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Age</p>
-                <p>{ageOf(customer) ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">NC Level</p>
-                <p>{customer.nc_level}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Consumption balance</p>
-                <p>{customer.consumption_balance}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Invited by</p>
-                <p>{invitedByLabel(customer)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Coach</p>
-                <p>{customer.coach?.name ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Member</p>
-                <p>
-                  {customer.member_id
-                    ? `${customer.member_id} (${customer.member_type ?? "—"})`
-                    : "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Status</p>
-                <p>{customer.active ? "Active" : "Inactive"}</p>
-              </div>
-            </div>
-
-            {(customer.is_pjs || customer.is_health_ambassador) && (
-              <div className="flex gap-1.5">
-                {customer.is_pjs && <Badge variant="outline">PJS</Badge>}
-                {customer.is_health_ambassador && <Badge variant="outline">Health Ambassador</Badge>}
-              </div>
-            )}
-
-            <div>
-              <p className="text-xs text-muted-foreground">Remark</p>
-              <p>{customer.remark || "—"}</p>
-            </div>
-
-            {members.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground">Shares account with</p>
-                <ul className="mt-1 space-y-0.5">
-                  {members.map((m) => (
-                    <li key={m.id}>
-                      {m.name}
-                      {m.contact && <span className="text-muted-foreground"> · {m.contact}</span>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* key remounts this on customer change so its state resets cleanly */}
-            <RecentCheckins key={customer.id} customerId={customer.id} />
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}

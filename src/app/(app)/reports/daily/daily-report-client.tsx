@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { addDays, differenceInYears, format, parseISO } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,11 +40,11 @@ import { cn } from "@/lib/utils";
 import { CONSUMPTION_TYPES } from "@/lib/constants";
 import { getMilestoneTier, type MilestoneTier } from "@/lib/cup-milestones";
 import type { ConsumptionType } from "@/lib/types/database";
+import { CustomerProfileTrigger } from "@/components/customer-profile-dialog";
 import {
   correctCheckinAction,
   voidCheckinAction,
   getCheckinHistory,
-  getCustomerProfile,
   addDailyReportLogAction,
 } from "./actions";
 
@@ -681,7 +681,7 @@ export function DailyReportClient({
                 <TableRow key={c.id} className={c.voided ? "opacity-50" : undefined}>
                   <TableCell className="sticky left-0 z-10 border-r bg-background">
                     <div className="flex items-center gap-1.5">
-                      <CustomerInfoDialog customerId={c.customer_id} name={checkinDisplayName(c)} />
+                      <CustomerProfileTrigger customerId={c.customer_id} name={checkinDisplayName(c)} />
                       {c.is_birthday_shake && <span title="Birthday Shake (free)">🎂</span>}
                     </div>
                   </TableCell>
@@ -1068,144 +1068,3 @@ function ManageCheckinDialog({ checkin }: { checkin: CheckinRow }) {
   );
 }
 
-interface CustomerProfile {
-  id: string;
-  name: string;
-  gender: string;
-  contact: string;
-  dob: string | null;
-  age_override: number | null;
-  nc_level: string;
-  consumption_balance: number;
-  invited_by_type: string;
-  member_id: string | null;
-  member_type: string | null;
-  remark: string | null;
-  is_pjs: boolean;
-  is_health_ambassador: boolean;
-  active: boolean;
-  coach: { name: string } | null;
-  invited_by_coach: { name: string } | null;
-  invitedByCustomerName: string | null;
-  members: { id: string; name: string; contact: string | null; dob: string | null }[];
-}
-
-function CustomerInfoDialog({ customerId, name }: { customerId: string; name: string }) {
-  const [open, setOpen] = useState(false);
-  const [profile, setProfile] = useState<CustomerProfile | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open || profile || error) return;
-    getCustomerProfile(customerId).then((res) => {
-      if ("data" in res) setProfile(res.data as unknown as CustomerProfile);
-      else setError(res.error ?? "Could not load customer.");
-    });
-  }, [open, customerId, profile, error]);
-
-  function invitedByLabel(p: CustomerProfile) {
-    if (p.invited_by_type === "plugin") return "Plug-in";
-    if (p.invited_by_type === "coach") return p.invited_by_coach?.name ?? "—";
-    return p.invitedByCustomerName ?? "—";
-  }
-
-  function ageOf(p: CustomerProfile) {
-    if (p.age_override != null) return p.age_override;
-    if (!p.dob) return null;
-    return differenceInYears(new Date(), new Date(p.dob));
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="link" className="h-auto p-0" />}>{name}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{name}</DialogTitle>
-        </DialogHeader>
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        {!error && !profile && <p className="text-sm text-muted-foreground">Loading...</p>}
-
-        {profile && (
-          <div className="space-y-2 text-sm">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Gender</p>
-                <p>{profile.gender}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Contact</p>
-                <p>{profile.contact}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Age</p>
-                <p>{ageOf(profile) ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">NC Level</p>
-                <p>{profile.nc_level}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Consumption balance</p>
-                <p>{profile.consumption_balance}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Invited by</p>
-                <p>{invitedByLabel(profile)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Coach</p>
-                <p>{profile.coach?.name ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Member</p>
-                <p>
-                  {profile.member_id ? `${profile.member_id} (${profile.member_type ?? "—"})` : "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Status</p>
-                <p>{profile.active ? "Active" : "Inactive"}</p>
-              </div>
-            </div>
-
-            {(profile.is_pjs || profile.is_health_ambassador) && (
-              <div className="flex gap-1.5">
-                {profile.is_pjs && <Badge variant="outline">PJS</Badge>}
-                {profile.is_health_ambassador && <Badge variant="outline">Health Ambassador</Badge>}
-              </div>
-            )}
-
-            <div>
-              <p className="text-xs text-muted-foreground">Remark</p>
-              <p>{profile.remark || "—"}</p>
-            </div>
-
-            {profile.members.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground">Shares account with</p>
-                <ul className="mt-1 space-y-0.5">
-                  {profile.members.map((m) => (
-                    <li key={m.id}>
-                      {m.name}
-                      {m.contact && <span className="text-muted-foreground"> · {m.contact}</span>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <Separator />
-
-            <Link
-              href={`/wellness-report/${customerId}`}
-              className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent"
-            >
-              Wellness Report <ChevronRight className="size-4 text-muted-foreground" />
-            </Link>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
