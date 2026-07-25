@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format, parse, parseISO } from "date-fns";
 import { toast } from "sonner";
+import { ArrowLeftRight, Banknote, QrCode, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,6 +77,14 @@ interface CoachOption {
   id: string;
   name: string;
 }
+
+// A distinct icon + color per payment method so it reads at a glance in the
+// picker, the ledger, and the monthly breakdown — not just plain text.
+const PAYMENT_METHOD_STYLE: Record<FinancePaymentMethod, { icon: LucideIcon; color: string }> = {
+  Cash: { icon: Banknote, color: "text-emerald-600" },
+  QR: { icon: QrCode, color: "text-blue-600" },
+  Transfer: { icon: ArrowLeftRight, color: "text-violet-600" },
+};
 
 function VoidDialog({
   transaction,
@@ -381,7 +390,7 @@ export function FinanceClient({
                 </Button>
                 <Button
                   type="button"
-                  variant={direction === "out" ? "default" : "outline"}
+                  variant={direction === "out" ? "secondary" : "outline"}
                   className="flex-1"
                   onClick={() => handleDirectionChange("out")}
                 >
@@ -457,19 +466,25 @@ export function FinanceClient({
               <div className="space-y-1">
                 <Label>Payment Method</Label>
                 <div className="flex gap-2">
-                  {FINANCE_PAYMENT_METHODS.map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      className={cn(
-                        "flex-1 rounded-md border px-3 py-2 text-sm transition-colors",
-                        paymentMethod === m ? "border-primary bg-primary/10 font-medium" : "hover:bg-accent"
-                      )}
-                      onClick={() => setPaymentMethod(m)}
-                    >
-                      {m}
-                    </button>
-                  ))}
+                  {FINANCE_PAYMENT_METHODS.map((m) => {
+                    const { icon: Icon, color } = PAYMENT_METHOD_STYLE[m];
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        className={cn(
+                          "flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors",
+                          paymentMethod === m
+                            ? "border-primary bg-primary/10 font-medium"
+                            : "hover:bg-accent"
+                        )}
+                        onClick={() => setPaymentMethod(m)}
+                      >
+                        <Icon className={cn("size-4", color)} />
+                        {m}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -483,7 +498,12 @@ export function FinanceClient({
                 />
               </div>
 
-              <Button onClick={handleSubmit} disabled={isPending} className="w-full">
+              <Button
+                variant={direction === "out" ? "secondary" : "default"}
+                onClick={handleSubmit}
+                disabled={isPending}
+                className="w-full"
+              >
                 {isPending ? "Saving..." : direction === "in" ? "Record Income" : "Record Expense"}
               </Button>
             </CardContent>
@@ -547,7 +567,21 @@ export function FinanceClient({
                       <TableCell className={t.direction === "in" ? "text-primary" : "text-destructive"}>
                         {t.direction === "in" ? "+" : "-"}RM {t.amount.toFixed(2)}
                       </TableCell>
-                      <TableCell>{t.paymentMethod}</TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1.5">
+                          {(() => {
+                            const style = PAYMENT_METHOD_STYLE[t.paymentMethod as FinancePaymentMethod];
+                            if (!style) return t.paymentMethod;
+                            const Icon = style.icon;
+                            return (
+                              <>
+                                <Icon className={cn("size-4", style.color)} />
+                                {t.paymentMethod}
+                              </>
+                            );
+                          })()}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         {t.direction === "in" ? (
                           <>
@@ -644,14 +678,20 @@ export function FinanceClient({
                     Income by payment method
                   </p>
                   <div className="grid grid-cols-3 gap-3">
-                    {FINANCE_PAYMENT_METHODS.map((m) => (
-                      <div key={m} className="rounded-md border px-3 py-2">
-                        <p className="text-xs text-muted-foreground">{m}</p>
-                        <p className="text-sm font-semibold">
-                          RM {(monthlySummary.incomeByPayment[m] ?? 0).toFixed(2)}
-                        </p>
-                      </div>
-                    ))}
+                    {FINANCE_PAYMENT_METHODS.map((m) => {
+                      const { icon: Icon, color } = PAYMENT_METHOD_STYLE[m];
+                      return (
+                        <div key={m} className="rounded-md border px-3 py-2">
+                          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Icon className={cn("size-3.5", color)} />
+                            {m}
+                          </p>
+                          <p className="text-sm font-semibold">
+                            RM {(monthlySummary.incomeByPayment[m] ?? 0).toFixed(2)}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </CardContent>
