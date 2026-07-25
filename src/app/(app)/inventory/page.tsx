@@ -1,9 +1,14 @@
 import { redirect } from "next/navigation";
+import { addMonths, format, parseISO } from "date-fns";
 import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { InventoryClient } from "./inventory-client";
 
-export default async function InventoryPage() {
+export default async function InventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
   const coach = await getCurrentCoach();
   if (!coach) redirect("/onboarding");
 
@@ -14,6 +19,11 @@ export default async function InventoryPage() {
       </div>
     );
   }
+
+  const { month: monthParam } = await searchParams;
+  const month = monthParam ?? format(new Date(), "yyyy-MM");
+  const monthStart = `${month}-01`;
+  const nextMonthStart = format(addMonths(parseISO(monthStart), 1), "yyyy-MM-dd");
 
   const supabase = await createClient();
   const [
@@ -45,8 +55,9 @@ export default async function InventoryPage() {
         "id, nc_club_id, product_id, direction, quantity, txn_date, customer_id, recorded_by, remark, created_at, voided, voided_by, void_reason, voided_at"
       )
       .eq("nc_club_id", coach.nc_club_id)
-      .order("created_at", { ascending: false })
-      .limit(300),
+      .gte("txn_date", monthStart)
+      .lt("txn_date", nextMonthStart)
+      .order("created_at", { ascending: false }),
   ]);
 
   return (
@@ -58,6 +69,8 @@ export default async function InventoryPage() {
       customers={customers ?? []}
       coaches={coaches ?? []}
       transactions={transactions ?? []}
+      month={month}
+      hasExplicitMonth={Boolean(monthParam)}
     />
   );
 }

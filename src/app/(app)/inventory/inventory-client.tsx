@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { addMonths, format, parse } from "date-fns";
 import { Plus, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { InventoryStockLevelRow, InventoryTransaction } from "@/lib/types/database";
 import { StockDialog } from "./stock-dialog";
@@ -56,6 +58,8 @@ export function InventoryClient({
   customers,
   coaches,
   transactions,
+  month,
+  hasExplicitMonth,
 }: {
   isAdmin: boolean;
   clubName: string | null;
@@ -64,10 +68,32 @@ export function InventoryClient({
   customers: PersonOption[];
   coaches: PersonOption[];
   transactions: InventoryTransaction[];
+  month: string;
+  hasExplicitMonth: boolean;
 }) {
   const router = useRouter();
   const [stockDialog, setStockDialog] = useState<"in" | "out" | null>(null);
   const [addProductOpen, setAddProductOpen] = useState(false);
+
+  function goToMonth(m: string) {
+    router.push(`/inventory?month=${m}`);
+  }
+
+  // The server defaults "this month" using its own clock (Vercel runs in
+  // UTC), which can be a day off from the club's actual local date right
+  // around a month boundary. If no month was explicitly requested,
+  // self-correct to the browser's local month right after hydration.
+  // Mirrors Daily Report / Finance / NC Metrics.
+  useEffect(() => {
+    if (hasExplicitMonth) return;
+    const clientMonth = format(new Date(), "yyyy-MM");
+    if (clientMonth !== month) {
+      router.replace(`/inventory?month=${clientMonth}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const parsedMonth = parse(month, "yyyy-MM", new Date());
 
   const customerNameById = useMemo(() => new Map(customers.map((c) => [c.id, c.name])), [customers]);
   const coachNameById = useMemo(() => new Map(coaches.map((c) => [c.id, c.name])), [coaches]);
@@ -186,7 +212,31 @@ export function InventoryClient({
       </div>
 
       <div className="mt-8">
-        <h2 className="text-lg font-semibold">Recent movements</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Recent movements — {format(parsedMonth, "MMMM yyyy")}</h2>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToMonth(format(addMonths(parsedMonth, -1), "yyyy-MM"))}
+            >
+              ← Prev month
+            </Button>
+            <Input
+              type="month"
+              className="w-auto"
+              value={month}
+              onChange={(e) => goToMonth(e.target.value)}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToMonth(format(addMonths(parsedMonth, 1), "yyyy-MM"))}
+            >
+              Next month →
+            </Button>
+          </div>
+        </div>
         <div className="mt-3">
           <TransactionsTable
             transactions={transactions}
