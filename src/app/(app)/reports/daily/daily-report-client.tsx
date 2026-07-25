@@ -49,7 +49,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { CONSUMPTION_TYPES, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
-import { getMilestoneTier, type MilestoneTier } from "@/lib/cup-milestones";
+import {
+  getMilestoneTier,
+  getCoachMilestoneTier,
+  formatCoachMilestoneMessage,
+  type MilestoneTier,
+  type CoachMilestoneTier,
+} from "@/lib/cup-milestones";
 import type { ConsumptionType } from "@/lib/types/database";
 import { CustomerProfileTrigger } from "@/components/customer-profile-dialog";
 import {
@@ -152,6 +158,7 @@ function CoachCupTable({
             const customerCheckins = isExpanded
               ? coachCheckins(checkins, row.coach_id, excludedCustomerIdSet)
               : [];
+            const coachTier = getCoachMilestoneTier(row.cups);
             return (
               <Fragment key={row.coach_id}>
                 <TableRow
@@ -176,6 +183,11 @@ function CoachCupTable({
                         <ChevronRight className="size-3.5 text-muted-foreground" />
                       )}
                       {row.coach_name}
+                      {coachTier && (
+                        <span aria-hidden title={coachTier.title}>
+                          {coachTier.emoji}
+                        </span>
+                      )}
                     </span>
                   </TableCell>
                   {showClubColumn && (
@@ -365,6 +377,14 @@ const CONFETTI_COLORS = [
   "#4dabf7",
 ];
 
+// A queue rather than a single "current celebration" slot — the club total
+// and a coach's personal cup count can each cross a milestone from the same
+// checkin, and both deserve their own popup instead of one clobbering the
+// other.
+type Celebration =
+  | { kind: "total"; tier: MilestoneTier; cups: number }
+  | { kind: "coach"; tier: CoachMilestoneTier; coachName: string; cups: number };
+
 export function DailyReportClient({
   date,
   hasExplicitDate,
@@ -418,10 +438,20 @@ export function DailyReportClient({
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null);
   const [hideVoided, setHideVoided] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState<"plugin" | "dine-in" | "takeaway" | null>(null);
-  const [celebratingTier, setCelebratingTier] = useState<MilestoneTier | null>(null);
+  const [celebrationQueue, setCelebrationQueue] = useState<Celebration[]>([]);
+  const celebrating = celebrationQueue[0] ?? null;
+  const dismissCelebration = () => setCelebrationQueue((q) => q.slice(1));
   const excludedCustomerIdSet = useMemo(() => new Set(excludedCustomerIds), [excludedCustomerIds]);
   const pluginCustomerIdSet = useMemo(() => new Set(pluginCustomerIds), [pluginCustomerIds]);
   const currentTier = useMemo(() => getMilestoneTier(totals.total_cups), [totals.total_cups]);
+  const myCoachRow = useMemo(
+    () => coachCups.find((r) => r.coach_id === currentCoachId) ?? null,
+    [coachCups, currentCoachId]
+  );
+  const myCoachTier = useMemo(
+    () => (myCoachRow ? getCoachMilestoneTier(myCoachRow.cups) : null),
+    [myCoachRow]
+  );
 
   const breakdowns = useMemo(() => {
     const active = checkins.filter((c) => !c.voided);
@@ -520,8 +550,26 @@ export function DailyReportClient({
     if (currentTier.cups <= lastCelebratedTier) return;
     window.localStorage.setItem(key, String(currentTier.cups));
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCelebratingTier(currentTier);
-  }, [clubId, date, currentTier]);
+    setCelebrationQueue((q) => [...q, { kind: "total", tier: currentTier, cups: totals.total_cups }]);
+  }, [clubId, date, currentTier, totals.total_cups]);
+
+  // Same idea, but for the signed-in coach's own Coach's Cup count — 5
+  // cups and up, celebrated for that coach only (not popped for every
+  // coach whenever anyone views the page).
+  useEffect(() => {
+    if (!myCoachRow || !myCoachTier) return;
+    if (date !== format(new Date(), "yyyy-MM-dd")) return;
+
+    const key = `nc-coach-cup-milestone-${currentCoachId}-${date}`;
+    const lastCelebratedTier = Number(window.localStorage.getItem(key) ?? "0");
+    if (myCoachTier.cups <= lastCelebratedTier) return;
+    window.localStorage.setItem(key, String(myCoachTier.cups));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCelebrationQueue((q) => [
+      ...q,
+      { kind: "coach", tier: myCoachTier, coachName: myCoachRow.coach_name, cups: myCoachRow.cups },
+    ]);
+  }, [currentCoachId, date, myCoachRow, myCoachTier]);
 
   function goToDate(d: string) {
     const clubQuery = viewingBranch ? `&club=${clubId}` : "";
@@ -970,7 +1018,7 @@ export function DailyReportClient({
         </div>
       </div>
 
-      <Dialog open={!!celebratingTier} onOpenChange={(open) => !open && setCelebratingTier(null)}>
+      <Dialog open={!!celebrating} onOpenChange={(open) => !open && dismissCelebration()}>
         <DialogContent className="overflow-hidden sm:max-w-sm">
           {CONFETTI_COLORS.map((color, i) => (
             <span
@@ -987,7 +1035,7 @@ export function DailyReportClient({
           ))}
           <DialogHeader>
             <DialogTitle className="text-center text-2xl">
-              {celebratingTier?.emoji} {celebratingTier?.title} {celebratingTier?.emoji}
+              {celebrating?.tier.emoji} {celebrating?.tier.title} {celebrating?.tier.emoji}
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-2 py-2 text-center">
@@ -995,12 +1043,26 @@ export function DailyReportClient({
               className="text-6xl"
               style={{ display: "inline-block", animation: "cake-bounce 1s ease-in-out infinite" }}
             >
-              {celebratingTier?.emoji}
+              {celebrating?.tier.emoji}
             </span>
-            <p className="text-xl font-semibold">{totals.total_cups} cups today</p>
-            <p className="text-base text-muted-foreground">{celebratingTier?.message}</p>
+            {celebrating?.kind === "total" && (
+              <>
+                <p className="text-xl font-semibold">{celebrating.cups} cups today</p>
+                <p className="text-base text-muted-foreground">{celebrating.tier.message}</p>
+              </>
+            )}
+            {celebrating?.kind === "coach" && (
+              <>
+                <p className="text-xl font-semibold">
+                  {celebrating.coachName} · {celebrating.cups} cups today
+                </p>
+                <p className="text-base text-muted-foreground">
+                  {formatCoachMilestoneMessage(celebrating.tier, celebrating.coachName, celebrating.cups)}
+                </p>
+              </>
+            )}
           </div>
-          <Button className="w-full py-6 text-lg" onClick={() => setCelebratingTier(null)}>
+          <Button className="w-full py-6 text-lg" onClick={dismissCelebration}>
             OK
           </Button>
         </DialogContent>

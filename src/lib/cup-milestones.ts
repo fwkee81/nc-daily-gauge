@@ -22,3 +22,69 @@ export function getMilestoneTier(totalCups: number): MilestoneTier | null {
   }
   return reached;
 }
+
+// Personal Coach's Cup tiers — same idea as CUP_MILESTONES but per-coach,
+// celebrated individually rather than club-wide. Tone escalates: 5 is just a
+// good start, 10-15 build momentum, 20+ is "hero" territory.
+export interface CoachMilestoneTier {
+  cups: number;
+  emoji: string;
+  title: string;
+  // {name} and {cups} are substituted in — see formatCoachMilestoneMessage.
+  messageTemplate: string;
+}
+
+export const COACH_CUP_MILESTONES: CoachMilestoneTier[] = [
+  {
+    cups: 5,
+    emoji: "🌱",
+    title: "美好的开始！",
+    messageTemplate: "恭喜 {name}，今天达到个人杯数 {cups}，迈出漂亮的第一步，再接再厉冲向10杯！",
+  },
+  {
+    cups: 10,
+    emoji: "💪",
+    title: "势头正猛！",
+    messageTemplate: "恭喜 {name}，今天达到个人杯数 {cups}，表现相当亮眼，再接再厉冲向15杯！",
+  },
+  {
+    cups: 15,
+    emoji: "🔥",
+    title: "火力全开！",
+    messageTemplate: "恭喜 {name}，今天达到个人杯数 {cups}，状态非常厉害，再接再厉冲向20杯！",
+  },
+  {
+    cups: 20,
+    emoji: "🦸",
+    title: "英雄降临！",
+    messageTemplate: "恭喜 {name}，今天达到个人杯数 {cups}，已晋升英雄级别，再接再厉冲向25杯！",
+  },
+  {
+    cups: 25,
+    emoji: "🏆",
+    title: "超级英雄！",
+    messageTemplate: "恭喜 {name}，今天达到个人杯数 {cups}，超级英雄级表现，再接再厉冲向30杯！",
+  },
+  {
+    cups: 30,
+    emoji: "👑",
+    title: "传奇教练！",
+    messageTemplate: "恭喜 {name}，今天达到个人杯数 {cups}，传奇级表现，无人能及！",
+  },
+];
+
+export function getCoachMilestoneTier(cups: number): CoachMilestoneTier | null {
+  let reached: CoachMilestoneTier | null = null;
+  for (const tier of COACH_CUP_MILESTONES) {
+    if (cups >= tier.cups) reached = tier;
+  }
+  return reached;
+}
+
+export function formatCoachMilestoneMessage(
+  tier: CoachMilestoneTier,
+  name: string,
+  cups: number
+): string {
+  return tier.messageTemplate.replace("{name}", name).replace("{cups}", String(cups));
+}
