@@ -349,6 +349,15 @@ export type BranchCoachCupsCompareRow = {
   prev_cups: number;
 };
 
+export type BranchNewRenewalRow = {
+  club_id: string;
+  nc_level: CustomerNcLevel;
+  kind: "new" | "renewal";
+  customer_name: string;
+  coach_name: string | null;
+  created_at: string;
+};
+
 export type BranchMonthlySummaryRow = {
   club_id: string;
   club_name: string;
@@ -654,6 +663,10 @@ export type Database = {
       branches_coach_cups_compare: {
         Args: { p_date: string };
         Returns: BranchCoachCupsCompareRow[];
+      };
+      branches_new_renewals: {
+        Args: { p_date: string };
+        Returns: BranchNewRenewalRow[];
       };
       branches_monthly_summary: {
         Args: { p_month: string };

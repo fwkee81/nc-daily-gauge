@@ -5,12 +5,15 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { getMilestoneTier, getCoachMilestoneTier } from "@/lib/cup-milestones";
 import type {
   BranchCoachCupsCompareRow,
   BranchDailyRemarkRow,
   BranchDailySummaryRow,
+  BranchNewRenewalRow,
+  CustomerNcLevel,
 } from "@/lib/types/database";
 
 type DiffColor = "green" | "yellow" | "red";
@@ -25,6 +28,15 @@ const DIFF_COLOR_CLASS: Record<DiffColor, string> = {
   yellow: "text-amber-600 dark:text-amber-400",
   red: "text-destructive",
 };
+
+// The 4 stats that drill down into a customer list — value column keeps
+// this key so BranchesList can look their breakdown up in newRenewalsByKey.
+const NEW_RENEWAL_LEVELS: { level: CustomerNcLevel; label: string }[] = [
+  { level: "5-day", label: "New 5-Day" },
+  { level: "10-day", label: "10-Day" },
+  { level: "20-day", label: "20-Day" },
+  { level: "30-day", label: "30-Day" },
+];
 
 function diffInfo(current: number, previous: number, decimals = 0): DiffInfo {
   const diff = current - previous;
@@ -44,29 +56,49 @@ function Stat({
   previous,
   decimals = 0,
   milestoneEmoji,
+  onClick,
 }: {
   label: string;
   value: number;
   previous: number;
   decimals?: number;
   milestoneEmoji?: string;
+  onClick?: () => void;
 }) {
   const diff = diffInfo(Number(value), Number(previous), decimals);
-  return (
-    <div className="rounded-md border px-3 py-2">
-      <p className="text-xs text-muted-foreground">{label}</p>
+  const content = (
+    <>
+      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+        {onClick && <ChevronRight className="size-3" />}
+        {label}
+      </p>
       <p className="flex items-center gap-1 text-lg font-semibold">
         {Number(value).toFixed(decimals)}
         {milestoneEmoji && <span aria-hidden>{milestoneEmoji}</span>}
       </p>
       <p className={cn("text-xs font-medium", DIFF_COLOR_CLASS[diff.color])}>{diff.text}</p>
-    </div>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className="rounded-md border px-3 py-2 text-left transition-colors hover:bg-accent"
+        onClick={onClick}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className="rounded-md border px-3 py-2">{content}</div>;
 }
 
 export function BranchesList({
   branches,
   coachCups,
+  newRenewals,
   remarks,
   ownClubId,
   date,
@@ -74,6 +106,7 @@ export function BranchesList({
 }: {
   branches: BranchDailySummaryRow[];
   coachCups: BranchCoachCupsCompareRow[];
+  newRenewals: BranchNewRenewalRow[];
   remarks: BranchDailyRemarkRow[];
   ownClubId: string | null;
   date: string;
@@ -81,6 +114,11 @@ export function BranchesList({
 }) {
   const [expandedClubId, setExpandedClubId] = useState<string | null>(null);
   const [hideAllRemarks, setHideAllRemarks] = useState(false);
+  const [breakdownOpen, setBreakdownOpen] = useState<{
+    clubName: string;
+    label: string;
+    rows: BranchNewRenewalRow[];
+  } | null>(null);
 
   const coachCupsByClub = useMemo(() => {
     const map = new Map<string, BranchCoachCupsCompareRow[]>();
@@ -90,6 +128,16 @@ export function BranchesList({
     }
     return map;
   }, [coachCups]);
+
+  const newRenewalsByKey = useMemo(() => {
+    const map = new Map<string, BranchNewRenewalRow[]>();
+    for (const row of newRenewals) {
+      const key = `${row.club_id}::${row.nc_level}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(row);
+    }
+    return map;
+  }, [newRenewals]);
 
   const remarksByClub = useMemo(() => {
     const map = new Map<string, BranchDailyRemarkRow[]>();
@@ -127,6 +175,14 @@ export function BranchesList({
         const isExpanded = expandedClubId === branch.club_id;
         const clubCoachCups = coachCupsByClub.get(branch.club_id) ?? [];
         const clubRemarks = remarksByClub.get(branch.club_id) ?? [];
+
+        const statByLevel: Record<CustomerNcLevel, { value: number; previous: number } | undefined> = {
+          "5-day": { value: branch.new_5day, previous: branch.prev_new_5day },
+          "10-day": { value: branch.total_10day, previous: branch.prev_total_10day },
+          "20-day": { value: branch.total_20day, previous: branch.prev_total_20day },
+          "30-day": { value: branch.total_30day, previous: branch.prev_total_30day },
+          "Ala Carte": undefined,
+        };
 
         return (
           <Card key={branch.club_id}>
@@ -175,10 +231,20 @@ export function BranchesList({
                     {diffInfo(branch.coach_cup_total, branch.prev_coach_cup_total).text}
                   </p>
                 </button>
-                <Stat label="New 5-Day" value={branch.new_5day} previous={branch.prev_new_5day} />
-                <Stat label="10-Day" value={branch.total_10day} previous={branch.prev_total_10day} />
-                <Stat label="20-Day" value={branch.total_20day} previous={branch.prev_total_20day} />
-                <Stat label="30-Day" value={branch.total_30day} previous={branch.prev_total_30day} />
+                {NEW_RENEWAL_LEVELS.map(({ level, label }) => {
+                  const stat = statByLevel[level];
+                  if (!stat) return null;
+                  const rows = newRenewalsByKey.get(`${branch.club_id}::${level}`) ?? [];
+                  return (
+                    <Stat
+                      key={level}
+                      label={label}
+                      value={stat.value}
+                      previous={stat.previous}
+                      onClick={() => setBreakdownOpen({ clubName: branch.club_name, label, rows })}
+                    />
+                  );
+                })}
                 <Stat
                   label="Consumption VP"
                   value={branch.consumption_vp}
@@ -278,6 +344,33 @@ export function BranchesList({
           </Card>
         );
       })}
+
+      <Dialog open={!!breakdownOpen} onOpenChange={(open) => !open && setBreakdownOpen(null)}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {breakdownOpen?.clubName} — {breakdownOpen?.label}
+            </DialogTitle>
+          </DialogHeader>
+          <ul className="divide-y">
+            {breakdownOpen?.rows.map((r, i) => (
+              <li
+                key={`${r.customer_name}-${r.created_at}-${i}`}
+                className="flex items-center justify-between py-2 text-sm"
+              >
+                <span className="flex items-center gap-1.5">
+                  {r.kind === "new" ? <Badge>New</Badge> : <Badge variant="secondary">Renewal</Badge>}
+                  {r.customer_name}
+                </span>
+                <span className="text-muted-foreground">{r.coach_name ?? "—"}</span>
+              </li>
+            ))}
+            {breakdownOpen?.rows.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">No customers yet.</p>
+            )}
+          </ul>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
