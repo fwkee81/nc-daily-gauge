@@ -15,6 +15,13 @@ import { submitWalkinCheckin, checkinExistingWalkin } from "./actions";
 
 const PLUGIN_VALUE = "plugin";
 
+// Some legacy walk-in records have a placeholder contact ("0", "-", etc.)
+// from when a coach had nothing real to type in. Showing that back verbatim
+// reads as a bug, so only surface it when it looks like an actual number.
+function isRealContact(contact: string) {
+  return contact.trim().length >= 4;
+}
+
 interface CoachOption {
   id: string;
   name: string;
@@ -57,7 +64,7 @@ export function WalkinDialog({
       recentWalkins.map((c) => ({
         value: c.id,
         label: c.name,
-        description: c.contact,
+        description: isRealContact(c.contact) ? c.contact : undefined,
       })),
     [recentWalkins]
   );
@@ -186,8 +193,10 @@ export function WalkinDialog({
             )}
 
             <p className="text-sm">
-              Checking in <span className="font-medium">{selectedExisting.name}</span>{" "}
-              <span className="text-muted-foreground">({selectedExisting.contact})</span>
+              Checking in <span className="font-medium">{selectedExisting.name}</span>
+              {isRealContact(selectedExisting.contact) && (
+                <span className="text-muted-foreground"> ({selectedExisting.contact})</span>
+              )}
             </p>
 
             <div>
