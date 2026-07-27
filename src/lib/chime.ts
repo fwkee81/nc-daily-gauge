@@ -16,3 +16,12 @@ export function sayHappyBirthday(name: string) {
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
+
+// Recorded "Happy Birthday" clip — played when a customer checks in on
+// their actual birthday (exact date match, not just the wider Birthday
+// Shake eligibility window, which spans the whole month plus a grace period).
+export function playBirthdaySound() {
+  if (typeof window === "undefined") return;
+  const audio = new Audio("/sounds/birthday.mp3");
+  void audio.play();
+}
