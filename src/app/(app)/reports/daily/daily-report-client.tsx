@@ -376,6 +376,19 @@ type Celebration =
   | { kind: "total"; tier: MilestoneTier; cups: number }
   | { kind: "coach"; tier: CoachMilestoneTier; coachName: string; cups: number };
 
+// Keeps whatever's currently showing (index 0) in place, but bumps any new
+// "total" celebration ahead of pending (not-yet-shown) "coach" ones — so
+// the club total always pops before a coach's personal count when both are
+// queued around the same time, without interrupting a popup mid-display.
+function insertCelebration(queue: Celebration[], item: Celebration): Celebration[] {
+  if (queue.length === 0) return [item];
+  const [current, ...pending] = queue;
+  if (item.kind === "coach") return [current, ...pending, item];
+  const firstCoachIndex = pending.findIndex((c) => c.kind === "coach");
+  if (firstCoachIndex === -1) return [current, ...pending, item];
+  return [current, ...pending.slice(0, firstCoachIndex), item, ...pending.slice(firstCoachIndex)];
+}
+
 export function DailyReportClient({
   date,
   hasExplicitDate,
@@ -542,7 +555,7 @@ export function DailyReportClient({
     if (currentTier.cups <= lastCelebratedTier) return;
     window.localStorage.setItem(key, String(currentTier.cups));
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCelebrationQueue((q) => [...q, { kind: "total", tier: currentTier, cups: totals.total_cups }]);
+    setCelebrationQueue((q) => insertCelebration(q, { kind: "total", tier: currentTier, cups: totals.total_cups }));
   }, [clubId, date, currentTier, totals.total_cups]);
 
   // Same idea, but for the signed-in coach's own Coach's Cup count — 5
@@ -557,10 +570,14 @@ export function DailyReportClient({
     if (myCoachTier.cups <= lastCelebratedTier) return;
     window.localStorage.setItem(key, String(myCoachTier.cups));
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCelebrationQueue((q) => [
-      ...q,
-      { kind: "coach", tier: myCoachTier, coachName: myCoachRow.coach_name, cups: myCoachRow.cups },
-    ]);
+    setCelebrationQueue((q) =>
+      insertCelebration(q, {
+        kind: "coach",
+        tier: myCoachTier,
+        coachName: myCoachRow.coach_name,
+        cups: myCoachRow.cups,
+      })
+    );
   }, [currentCoachId, date, myCoachRow, myCoachTier]);
 
   // Plays once per popped celebration, in step with the full-screen
