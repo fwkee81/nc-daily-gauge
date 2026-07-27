@@ -49,6 +49,15 @@ function isBirthdayShakeEligible(dob: string | null, today: Date): boolean {
   return false;
 }
 
+// Exact birthday match (unlike isBirthdayShakeEligible's whole-month +
+// grace-period window) — this is just for the "whose birthday is it today"
+// greeting reminder, not the free-shake eligibility check.
+function isBirthdayToday(dob: string | null, today: Date): boolean {
+  if (!dob) return false;
+  const [, monthStr, dayStr] = dob.split("-");
+  return Number(monthStr) === today.getMonth() + 1 && Number(dayStr) === today.getDate();
+}
+
 interface CustomerOption {
   id: string;
   name: string;
@@ -135,6 +144,10 @@ export function CheckinClient({
   const [walkinOpen, setWalkinOpen] = useState(false);
 
   const selected = checkinOptions.find((c) => c.key === selectedKey) ?? null;
+  const todaysBirthdays = useMemo(() => {
+    const today = new Date();
+    return checkinOptions.filter((c) => isBirthdayToday(c.dob, today));
+  }, [checkinOptions]);
   const birthdayShakeEligible = useMemo(
     () => isBirthdayShakeEligible(selected?.dob ?? null, new Date(`${checkinDate}T00:00:00`)),
     [selected, checkinDate]
@@ -245,6 +258,19 @@ export function CheckinClient({
             </Button>
           )}
         </div>
+
+        {todaysBirthdays.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-secondary/50 bg-secondary/15 px-3 py-1.5 text-sm">
+            <span aria-hidden>🎂</span>
+            <span className="font-medium">Happy Birthday today:</span>
+            {todaysBirthdays.map((c) => (
+              <span key={c.key} className="font-semibold">
+                {c.name}
+                {c !== todaysBirthdays[todaysBirthdays.length - 1] && ","}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="relative mt-4">
           <Search className="pointer-events-none absolute top-1/2 left-4 size-6 -translate-y-1/2 text-primary" />
