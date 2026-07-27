@@ -188,6 +188,7 @@ export type FinanceCategory =
   | "30-Day Card"
   | "Ala Carte"
   | "Power Cup"
+  | "Foodie"
   | "Fit Club"
   | "PJS"
   | "Membership"
