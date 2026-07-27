@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { playChime, sayHappyBirthday } from "@/lib/chime";
+import { playBirthdaySound, playChime, sayHappyBirthday } from "@/lib/chime";
 import { CONSUMPTION_TYPES, NC_LEVEL_CUPS, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
 import type { ConsumptionType, CustomerNcLevel, RecentWalkinCustomer } from "@/lib/types/database";
 import { submitCheckin } from "./actions";
@@ -207,7 +207,11 @@ export function CheckinClient({
     }
 
     playChime();
-    if (res.isBirthdayShake) sayHappyBirthday(res.name!);
+    if (isBirthdayToday(selected.dob, new Date(`${checkinDate}T00:00:00`))) {
+      playBirthdaySound();
+    } else if (res.isBirthdayShake) {
+      sayHappyBirthday(res.name!);
+    }
     setResult({
       name: res.name!,
       balance: res.balance!,
