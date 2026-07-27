@@ -58,6 +58,8 @@ import {
 } from "@/lib/cup-milestones";
 import type { ConsumptionType } from "@/lib/types/database";
 import { CustomerProfileTrigger } from "@/components/customer-profile-dialog";
+import { FullScreenConfetti } from "@/components/full-screen-confetti";
+import { playWinSound } from "@/lib/chime";
 import {
   correctCheckinAction,
   voidCheckinAction,
@@ -366,17 +368,6 @@ interface HistoryEntry {
   editor: { name: string } | null;
 }
 
-const CONFETTI_COLORS = [
-  "#9ec835",
-  "#ffbd59",
-  "#ff6b6b",
-  "#4dabf7",
-  "#f06595",
-  "#9ec835",
-  "#ffbd59",
-  "#4dabf7",
-];
-
 // A queue rather than a single "current celebration" slot — the club total
 // and a coach's personal cup count can each cross a milestone from the same
 // checkin, and both deserve their own popup instead of one clobbering the
@@ -440,6 +431,7 @@ export function DailyReportClient({
   const [breakdownOpen, setBreakdownOpen] = useState<"plugin" | "dine-in" | "takeaway" | null>(null);
   const [celebrationQueue, setCelebrationQueue] = useState<Celebration[]>([]);
   const celebrating = celebrationQueue[0] ?? null;
+  const celebrationKey = celebrating ? `${celebrating.kind}-${celebrating.tier.cups}` : null;
   const dismissCelebration = () => setCelebrationQueue((q) => q.slice(1));
   const excludedCustomerIdSet = useMemo(() => new Set(excludedCustomerIds), [excludedCustomerIds]);
   const pluginCustomerIdSet = useMemo(() => new Set(pluginCustomerIds), [pluginCustomerIds]);
@@ -570,6 +562,12 @@ export function DailyReportClient({
       { kind: "coach", tier: myCoachTier, coachName: myCoachRow.coach_name, cups: myCoachRow.cups },
     ]);
   }, [currentCoachId, date, myCoachRow, myCoachTier]);
+
+  // Plays once per popped celebration, in step with the full-screen
+  // confetti burst below (both keyed off celebrationKey).
+  useEffect(() => {
+    if (celebrationKey) playWinSound();
+  }, [celebrationKey]);
 
   function goToDate(d: string) {
     const clubQuery = viewingBranch ? `&club=${clubId}` : "";
@@ -1017,21 +1015,9 @@ export function DailyReportClient({
         </div>
       </div>
 
+      <FullScreenConfetti triggerKey={celebrationKey} />
       <Dialog open={!!celebrating} onOpenChange={(open) => !open && dismissCelebration()}>
         <DialogContent className="overflow-hidden sm:max-w-sm">
-          {CONFETTI_COLORS.map((color, i) => (
-            <span
-              key={i}
-              aria-hidden
-              className="pointer-events-none absolute top-0 h-2.5 w-2.5 rounded-sm"
-              style={{
-                left: `${(i * 13 + 5) % 100}%`,
-                backgroundColor: color,
-                animation: "confetti-fall 1.8s ease-in forwards",
-                animationDelay: `${(i % 6) * 0.15}s`,
-              }}
-            />
-          ))}
           <DialogHeader>
             <DialogTitle className="text-center text-2xl">
               {celebrating?.tier.emoji} {celebrating?.tier.title} {celebrating?.tier.emoji}

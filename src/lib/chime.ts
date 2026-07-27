@@ -25,3 +25,11 @@ export function playBirthdaySound() {
   const audio = new Audio("/sounds/birthday.mp3");
   void audio.play();
 }
+
+// Recorded "win" clip — played alongside the full-screen confetti burst
+// when a cup-count milestone is reached on the Daily Report.
+export function playWinSound() {
+  if (typeof window === "undefined") return;
+  const audio = new Audio("/sounds/win.mp3");
+  void audio.play();
+}
