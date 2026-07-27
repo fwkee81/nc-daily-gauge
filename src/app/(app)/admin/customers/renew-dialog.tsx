@@ -14,13 +14,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CUSTOMER_NC_LEVELS, NC_LEVEL_CUPS } from "@/lib/constants";
+import { NC_LEVEL_CUPS } from "@/lib/constants";
 import type { CustomerNcLevel } from "@/lib/types/database";
 import { renewCustomer } from "./actions";
 import type { CustomerRow } from "./customers-client";
 
 const CUSTOM = "Custom" as const;
 type LevelOption = CustomerNcLevel | typeof CUSTOM;
+
+// Only real packages are renewable here — 5-Day is a one-time trial (you
+// upgrade out of it into a real package, you don't "renew" a trial), and
+// Ala Carte's balance nets to 0 automatically every visit via the Walk-in
+// flow, so it has no renewal concept either.
+const RENEWABLE_NC_LEVELS: CustomerNcLevel[] = ["10-day", "20-day", "30-day"];
+
+function defaultLevelOption(current: CustomerNcLevel): CustomerNcLevel {
+  return RENEWABLE_NC_LEVELS.includes(current) ? current : RENEWABLE_NC_LEVELS[0];
+}
 
 export function RenewDialog({
   customer,
@@ -33,8 +43,10 @@ export function RenewDialog({
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
-  const [levelOption, setLevelOption] = useState<LevelOption>(customer.nc_level);
-  const [cupsAdded, setCupsAdded] = useState(String(NC_LEVEL_CUPS[customer.nc_level]));
+  const [levelOption, setLevelOption] = useState<LevelOption>(() =>
+    defaultLevelOption(customer.nc_level)
+  );
+  const [cupsAdded, setCupsAdded] = useState(String(NC_LEVEL_CUPS[defaultLevelOption(customer.nc_level)]));
   const [reason, setReason] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +115,7 @@ export function RenewDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CUSTOMER_NC_LEVELS.map((l) => (
+                {RENEWABLE_NC_LEVELS.map((l) => (
                   <SelectItem key={l} value={l}>
                     {l}
                   </SelectItem>
