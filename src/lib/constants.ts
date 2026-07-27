@@ -82,6 +82,7 @@ export const FINANCE_INCOME_CATEGORIES: FinanceCategory[] = [
   "30-Day Card",
   "Ala Carte",
   "Power Cup",
+  "Foodie",
   "Fit Club",
   "PJS",
   "Membership",
