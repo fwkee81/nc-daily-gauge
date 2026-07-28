@@ -106,6 +106,12 @@ create table customers (
   member_id text,
   member_type member_type,
   remark text,
+  -- One-directional and flat (no chains): set once this customer's own
+  -- package is exhausted and their account is merged into another
+  -- customer's shared balance. See link_customer_to_spouse()/
+  -- unlink_customer() below — unlike customer_members, both sides here
+  -- keep their own customers.id, so both can still have a wellness report.
+  linked_to_customer_id uuid references customers (id),
   -- Manual designations a coach ticks on the customer's profile — independent
   -- of any computed report (e.g. NC Metrics' Health Ambassador leaderboard,
   -- which is based on referral counts, not this flag).
@@ -122,7 +128,8 @@ create table customers (
     (invited_by_type = 'coach' and invited_by_coach_id is not null and invited_by_customer_id is null) or
     (invited_by_type = 'customer' and invited_by_customer_id is not null and invited_by_coach_id is null) or
     (invited_by_type = 'plugin' and invited_by_coach_id is null and invited_by_customer_id is null)
-  )
+  ),
+  constraint customers_linked_to_not_self check (linked_to_customer_id is distinct from id)
 );
 
 -- A spouse/family member who shares an existing customer's consumption
@@ -359,6 +366,7 @@ create index idx_customers_invited_by_coach on customers (invited_by_coach_id);
 create index idx_customers_invited_by_customer on customers (invited_by_customer_id);
 create index idx_customers_coach on customers (coach_id);
 create index idx_customers_name on customers (name);
+create index idx_customers_linked_to on customers (linked_to_customer_id);
 create index idx_customer_members_customer on customer_members (customer_id);
 create index idx_coaches_sponsor on coaches (sponsor_id);
 create index idx_checkins_customer on checkins (customer_id);
@@ -720,6 +728,7 @@ as $$
 declare
   v_coach_id uuid := current_coach_id();
   v_club_id uuid;
+  v_balance_customer_id uuid;
   v_result checkins;
 begin
   if v_coach_id is null then
@@ -731,7 +740,13 @@ begin
 
   select nc_club_id into v_club_id from coaches where id = v_coach_id;
 
-  if not exists (select 1 from customers where id = p_customer_id and nc_club_id = v_club_id and active) then
+  -- Resolves to the linked account's balance holder when this customer has
+  -- been merged into another (see link_customer_to_spouse()); otherwise
+  -- it's just their own id.
+  select coalesce(linked_to_customer_id, id) into v_balance_customer_id
+  from customers where id = p_customer_id and nc_club_id = v_club_id and active;
+
+  if v_balance_customer_id is null then
     raise exception 'Customer not found in your club';
   end if;
 
@@ -749,7 +764,7 @@ begin
   -- (they read from checkins.cups directly), but the balance isn't touched.
   if not p_is_birthday_shake then
     update customers set consumption_balance = consumption_balance - p_cups
-    where id = p_customer_id;
+    where id = v_balance_customer_id;
   end if;
 
   return v_result;
@@ -924,6 +939,7 @@ declare
   v_checkin checkins%rowtype;
   v_old_deduction integer;
   v_new_deduction integer;
+  v_balance_customer_id uuid;
 begin
   if v_editor_id is null or not is_current_coach_admin() then
     raise exception 'Only admins can correct check-ins';
@@ -967,8 +983,11 @@ begin
   v_new_deduction := case when p_new_is_birthday_shake then 0 else p_new_cups end;
 
   if v_new_deduction <> v_old_deduction then
+    select coalesce(linked_to_customer_id, id) into v_balance_customer_id
+    from customers where id = v_checkin.customer_id;
+
     update customers set consumption_balance = consumption_balance - (v_new_deduction - v_old_deduction)
-    where id = v_checkin.customer_id;
+    where id = v_balance_customer_id;
   end if;
 end;
 $$;
@@ -982,6 +1001,7 @@ as $$
 declare
   v_editor_id uuid := current_coach_id();
   v_checkin checkins%rowtype;
+  v_balance_customer_id uuid;
 begin
   if v_editor_id is null or not is_current_coach_admin() then
     raise exception 'Only admins can void check-ins';
@@ -1002,8 +1022,12 @@ begin
   values (p_checkin_id, v_editor_id, 'voided', 'false', 'true', p_reason);
 
   update checkins set voided = true where id = p_checkin_id;
+
+  select coalesce(linked_to_customer_id, id) into v_balance_customer_id
+  from customers where id = v_checkin.customer_id;
+
   update customers set consumption_balance = consumption_balance + v_checkin.cups
-  where id = v_checkin.customer_id;
+  where id = v_balance_customer_id;
 end;
 $$;
 
@@ -1105,11 +1129,145 @@ begin
 end;
 $$;
 
+-- Links p_customer_id's account to p_linked_to_customer_id's so future
+-- check-ins for either draw from one shared balance. Any balance still on
+-- p_customer_id's account at link time is merged into the target (not
+-- frozen — the customer already paid for those cups) and its nc_level is
+-- synced to the target's, since the standalone package no longer applies.
+-- Both sides of the merge are logged to customer_balance_corrections so
+-- there's always a record of who linked the accounts and what the balance
+-- was right before the merge.
+create or replace function link_customer_to_spouse(
+  p_customer_id uuid,
+  p_linked_to_customer_id uuid
+)
+returns customers
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_coach_id uuid := current_coach_id();
+  v_customer customers%rowtype;
+  v_target customers%rowtype;
+begin
+  if v_coach_id is null or not is_current_coach_admin() then
+    raise exception 'Only admins can link customer accounts';
+  end if;
+  if p_customer_id = p_linked_to_customer_id then
+    raise exception 'Cannot link a customer to themselves';
+  end if;
+
+  -- Lock both rows (consistent id order avoids deadlocking against a
+  -- concurrent link in the opposite direction) before touching balances.
+  perform 1 from customers where id in (p_customer_id, p_linked_to_customer_id) order by id for update;
+
+  select * into v_customer from customers where id = p_customer_id;
+  if not found then
+    raise exception 'Customer not found';
+  end if;
+  select * into v_target from customers where id = p_linked_to_customer_id;
+  if not found then
+    raise exception 'Target customer not found';
+  end if;
+
+  if v_customer.nc_club_id <> (select nc_club_id from coaches where id = v_coach_id)
+     or v_target.nc_club_id <> (select nc_club_id from coaches where id = v_coach_id) then
+    raise exception 'Cannot link customers outside your club';
+  end if;
+
+  if v_customer.linked_to_customer_id is not null then
+    raise exception '% is already linked to another account', v_customer.name;
+  end if;
+  if v_target.linked_to_customer_id is not null then
+    raise exception '% is itself linked to another account — link to that account''s holder instead', v_target.name;
+  end if;
+  if exists (select 1 from customers where linked_to_customer_id = p_customer_id) then
+    raise exception '% already has other accounts linked to it and cannot be linked to someone else', v_customer.name;
+  end if;
+
+  insert into customer_balance_corrections (customer_id, corrected_by, previous_balance, new_balance, reason)
+  values (
+    p_customer_id, v_coach_id, v_customer.consumption_balance, 0,
+    'Linked to ' || v_target.name || E'\'s account — balance merged'
+  );
+
+  if v_customer.consumption_balance <> 0 then
+    insert into customer_balance_corrections (customer_id, corrected_by, previous_balance, new_balance, reason)
+    values (
+      p_linked_to_customer_id, v_coach_id, v_target.consumption_balance,
+      v_target.consumption_balance + v_customer.consumption_balance,
+      'Merged from ' || v_customer.name || E'\'s account (linked)'
+    );
+  end if;
+
+  update customers
+  set consumption_balance = consumption_balance + v_customer.consumption_balance
+  where id = p_linked_to_customer_id;
+
+  update customers
+  set linked_to_customer_id = p_linked_to_customer_id,
+      consumption_balance = 0,
+      nc_level = v_target.nc_level
+  where id = p_customer_id;
+
+  select * into v_customer from customers where id = p_customer_id;
+  return v_customer;
+end;
+$$;
+
+-- Reverses a link. The unlinked account's balance is forfeited (set to 0,
+-- not split back out of the shared pool — once merged there's no reliable
+-- way to say how much of the shared balance was ever "theirs"), and the
+-- account it was linked to keeps everything. Logged the same way as the
+-- link itself.
+create or replace function unlink_customer(p_customer_id uuid)
+returns customers
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_coach_id uuid := current_coach_id();
+  v_customer customers%rowtype;
+begin
+  if v_coach_id is null or not is_current_coach_admin() then
+    raise exception 'Only admins can unlink a customer account';
+  end if;
+
+  select * into v_customer from customers where id = p_customer_id for update;
+  if not found then
+    raise exception 'Customer not found';
+  end if;
+  if v_customer.nc_club_id <> (select nc_club_id from coaches where id = v_coach_id) then
+    raise exception 'Cannot unlink a customer outside your club';
+  end if;
+  if v_customer.linked_to_customer_id is null then
+    raise exception '% is not linked to another account', v_customer.name;
+  end if;
+
+  insert into customer_balance_corrections (customer_id, corrected_by, previous_balance, new_balance, reason)
+  values (
+    p_customer_id, v_coach_id, v_customer.consumption_balance, 0,
+    'Unlinked from linked account — balance forfeited'
+  );
+
+  update customers
+  set linked_to_customer_id = null, consumption_balance = 0
+  where id = p_customer_id;
+
+  select * into v_customer from customers where id = p_customer_id;
+  return v_customer;
+end;
+$$;
+
 grant execute on function record_checkin(uuid, integer, consumption_type, date, uuid, boolean) to authenticated;
 grant execute on function correct_checkin(uuid, integer, consumption_type, text, boolean) to authenticated;
 grant execute on function void_checkin(uuid, text) to authenticated;
 grant execute on function renew_customer(uuid, customer_nc_level, integer, text) to authenticated;
 grant execute on function correct_customer_balance(uuid, integer, text) to authenticated;
+grant execute on function link_customer_to_spouse(uuid, uuid) to authenticated;
+grant execute on function unlink_customer(uuid) to authenticated;
 grant execute on function record_walkin_checkin(text, text, invited_by_type, uuid, uuid, consumption_type, date) to authenticated;
 grant execute on function record_walkin_checkin_existing(uuid, consumption_type, date) to authenticated;
 grant execute on function recent_walkin_customers(uuid) to authenticated;

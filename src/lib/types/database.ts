@@ -73,6 +73,7 @@ export type Customer = {
   member_id: string | null;
   member_type: MemberType | null;
   remark: string | null;
+  linked_to_customer_id: string | null;
   is_pjs: boolean;
   is_health_ambassador: boolean;
   created_by: string | null;
@@ -582,6 +583,14 @@ export type Database = {
       };
       correct_customer_balance: {
         Args: { p_customer_id: string; p_new_balance: number; p_reason: string };
+        Returns: Customer;
+      };
+      link_customer_to_spouse: {
+        Args: { p_customer_id: string; p_linked_to_customer_id: string };
+        Returns: Customer;
+      };
+      unlink_customer: {
+        Args: { p_customer_id: string };
         Returns: Customer;
       };
       record_walkin_checkin: {

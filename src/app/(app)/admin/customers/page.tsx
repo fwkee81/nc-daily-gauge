@@ -46,11 +46,17 @@ export default async function AdminCustomersPage({
   ]);
 
   const rows = (customers ?? []) as unknown as CustomerRow[];
+  // linked_to_customer is resolved the same way as invited_by_customer above
+  // (self-referential join, so PostgREST can't embed it) — from this same
+  // result set, since every customer in the club is already in it.
   const nameById = new Map(rows.map((c) => [c.id, c.name]));
   const rowsWithInvitedByCustomer = rows.map((c) => ({
     ...c,
     invited_by_customer: c.invited_by_customer_id
       ? { id: c.invited_by_customer_id, name: nameById.get(c.invited_by_customer_id) ?? "—" }
+      : null,
+    linked_to_customer: c.linked_to_customer_id
+      ? { id: c.linked_to_customer_id, name: nameById.get(c.linked_to_customer_id) ?? "—" }
       : null,
   }));
 
