@@ -226,6 +226,11 @@
   line-height: 1.6;
   margin-top: 3px;
 }
+.contactLink {
+  color: #25d366;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .topbarBtns {
   display: flex;
   gap: 8px;
@@ -518,6 +523,12 @@
   }
   .topbarBtns {
     display: none !important;
+  }
+  /* Keep the WhatsApp link tappable in the exported PDF, but drop its
+     colored/underlined styling so a paper printout doesn't look broken. */
+  .contactLink {
+    color: inherit;
+    text-decoration: none;
   }
   .panel,
   .scard,

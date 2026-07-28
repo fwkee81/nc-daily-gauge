@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { whatsappLink } from "@/lib/whatsapp";
 import {
   GOAL_LABELS,
   computeReport,
@@ -154,6 +155,7 @@ export function WellnessEvaluationClient() {
     const goalLabel = GOAL_LABELS[selectedGoal];
     const diffAbs = Math.abs(report.weightDiff);
     const diffDone = diffAbs < 0.5;
+    const contactHref = meta.contact ? whatsappLink(meta.contact) : null;
 
     return (
       <div className={styles.root}>
@@ -171,7 +173,23 @@ export function WellnessEvaluationClient() {
             </div>
             <div className={styles.rMetaRow}>
               📅 {meta.date}
-              {meta.contact ? `  ·  📞 ${meta.contact}` : ""}
+              {meta.contact && (
+                <>
+                  {"  ·  📞 "}
+                  {contactHref ? (
+                    <a
+                      href={contactHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.contactLink}
+                    >
+                      {meta.contact}
+                    </a>
+                  ) : (
+                    meta.contact
+                  )}
+                </>
+              )}
               {meta.coachName ? `  ·  教练 Coach ${meta.coachName}` : ""}
             </div>
             <div className={styles.topbarBtns}>
