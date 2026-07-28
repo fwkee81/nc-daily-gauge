@@ -237,3 +237,46 @@ export async function deactivateCustomerMember(id: string) {
   revalidatePath("/admin/customers");
   return { success: true };
 }
+
+// Merges customerId's account into linkedToCustomerId's — from then on,
+// check-ins for either draw from one shared balance. Any balance customerId
+// still had is folded into the target (not frozen) and their nc_level is
+// synced to match. Unlike addCustomerMember, both stay full customer
+// records with their own id, so both keep their own wellness report.
+export async function linkCustomerToSpouse(customerId: string, linkedToCustomerId: string) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) {
+    return { error: "Not authorized." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("link_customer_to_spouse", {
+    p_customer_id: customerId,
+    p_linked_to_customer_id: linkedToCustomerId,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/customers");
+  return { success: true };
+}
+
+// Reverses a link. The unlinked account's balance is forfeited (reset to 0)
+// rather than split back out of the shared pool — see unlink_customer() in
+// the schema for why.
+export async function unlinkCustomer(customerId: string) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) {
+    return { error: "Not authorized." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("unlink_customer", {
+    p_customer_id: customerId,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/customers");
+  return { success: true };
+}

@@ -12,7 +12,7 @@ export default async function CheckinPage() {
     await Promise.all([
       supabase
         .from("customers")
-        .select("id, name, contact, dob, consumption_balance")
+        .select("id, name, contact, dob, consumption_balance, linked_to_customer_id")
         .eq("nc_club_id", coach.nc_club_id ?? "")
         .eq("active", true)
         .order("name"),
@@ -34,7 +34,18 @@ export default async function CheckinPage() {
     .eq("active", true)
     .order("name");
 
-  const balanceByCustomerId = new Map((customers ?? []).map((c) => [c.id, c.consumption_balance]));
+  const customerById = new Map((customers ?? []).map((c) => [c.id, c]));
+
+  // A linked customer's own consumption_balance is always kept at 0 (see
+  // link_customer_to_spouse()) — the real number lives on whoever they're
+  // linked to, one hop max (no chains), same idea as a family member's
+  // balance living on their account holder.
+  function resolveBalance(customerId: string): number {
+    const c = customerById.get(customerId);
+    if (!c) return 0;
+    if (!c.linked_to_customer_id) return c.consumption_balance;
+    return customerById.get(c.linked_to_customer_id)?.consumption_balance ?? c.consumption_balance;
+  }
 
   const checkinOptions = [
     ...(customers ?? []).map((c) => ({
@@ -44,7 +55,7 @@ export default async function CheckinPage() {
       name: c.name,
       contact: c.contact,
       dob: c.dob,
-      consumptionBalance: c.consumption_balance,
+      consumptionBalance: resolveBalance(c.id),
     })),
     ...(members ?? []).map((m) => ({
       key: m.id,
@@ -55,7 +66,7 @@ export default async function CheckinPage() {
       // holder's, so the last-4-digits search still finds them.
       contact: m.contact ?? "",
       dob: m.dob,
-      consumptionBalance: balanceByCustomerId.get(m.customer_id) ?? 0,
+      consumptionBalance: resolveBalance(m.customer_id),
     })),
   ].sort((a, b) => a.name.localeCompare(b.name));
 
