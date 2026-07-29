@@ -44,16 +44,19 @@ export function RecipesClient({
     );
   }
 
-  function canManage(recipe: ShakeRecipe) {
-    return isSuperAdmin || recipe.created_by === currentCoachId;
-  }
-
   function upsertRecipe(recipe: ShakeRecipe) {
     setRecipes((prev) => {
       const exists = prev.some((r) => r.id === recipe.id);
       const next = exists ? prev.map((r) => (r.id === recipe.id ? recipe : r)) : [...prev, recipe];
       return next.sort((a, b) => a.code.localeCompare(b.code));
     });
+  }
+
+  // Keeps the currently-open detail dialog (which reads from `selected`,
+  // not the `recipes` array) in sync after a request/approve action.
+  function handleRecipeUpdated(recipe: ShakeRecipe) {
+    upsertRecipe(recipe);
+    setSelected(recipe);
   }
 
   // Ingredients stay plain text search across the recipe's fields — matches
@@ -171,6 +174,7 @@ export function RecipesClient({
           key={formState.mode === "edit" ? formState.recipe.id : "add"}
           mode={formState.mode}
           recipe={formState.mode === "edit" ? formState.recipe : undefined}
+          isSuperAdmin={isSuperAdmin}
           open={formState !== null}
           onOpenChange={(open) => !open && setFormState(null)}
           onDone={upsertRecipe}
@@ -179,12 +183,14 @@ export function RecipesClient({
 
       <RecipeDetailDialog
         recipe={selected}
-        canManage={selected !== null && canManage(selected)}
+        currentCoachId={currentCoachId}
+        isSuperAdmin={isSuperAdmin}
         onOpenChange={(open) => !open && setSelected(null)}
         onEdit={(recipe) => {
           setSelected(null);
           setFormState({ mode: "edit", recipe });
         }}
+        onUpdated={handleRecipeUpdated}
         onDeleted={(id) => {
           setRecipes((prev) => prev.filter((r) => r.id !== id));
           setSelected(null);

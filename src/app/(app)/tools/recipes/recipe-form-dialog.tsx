@@ -27,12 +27,14 @@ const EMPTY = { nameZh: "", nameEn: "", base: "", side: "", shake: "", body: "",
 export function RecipeFormDialog({
   mode,
   recipe,
+  isSuperAdmin,
   open,
   onOpenChange,
   onDone,
 }: {
   mode: "add" | "edit";
   recipe?: ShakeRecipe;
+  isSuperAdmin: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: (recipe: ShakeRecipe) => void;
@@ -51,7 +53,7 @@ export function RecipeFormDialog({
       : EMPTY
   );
   const [colors, setColors] = useState<string[]>(recipe?.colors ?? []);
-  const [isPublic, setIsPublic] = useState(recipe?.is_public ?? true);
+  const [isPublic, setIsPublic] = useState(isSuperAdmin ? (recipe?.is_public ?? false) : false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,10 +165,17 @@ export function RecipeFormDialog({
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-            {isPublic ? "Public — visible to every club" : "Only my club can see this"}
-          </label>
+          {isSuperAdmin ? (
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+              {isPublic ? "Public — visible to every club" : "Only my club can see this"}
+            </label>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Saved as private to your club. Use &quot;Share to Public&quot; on the recipe afterwards
+              to ask the admin to publish it.
+            </p>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">

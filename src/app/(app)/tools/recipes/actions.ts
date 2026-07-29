@@ -90,3 +90,45 @@ export async function deleteRecipe(id: string) {
   revalidatePath("/tools/recipes");
   return { success: true };
 }
+
+// A coach flips this on their own still-private recipe to ask the admin to
+// publish it — it doesn't go public by itself (see reviewPublicRequest).
+export async function setPublicRequest(id: string, requested: boolean) {
+  const coach = await getCurrentCoach();
+  if (!coach) return { error: "Not authorized." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("shake_recipes")
+    .update({ public_requested: requested })
+    .eq("id", id)
+    .select("*");
+
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) {
+    return { error: "You can only do this for your own private recipes." };
+  }
+
+  revalidatePath("/tools/recipes");
+  return { success: true, recipe: data[0] as ShakeRecipe };
+}
+
+// Admin-only in practice — RLS only lets is_super_admin() touch a recipe
+// it doesn't own. Approving sets is_public; either way clears the request.
+export async function reviewPublicRequest(id: string, approve: boolean) {
+  const coach = await getCurrentCoach();
+  if (!coach) return { error: "Not authorized." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("shake_recipes")
+    .update({ is_public: approve, public_requested: false })
+    .eq("id", id)
+    .select("*");
+
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: "Not authorized." };
+
+  revalidatePath("/tools/recipes");
+  return { success: true, recipe: data[0] as ShakeRecipe };
+}
