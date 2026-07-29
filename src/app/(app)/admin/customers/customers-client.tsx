@@ -33,9 +33,8 @@ import { Badge } from "@/components/ui/badge";
 import { CustomerForm } from "./customer-form";
 import { RenewDialog } from "./renew-dialog";
 import { CorrectBalanceDialog } from "./correct-balance-dialog";
-import { LinkSpouseDialog } from "./link-spouse-dialog";
 import { CustomerProfileDialog } from "@/components/customer-profile-dialog";
-import { deactivateCustomer, reactivateCustomer, unlinkCustomer } from "./actions";
+import { deactivateCustomer, reactivateCustomer } from "./actions";
 import type {
   CustomerGender,
   CustomerNcLevel,
@@ -74,15 +73,6 @@ export interface CustomerRow {
 interface CoachOption {
   id: string;
   name: string;
-}
-
-export interface CustomerMemberRow {
-  id: string;
-  customer_id: string;
-  name: string;
-  contact: string | null;
-  dob: string | null;
-  active: boolean;
 }
 
 type SortKey =
@@ -192,13 +182,11 @@ function SortableHead({
 export function CustomersClient({
   initialCustomers,
   coaches,
-  members,
   viewingBranch,
   clubName,
 }: {
   initialCustomers: CustomerRow[];
   coaches: CoachOption[];
-  members: CustomerMemberRow[];
   viewingBranch: boolean;
   clubName: string | null;
 }) {
@@ -209,7 +197,6 @@ export function CustomersClient({
   const [editing, setEditing] = useState<CustomerRow | null>(null);
   const [renewing, setRenewing] = useState<CustomerRow | null>(null);
   const [correcting, setCorrecting] = useState<CustomerRow | null>(null);
-  const [linking, setLinking] = useState<CustomerRow | null>(null);
   const [viewing, setViewing] = useState<CustomerRow | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [newSignup, setNewSignup] = useState<{ name: string; ncLevel: CustomerNcLevel } | null>(null);
@@ -265,16 +252,6 @@ export function CustomersClient({
     }
   }
 
-  async function handleUnlink(c: CustomerRow) {
-    const result = await unlinkCustomer(c.id);
-    if (result?.error) {
-      toast.error(result.error);
-    } else {
-      toast.success(`${c.name} unlinked — their balance was forfeited.`);
-      router.refresh();
-    }
-  }
-
   return (
     <div>
       {viewingBranch && (
@@ -316,7 +293,6 @@ export function CustomersClient({
                 coaches={coaches}
                 customers={initialCustomers}
                 editing={editing}
-                members={editing ? members.filter((m) => m.customer_id === editing.id) : []}
                 onDone={(celebration) => {
                   setDialogOpen(false);
                   router.refresh();
@@ -511,35 +487,6 @@ export function CustomersClient({
                     >
                       Edit
                     </Button>
-                    {c.active && !c.linked_to_customer_id && (
-                      <Button size="sm" variant="outline" onClick={() => setLinking(c)}>
-                        Link
-                      </Button>
-                    )}
-                    {c.active && c.linked_to_customer_id && (
-                      <AlertDialog>
-                        <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>
-                          Unlink
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Unlink {c.name}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {c.name} will stop sharing {c.linked_to_customer?.name}&apos;s balance
-                              and go back to having their own — starting at 0. Whatever was merged
-                              in when they linked stays with {c.linked_to_customer?.name} and
-                              cannot be moved back.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleUnlink(c)}>
-                              Unlink
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
                     {c.active && (
                     <AlertDialog>
                       <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>
@@ -597,19 +544,6 @@ export function CustomersClient({
           onOpenChange={(open) => !open && setCorrecting(null)}
           onDone={() => {
             setCorrecting(null);
-            router.refresh();
-          }}
-        />
-      )}
-
-      {linking && (
-        <LinkSpouseDialog
-          customer={linking}
-          customers={initialCustomers}
-          open={!!linking}
-          onOpenChange={(open) => !open && setLinking(null)}
-          onDone={() => {
-            setLinking(null);
             router.refresh();
           }}
         />
