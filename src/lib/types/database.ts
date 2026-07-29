@@ -164,6 +164,21 @@ export type Product = {
   created_at: string;
 };
 
+export type ShakeRecipe = {
+  id: string;
+  code: string;
+  name_zh: string;
+  name_en: string;
+  base: string;
+  side: string;
+  shake: string;
+  body: string;
+  topping: string;
+  photo_url: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
 export type InventoryTransaction = {
   id: string;
   nc_club_id: string;
@@ -541,6 +556,11 @@ export type Database = {
         Row: FinanceTransaction;
         Insert: Partial<FinanceTransaction>;
         Update: Partial<FinanceTransaction>;
+      } & NoRelationships;
+      shake_recipes: {
+        Row: ShakeRecipe;
+        Insert: Partial<ShakeRecipe>;
+        Update: Partial<ShakeRecipe>;
       } & NoRelationships;
     };
     Views: Record<string, never>;
