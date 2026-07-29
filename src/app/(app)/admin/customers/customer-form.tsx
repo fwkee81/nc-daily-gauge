@@ -414,35 +414,33 @@ export function CustomerForm({
               {linkPending ? "Unlinking..." : "Unlink"}
             </Button>
           </>
+        ) : dependents.length > 0 ? (
+          <ul className="space-y-1">
+            {dependents.map((d) => (
+              <li
+                key={d.id}
+                className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm"
+              >
+                <span>{d.name} shares this balance</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={linkPending}
+                  onClick={() => handleUnlink(d.id)}
+                >
+                  Unlink
+                </Button>
+              </li>
+            ))}
+          </ul>
         ) : (
           <>
             <p className="text-xs text-muted-foreground">
-              Attach a spouse or family member who already has their own profile — their account
-              gets folded into this one and they share <span className="font-medium">this</span>{" "}
-              customer&apos;s balance from now on.
+              Attach a spouse who already has their own profile — their account gets folded into
+              this one and they share <span className="font-medium">this</span> customer&apos;s
+              balance from now on. Unlink first if you need to attach someone else instead.
             </p>
-
-            {dependents.length > 0 && (
-              <ul className="space-y-1">
-                {dependents.map((d) => (
-                  <li
-                    key={d.id}
-                    className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm"
-                  >
-                    <span>{d.name} shares this balance</span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={linkPending}
-                      onClick={() => handleUnlink(d.id)}
-                    >
-                      Unlink
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
 
             {linkError && <p className="text-sm text-destructive">{linkError}</p>}
             <Combobox

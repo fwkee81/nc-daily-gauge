@@ -30,9 +30,12 @@ interface CustomerProfile {
   is_pjs: boolean;
   is_health_ambassador: boolean;
   active: boolean;
+  linked_to_customer_id: string | null;
   coach: { name: string } | null;
   invited_by_coach: { name: string } | null;
   invitedByCustomerName: string | null;
+  linkedToCustomerName: string | null;
+  linkedAccounts: { id: string; name: string }[];
   members: { id: string; name: string; contact: string | null; dob: string | null }[];
 }
 
@@ -177,6 +180,24 @@ export function CustomerProfileDialog({
                         </>
                       )}
                     </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {profile.linked_to_customer_id && (
+              <div>
+                <p className="text-xs text-muted-foreground">Linked account</p>
+                <p>Shares {profile.linkedToCustomerName ?? "—"}&apos;s balance</p>
+              </div>
+            )}
+
+            {profile.linkedAccounts.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground">Linked account</p>
+                <ul className="mt-1 space-y-0.5">
+                  {profile.linkedAccounts.map((a) => (
+                    <li key={a.id}>{a.name} shares this balance</li>
                   ))}
                 </ul>
               </div>

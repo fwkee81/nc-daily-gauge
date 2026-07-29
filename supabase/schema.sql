@@ -1236,6 +1236,9 @@ begin
   if exists (select 1 from customers where linked_to_customer_id = p_customer_id) then
     raise exception '% already has other accounts linked to it and cannot be linked to someone else', v_customer.name;
   end if;
+  if exists (select 1 from customers where linked_to_customer_id = p_linked_to_customer_id) then
+    raise exception '% already has an account linked to it — unlink that one first', v_target.name;
+  end if;
 
   insert into customer_balance_corrections (customer_id, corrected_by, previous_balance, new_balance, reason)
   values (
