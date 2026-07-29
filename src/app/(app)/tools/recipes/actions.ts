@@ -15,6 +15,7 @@ export interface RecipeInput {
   body: string;
   topping: string;
   photoUrl: string | null;
+  colors: string[];
 }
 
 async function requireSuperAdminCoach() {
@@ -39,6 +40,7 @@ export async function addRecipe(input: RecipeInput) {
       body: input.body,
       topping: input.topping,
       photo_url: input.photoUrl,
+      colors: input.colors,
       created_by: coach.id,
     })
     .select("*")

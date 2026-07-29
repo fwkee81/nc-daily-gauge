@@ -379,6 +379,10 @@ create table if not exists shake_recipes (
   body text not null,
   topping text not null,
   photo_url text,
+  -- Small fixed palette (see RECIPE_COLORS in the app) for "find the blue
+  -- ones" style filtering. Ingredient search is plain text search over the
+  -- fields above instead of a second tag list.
+  colors text[] not null default '{}',
   created_by uuid references coaches (id),
   created_at timestamptz not null default now()
 );

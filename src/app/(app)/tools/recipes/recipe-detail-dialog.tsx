@@ -21,8 +21,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import type { ShakeRecipe } from "@/lib/types/database";
 import { deleteRecipe } from "./actions";
+import { RECIPE_COLOR_SWATCH } from "./colors";
 
 const ROWS: { key: "base" | "side" | "shake" | "body" | "topping"; label: string }[] = [
   { key: "base", label: "Base" },
@@ -78,6 +80,20 @@ export function RecipeDetailDialog({
             )}
 
             <p className="text-sm text-muted-foreground">{recipe.name_en}</p>
+
+            {recipe.colors.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {recipe.colors.map((color) => (
+                  <Badge key={color} variant="outline">
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: RECIPE_COLOR_SWATCH[color] ?? "#999" }}
+                    />
+                    {color}
+                  </Badge>
+                ))}
+              </div>
+            )}
 
             <dl className="space-y-2 text-sm">
               {ROWS.map((row) => (
