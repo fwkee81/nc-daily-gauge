@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Blender, Plus, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowUp, Blender, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,15 @@ export function RecipesClient({
   const [selected, setSelected] = useState<ShakeRecipe | null>(null);
   const [search, setSearch] = useState("");
   const [activeColors, setActiveColors] = useState<string[]>([]);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      setShowBackToTop(window.scrollY > 400);
+    }
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   function toggleColorFilter(value: string) {
     setActiveColors((prev) =>
@@ -181,6 +190,18 @@ export function RecipesClient({
           setSelected(null);
         }}
       />
+
+      {showBackToTop && (
+        <Button
+          variant="default"
+          size="icon-lg"
+          className="fixed right-6 bottom-6 z-40 rounded-full shadow-lg"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Back to top"
+        >
+          <ArrowUp />
+        </Button>
+      )}
     </div>
   );
 }
