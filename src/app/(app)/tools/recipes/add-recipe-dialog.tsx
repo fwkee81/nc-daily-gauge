@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { ShakeRecipe } from "@/lib/types/database";
 import { addRecipe } from "./actions";
+import { RECIPE_COLORS } from "./colors";
 
 const FIELDS: { key: "base" | "side" | "shake" | "body" | "topping"; label: string; placeholder: string }[] = [
   { key: "base", label: "Base", placeholder: "e.g. Orange + Sweet Potato Cube" },
@@ -30,12 +33,18 @@ export function AddRecipeDialog({
   onDone: (recipe: ShakeRecipe) => void;
 }) {
   const [fields, setFields] = useState(EMPTY);
+  const [colors, setColors] = useState<string[]>([]);
   const [photo, setPhoto] = useState<File | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function toggleColor(value: string) {
+    setColors((prev) => (prev.includes(value) ? prev.filter((c) => c !== value) : [...prev, value]));
+  }
+
   function reset() {
     setFields(EMPTY);
+    setColors([]);
     setPhoto(null);
     setError(null);
   }
@@ -82,6 +91,7 @@ export function AddRecipeDialog({
       body: fields.body.trim(),
       topping: fields.topping.trim(),
       photoUrl,
+      colors,
     });
     setIsPending(false);
 
@@ -122,6 +132,29 @@ export function AddRecipeDialog({
               accept="image/*"
               onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
             />
+          </div>
+
+          <div className="space-y-1">
+            <Label>Colors</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {RECIPE_COLORS.map((c) => {
+                const active = colors.includes(c.value);
+                return (
+                  <Badge
+                    key={c.value}
+                    variant={active ? "default" : "outline"}
+                    render={<button type="button" onClick={() => toggleColor(c.value)} />}
+                    className={cn(!active && "text-foreground")}
+                  >
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: c.swatch }}
+                    />
+                    {c.value}
+                  </Badge>
+                );
+              })}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

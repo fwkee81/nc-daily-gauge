@@ -175,6 +175,7 @@ export type ShakeRecipe = {
   body: string;
   topping: string;
   photo_url: string | null;
+  colors: string[];
   created_by: string | null;
   created_at: string;
 };
