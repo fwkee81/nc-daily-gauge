@@ -96,44 +96,60 @@ export function CustomerForm({
     return CUSTOMER_GENDERS;
   }, [editing]);
 
+  // Anyone who's already a primary for someone else can't be picked as a new
+  // dependent — they'd have to be unlinked from their own dependents first.
+  const primaryIds = useMemo(
+    () => new Set(customers.map((c) => c.linked_to_customer_id).filter((id): id is string => !!id)),
+    [customers]
+  );
+
   const linkOptions: ComboboxOption[] = useMemo(() => {
     if (!editing) return [];
     return customers
-      .filter((c) => c.id !== editing.id && c.active && !c.linked_to_customer_id)
+      .filter(
+        (c) => c.id !== editing.id && c.active && !c.linked_to_customer_id && !primaryIds.has(c.id)
+      )
       .map((c) => ({
         value: c.id,
         label: c.name,
         description: `${c.consumption_balance} left`,
       }));
-  }, [customers, editing]);
+  }, [customers, editing, primaryIds]);
+
+  // Everyone currently sharing editing's balance (editing is their primary).
+  const dependents = useMemo(
+    () => (editing ? customers.filter((c) => c.linked_to_customer_id === editing.id) : []),
+    [customers, editing]
+  );
 
   async function handleLink() {
     if (!editing || !linkTargetId) return;
     setLinkError(null);
     setLinkPending(true);
-    const result = await linkCustomerToSpouse(editing.id, linkTargetId);
+    // editing stays the primary — it keeps its own id/nc_level and absorbs
+    // linkTargetId's balance, not the other way around.
+    const result = await linkCustomerToSpouse(linkTargetId, editing.id);
     setLinkPending(false);
 
     if (result?.error) {
       setLinkError(result.error);
       return;
     }
-    toast.success(`${editing.name} is now linked and shares a balance.`);
+    toast.success("Linked — they now share this customer's balance.");
     onDone();
   }
 
-  async function handleUnlink() {
-    if (!editing) return;
+  async function handleUnlink(customerId: string) {
     setLinkError(null);
     setLinkPending(true);
-    const result = await unlinkCustomer(editing.id);
+    const result = await unlinkCustomer(customerId);
     setLinkPending(false);
 
     if (result?.error) {
       setLinkError(result.error);
       return;
     }
-    toast.success(`${editing.name} unlinked — their balance was forfeited.`);
+    toast.success("Unlinked — their balance was forfeited.");
     onDone();
   }
 
@@ -373,10 +389,6 @@ export function CustomerForm({
 
       <div className="space-y-2 rounded-md border p-3">
         <Label>Family / shared members</Label>
-        <p className="text-xs text-muted-foreground">
-          Link this customer&apos;s account to a spouse or family member who already has their own
-          profile, so they share one consumption balance going forward.
-        </p>
 
         {!editing ? (
           <p className="text-xs text-muted-foreground">
@@ -384,23 +396,60 @@ export function CustomerForm({
           </p>
         ) : editing.linked_to_customer_id ? (
           <>
+            <p className="text-xs text-muted-foreground">
+              This account is attached to another customer and shares their balance.
+            </p>
             <p className="text-sm">
               Shares <span className="font-medium">{editing.linked_to_customer?.name}</span>&apos;s
               balance.
             </p>
             {linkError && <p className="text-sm text-destructive">{linkError}</p>}
-            <Button type="button" size="sm" variant="outline" disabled={linkPending} onClick={handleUnlink}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={linkPending}
+              onClick={() => handleUnlink(editing.id)}
+            >
               {linkPending ? "Unlinking..." : "Unlink"}
             </Button>
           </>
         ) : (
           <>
+            <p className="text-xs text-muted-foreground">
+              Attach a spouse or family member who already has their own profile — their account
+              gets folded into this one and they share <span className="font-medium">this</span>{" "}
+              customer&apos;s balance from now on.
+            </p>
+
+            {dependents.length > 0 && (
+              <ul className="space-y-1">
+                {dependents.map((d) => (
+                  <li
+                    key={d.id}
+                    className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm"
+                  >
+                    <span>{d.name} shares this balance</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={linkPending}
+                      onClick={() => handleUnlink(d.id)}
+                    >
+                      Unlink
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             {linkError && <p className="text-sm text-destructive">{linkError}</p>}
             <Combobox
               options={linkOptions}
               value={linkTargetId}
               onChange={setLinkTargetId}
-              placeholder="Choose the account to share with"
+              placeholder="Choose who to attach"
               searchPlaceholder="Search customers..."
               emptyText="No eligible customers found."
             />
