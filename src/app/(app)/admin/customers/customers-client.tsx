@@ -232,12 +232,12 @@ export function CustomersClient({
     });
   }
 
-  async function handleDelete(id: string) {
+  async function handleDeactivate(id: string) {
     const result = await deactivateCustomer(id);
     if (result?.error) {
       toast.error(result.error);
     } else {
-      toast.success("Customer removed.");
+      toast.success("Customer deactivated.");
       router.refresh();
     }
   }
@@ -490,21 +490,21 @@ export function CustomersClient({
                     {c.active && (
                     <AlertDialog>
                       <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>
-                        Remove
+                        Deactivate
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Remove {c.name}?</AlertDialogTitle>
+                          <AlertDialogTitle>Deactivate {c.name}?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This hides the customer from check-in and this list. Their past
-                            check-in history is kept for reporting. You can ask an admin to
-                            restore them directly in the database if needed.
+                            This hides the customer from check-in and this list — it does not
+                            delete their record. Their past check-in history is kept for
+                            reporting, and you can undo this anytime with Reactivate.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(c.id)}>
-                            Remove
+                          <AlertDialogAction onClick={() => handleDeactivate(c.id)}>
+                            Deactivate
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -553,6 +553,7 @@ export function CustomersClient({
         customerId={viewing?.id ?? null}
         name={viewing?.name ?? ""}
         onOpenChange={(open) => !open && setViewing(null)}
+        canManage
       />
 
       <Dialog open={!!newSignup} onOpenChange={(open) => !open && setNewSignup(null)}>
