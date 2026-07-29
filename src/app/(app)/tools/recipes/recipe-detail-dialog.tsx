@@ -36,11 +36,15 @@ const ROWS: { key: "base" | "side" | "shake" | "body" | "topping"; label: string
 
 export function RecipeDetailDialog({
   recipe,
+  canManage,
   onOpenChange,
+  onEdit,
   onDeleted,
 }: {
   recipe: ShakeRecipe | null;
+  canManage: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit: (recipe: ShakeRecipe) => void;
   onDeleted: (id: string) => void;
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -81,19 +85,18 @@ export function RecipeDetailDialog({
 
             <p className="text-sm text-muted-foreground">{recipe.name_en}</p>
 
-            {recipe.colors.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {recipe.colors.map((color) => (
-                  <Badge key={color} variant="outline">
-                    <span
-                      className="size-2 rounded-full"
-                      style={{ backgroundColor: RECIPE_COLOR_SWATCH[color] ?? "#999" }}
-                    />
-                    {color}
-                  </Badge>
-                ))}
-              </div>
-            )}
+            <div className="flex flex-wrap gap-1.5">
+              <Badge variant="secondary">{recipe.is_public ? "Public" : "Only my club"}</Badge>
+              {recipe.colors.map((color) => (
+                <Badge key={color} variant="outline">
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: RECIPE_COLOR_SWATCH[color] ?? "#999" }}
+                  />
+                  {color}
+                </Badge>
+              ))}
+            </div>
 
             <dl className="space-y-2 text-sm">
               {ROWS.map((row) => (
@@ -104,32 +107,37 @@ export function RecipeDetailDialog({
               ))}
             </dl>
 
-            <DialogFooter>
-              <AlertDialog>
-                <AlertDialogTrigger render={<Button variant="destructive" />}>
-                  Delete
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete {recipe.code}?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This removes &quot;{recipe.name_zh}&quot; from the library. This can&apos;t
-                      be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
-                      disabled={isDeleting}
-                      onClick={handleDelete}
-                    >
-                      {isDeleting ? "Deleting..." : "Delete"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </DialogFooter>
+            {canManage && (
+              <DialogFooter>
+                <Button variant="outline" onClick={() => onEdit(recipe)}>
+                  Edit
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger render={<Button variant="destructive" />}>
+                    Delete
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete {recipe.code}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This removes &quot;{recipe.name_zh}&quot; from the library. This can&apos;t
+                        be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        disabled={isDeleting}
+                        onClick={handleDelete}
+                      >
+                        {isDeleting ? "Deleting..." : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </DialogFooter>
+            )}
           </>
         )}
       </DialogContent>
