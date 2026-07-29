@@ -8,13 +8,23 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { ShakeRecipe } from "@/lib/types/database";
-import { AddRecipeDialog } from "./add-recipe-dialog";
+import { RecipeFormDialog } from "./recipe-form-dialog";
 import { RecipeDetailDialog } from "./recipe-detail-dialog";
 import { RECIPE_COLORS } from "./colors";
 
-export function RecipesClient({ recipes: initialRecipes }: { recipes: ShakeRecipe[] }) {
+type FormState = { mode: "add" } | { mode: "edit"; recipe: ShakeRecipe };
+
+export function RecipesClient({
+  recipes: initialRecipes,
+  currentCoachId,
+  isSuperAdmin,
+}: {
+  recipes: ShakeRecipe[];
+  currentCoachId: string;
+  isSuperAdmin: boolean;
+}) {
   const [recipes, setRecipes] = useState(initialRecipes);
-  const [addOpen, setAddOpen] = useState(false);
+  const [formState, setFormState] = useState<FormState | null>(null);
   const [selected, setSelected] = useState<ShakeRecipe | null>(null);
   const [search, setSearch] = useState("");
   const [activeColors, setActiveColors] = useState<string[]>([]);
@@ -23,6 +33,18 @@ export function RecipesClient({ recipes: initialRecipes }: { recipes: ShakeRecip
     setActiveColors((prev) =>
       prev.includes(value) ? prev.filter((c) => c !== value) : [...prev, value]
     );
+  }
+
+  function canManage(recipe: ShakeRecipe) {
+    return isSuperAdmin || recipe.created_by === currentCoachId;
+  }
+
+  function upsertRecipe(recipe: ShakeRecipe) {
+    setRecipes((prev) => {
+      const exists = prev.some((r) => r.id === recipe.id);
+      const next = exists ? prev.map((r) => (r.id === recipe.id ? recipe : r)) : [...prev, recipe];
+      return next.sort((a, b) => a.code.localeCompare(b.code));
+    });
   }
 
   // Ingredients stay plain text search across the recipe's fields — matches
@@ -53,7 +75,7 @@ export function RecipesClient({ recipes: initialRecipes }: { recipes: ShakeRecip
             test page.
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
+        <Button onClick={() => setFormState({ mode: "add" })}>
           <Plus /> Add recipe
         </Button>
       </div>
@@ -135,17 +157,25 @@ export function RecipesClient({ recipes: initialRecipes }: { recipes: ShakeRecip
         </div>
       )}
 
-      <AddRecipeDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        onDone={(recipe) =>
-          setRecipes((prev) => [...prev, recipe].sort((a, b) => a.code.localeCompare(b.code)))
-        }
-      />
+      {formState && (
+        <RecipeFormDialog
+          key={formState.mode === "edit" ? formState.recipe.id : "add"}
+          mode={formState.mode}
+          recipe={formState.mode === "edit" ? formState.recipe : undefined}
+          open={formState !== null}
+          onOpenChange={(open) => !open && setFormState(null)}
+          onDone={upsertRecipe}
+        />
+      )}
 
       <RecipeDetailDialog
         recipe={selected}
+        canManage={selected !== null && canManage(selected)}
         onOpenChange={(open) => !open && setSelected(null)}
+        onEdit={(recipe) => {
+          setSelected(null);
+          setFormState({ mode: "edit", recipe });
+        }}
         onDeleted={(id) => {
           setRecipes((prev) => prev.filter((r) => r.id !== id));
           setSelected(null);

@@ -20,5 +20,7 @@ export default async function RecipesPage() {
   const supabase = await createClient();
   const { data: recipes } = await supabase.from("shake_recipes").select("*").order("code");
 
-  return <RecipesClient recipes={recipes ?? []} />;
+  return (
+    <RecipesClient recipes={recipes ?? []} currentCoachId={coach.id} isSuperAdmin={true} />
+  );
 }
