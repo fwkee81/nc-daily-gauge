@@ -366,9 +366,9 @@ create table finance_transactions (
 -- (Base / Side / Shake / Body / Topping). Admin-only test rollout for now —
 -- gated end to end by is_super_admin() (table RLS + the storage bucket for
 -- recipe photos below), same account as coaches' super-admin gate.
-create sequence shake_recipe_code_seq;
+create sequence if not exists shake_recipe_code_seq;
 
-create table shake_recipes (
+create table if not exists shake_recipes (
   id uuid primary key default gen_random_uuid(),
   code text not null unique default ('S' || lpad(nextval('shake_recipe_code_seq')::text, 3, '0')),
   name_zh text not null,
@@ -727,10 +727,13 @@ create policy "finance_transactions_insert" on finance_transactions
 -- shake_recipes: admin-only test rollout — only is_super_admin() (see
 -- HELPER FUNCTIONS above) can read or write the library while it's being
 -- tried out. Widen this once it's ready for every coach.
+drop policy if exists "shake_recipes_select_admin" on shake_recipes;
 create policy "shake_recipes_select_admin" on shake_recipes
   for select to authenticated using (is_super_admin());
+drop policy if exists "shake_recipes_insert_admin" on shake_recipes;
 create policy "shake_recipes_insert_admin" on shake_recipes
   for insert to authenticated with check (is_super_admin());
+drop policy if exists "shake_recipes_delete_admin" on shake_recipes;
 create policy "shake_recipes_delete_admin" on shake_recipes
   for delete to authenticated using (is_super_admin());
 
@@ -740,10 +743,13 @@ insert into storage.buckets (id, name, public)
 values ('recipe-photos', 'recipe-photos', true)
 on conflict (id) do nothing;
 
+drop policy if exists "recipe_photos_select_public" on storage.objects;
 create policy "recipe_photos_select_public" on storage.objects
   for select using (bucket_id = 'recipe-photos');
+drop policy if exists "recipe_photos_insert_admin" on storage.objects;
 create policy "recipe_photos_insert_admin" on storage.objects
   for insert to authenticated with check (bucket_id = 'recipe-photos' and is_super_admin());
+drop policy if exists "recipe_photos_delete_admin" on storage.objects;
 create policy "recipe_photos_delete_admin" on storage.objects
   for delete to authenticated using (bucket_id = 'recipe-photos' and is_super_admin());
 
