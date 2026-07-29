@@ -86,6 +86,16 @@ export function CustomerForm({
   const [linkPending, setLinkPending] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
 
+  // Couple/Family are no longer offered for new selections, but an existing
+  // customer already set to one keeps showing it here instead of looking
+  // blank — same reasoning as invitedByOptions below.
+  const genderOptions: CustomerGender[] = useMemo(() => {
+    if (editing && editing.gender && !CUSTOMER_GENDERS.includes(editing.gender)) {
+      return [...CUSTOMER_GENDERS, editing.gender];
+    }
+    return CUSTOMER_GENDERS;
+  }, [editing]);
+
   const linkOptions: ComboboxOption[] = useMemo(() => {
     if (!editing) return [];
     return customers
@@ -216,7 +226,7 @@ export function CustomerForm({
               <SelectValue placeholder="Select" />
             </SelectTrigger>
             <SelectContent>
-              {CUSTOMER_GENDERS.map((g) => (
+              {genderOptions.map((g) => (
                 <SelectItem key={g} value={g}>
                   {g}
                 </SelectItem>
