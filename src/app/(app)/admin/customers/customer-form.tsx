@@ -19,13 +19,13 @@ import { Combobox, type ComboboxOption } from "@/components/combobox";
 import { CUSTOMER_GENDERS, CUSTOMER_NC_LEVELS, MEMBER_TYPES } from "@/lib/constants";
 import type { CustomerGender, CustomerNcLevel, MemberType } from "@/lib/types/database";
 import {
-  addCustomerMember,
   createCustomer,
-  deactivateCustomerMember,
+  linkCustomerToSpouse,
+  unlinkCustomer,
   updateCustomer,
   type CustomerFormInput,
 } from "./actions";
-import type { CustomerMemberRow, CustomerRow } from "./customers-client";
+import type { CustomerRow } from "./customers-client";
 
 interface CoachOption {
   id: string;
@@ -53,13 +53,11 @@ export function CustomerForm({
   coaches,
   customers,
   editing,
-  members,
   onDone,
 }: {
   coaches: CoachOption[];
   customers: CustomerRow[];
   editing?: CustomerRow | null;
-  members: CustomerMemberRow[];
   onDone: (celebration?: { name: string; ncLevel: CustomerNcLevel }) => void;
 }) {
   const [name, setName] = useState(editing?.name ?? "");
@@ -84,44 +82,49 @@ export function CustomerForm({
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [familyMembers, setFamilyMembers] = useState<CustomerMemberRow[]>(members);
-  const [newMemberName, setNewMemberName] = useState("");
-  const [newMemberContact, setNewMemberContact] = useState("");
-  const [newMemberDob, setNewMemberDob] = useState("");
-  const [memberPending, setMemberPending] = useState(false);
-  const [memberError, setMemberError] = useState<string | null>(null);
+  const [linkTargetId, setLinkTargetId] = useState<string | null>(null);
+  const [linkPending, setLinkPending] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
-  async function handleAddMember() {
-    if (!editing || !newMemberName.trim()) return;
-    setMemberError(null);
-    setMemberPending(true);
-    const result = await addCustomerMember(editing.id, {
-      name: newMemberName.trim(),
-      contact: newMemberContact.trim() || null,
-      dob: newMemberDob || null,
-    });
-    setMemberPending(false);
+  const linkOptions: ComboboxOption[] = useMemo(() => {
+    if (!editing) return [];
+    return customers
+      .filter((c) => c.id !== editing.id && c.active && !c.linked_to_customer_id)
+      .map((c) => ({
+        value: c.id,
+        label: c.name,
+        description: `${c.consumption_balance} left`,
+      }));
+  }, [customers, editing]);
 
-    if (result?.error || !result?.member) {
-      setMemberError(result?.error ?? "Could not add family member.");
+  async function handleLink() {
+    if (!editing || !linkTargetId) return;
+    setLinkError(null);
+    setLinkPending(true);
+    const result = await linkCustomerToSpouse(editing.id, linkTargetId);
+    setLinkPending(false);
+
+    if (result?.error) {
+      setLinkError(result.error);
       return;
     }
-
-    setFamilyMembers((prev) => [...prev, result.member]);
-    setNewMemberName("");
-    setNewMemberContact("");
-    setNewMemberDob("");
-    toast.success("Family member added.");
+    toast.success(`${editing.name} is now linked and shares a balance.`);
+    onDone();
   }
 
-  async function handleRemoveMember(id: string) {
-    const result = await deactivateCustomerMember(id);
+  async function handleUnlink() {
+    if (!editing) return;
+    setLinkError(null);
+    setLinkPending(true);
+    const result = await unlinkCustomer(editing.id);
+    setLinkPending(false);
+
     if (result?.error) {
-      toast.error(result.error);
+      setLinkError(result.error);
       return;
     }
-    setFamilyMembers((prev) => prev.filter((m) => m.id !== id));
-    toast.success("Family member removed.");
+    toast.success(`${editing.name} unlinked — their balance was forfeited.`);
+    onDone();
   }
 
   const computedAge = dob ? differenceInYears(new Date(), new Date(dob)) : null;
@@ -187,13 +190,6 @@ export function CustomerForm({
       setError(result.error);
       toast.error(result.error);
       return;
-    }
-
-    // Save changes covers everything on the form, including a family member
-    // typed into the fields below but never explicitly added via the
-    // separate "Add family member" button.
-    if (editing && newMemberName.trim()) {
-      await handleAddMember();
     }
 
     toast.success(editing ? "Customer updated." : "Customer added.");
@@ -368,70 +364,46 @@ export function CustomerForm({
       <div className="space-y-2 rounded-md border p-3">
         <Label>Family / shared members</Label>
         <p className="text-xs text-muted-foreground">
-          A spouse or family member who shares this customer&apos;s consumption balance. They can
-          be found by their own name at check-in.
+          Link this customer&apos;s account to a spouse or family member who already has their own
+          profile, so they share one consumption balance going forward.
         </p>
 
-        {editing ? (
+        {!editing ? (
+          <p className="text-xs text-muted-foreground">
+            Save the customer first, then edit them to link a family member.
+          </p>
+        ) : editing.linked_to_customer_id ? (
           <>
-            {familyMembers.length > 0 && (
-              <ul className="space-y-1">
-                {familyMembers.map((m) => (
-                  <li
-                    key={m.id}
-                    className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm"
-                  >
-                    <span>
-                      {m.name}
-                      {m.contact && <span className="text-muted-foreground"> · {m.contact}</span>}
-                      {m.dob && <span className="text-muted-foreground"> · {m.dob}</span>}
-                    </span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleRemoveMember(m.id)}
-                    >
-                      Remove
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {memberError && <p className="text-sm text-destructive">{memberError}</p>}
-
-            <div className="grid grid-cols-3 gap-2">
-              <Input
-                placeholder="Name"
-                value={newMemberName}
-                onChange={(e) => setNewMemberName(e.target.value)}
-              />
-              <Input
-                placeholder="Contact"
-                value={newMemberContact}
-                onChange={(e) => setNewMemberContact(e.target.value)}
-              />
-              <Input
-                type="date"
-                value={newMemberDob}
-                onChange={(e) => setNewMemberDob(e.target.value)}
-              />
-            </div>
+            <p className="text-sm">
+              Shares <span className="font-medium">{editing.linked_to_customer?.name}</span>&apos;s
+              balance.
+            </p>
+            {linkError && <p className="text-sm text-destructive">{linkError}</p>}
+            <Button type="button" size="sm" variant="outline" disabled={linkPending} onClick={handleUnlink}>
+              {linkPending ? "Unlinking..." : "Unlink"}
+            </Button>
+          </>
+        ) : (
+          <>
+            {linkError && <p className="text-sm text-destructive">{linkError}</p>}
+            <Combobox
+              options={linkOptions}
+              value={linkTargetId}
+              onChange={setLinkTargetId}
+              placeholder="Choose the account to share with"
+              searchPlaceholder="Search customers..."
+              emptyText="No eligible customers found."
+            />
             <Button
               type="button"
               size="sm"
               variant="outline"
-              disabled={!newMemberName.trim() || memberPending}
-              onClick={handleAddMember}
+              disabled={!linkTargetId || linkPending}
+              onClick={handleLink}
             >
-              {memberPending ? "Adding..." : "Add family member"}
+              {linkPending ? "Linking..." : "Link"}
             </Button>
           </>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Save the customer first, then edit them to add family members.
-          </p>
         )}
       </div>
 
