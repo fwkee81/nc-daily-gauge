@@ -31,7 +31,11 @@ export const ADMIN_POSITIONS: NcPosition[] = ["Owner", "Internship"];
 // supabase/schema.sql — keep these in sync.
 export const SUPER_ADMIN_EMAIL = "fwkee81@gmail.com";
 
-export const CUSTOMER_GENDERS: CustomerGender[] = ["Male", "Female", "Couple", "Family", "Others"];
+// Couple/Family used to be how a shared household was represented as one
+// customer row — link_customer_to_spouse() replaced that, so new/edited
+// customers no longer offer them here. Left in the CustomerGender type and
+// DB enum since existing customers may still hold one of these values.
+export const CUSTOMER_GENDERS: CustomerGender[] = ["Male", "Female", "Others"];
 
 export const CUSTOMER_NC_LEVELS: CustomerNcLevel[] = [
   "5-day",
