@@ -2128,7 +2128,7 @@ as $$
     cu.created_at
   from customers cu
   join windows w on w.club_id = cu.nc_club_id
-  left join coaches co on co.id = cu.created_by
+  left join coaches co on co.id = cu.coach_id
   where cu.nc_club_id in (select club_id from my_clubs)
     and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
     and cu.created_at::date between w.window_start and w.window_end
@@ -2145,7 +2145,7 @@ as $$
   from customer_renewals cr
   join customers cu on cu.id = cr.customer_id
   join windows w on w.club_id = cu.nc_club_id
-  left join coaches co on co.id = cr.renewed_by
+  left join coaches co on co.id = cu.coach_id
   where cu.nc_club_id in (select club_id from my_clubs)
     and cr.nc_level in ('10-day', '20-day', '30-day')
     and cr.created_at::date between w.window_start and w.window_end
@@ -2236,7 +2236,7 @@ as $$
     co.name as coach_name,
     cu.created_at
   from customers cu
-  left join coaches co on co.id = cu.created_by
+  left join coaches co on co.id = cu.coach_id
   where cu.nc_club_id in (select club_id from my_clubs)
     and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
     and cu.created_at::date = p_date
@@ -2252,7 +2252,7 @@ as $$
     cr.created_at
   from customer_renewals cr
   join customers cu on cu.id = cr.customer_id
-  left join coaches co on co.id = cr.renewed_by
+  left join coaches co on co.id = cu.coach_id
   where cu.nc_club_id in (select club_id from my_clubs)
     and cr.nc_level in ('10-day', '20-day', '30-day')
     and cr.created_at::date = p_date
@@ -2418,7 +2418,7 @@ as $$
     cu.created_at
   from customers cu
   cross join bounds b
-  left join coaches co on co.id = cu.created_by
+  left join coaches co on co.id = cu.coach_id
   where cu.nc_club_id in (select club_id from my_clubs)
     and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
     and cu.created_at::date between b.month_start and b.month_end
@@ -2435,7 +2435,7 @@ as $$
   from customer_renewals cr
   join customers cu on cu.id = cr.customer_id
   cross join bounds b
-  left join coaches co on co.id = cr.renewed_by
+  left join coaches co on co.id = cu.coach_id
   where cu.nc_club_id in (select club_id from my_clubs)
     and cr.nc_level in ('10-day', '20-day', '30-day')
     and cr.created_at::date between b.month_start and b.month_end
