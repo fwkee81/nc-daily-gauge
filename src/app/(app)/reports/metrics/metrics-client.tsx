@@ -26,6 +26,7 @@ import type {
   InvitedByType,
   MonthlyInventoryOutRow,
   MonthlyPackageSaleRow,
+  WeeklyCoachCupRow,
   WeeklyCustomerAttendanceRow,
   WeeklyNewRenewalRow,
   WeeklyTotalsRow,
@@ -67,6 +68,7 @@ export function MetricsClient({
   weeklyTotals,
   weeklyNewRenewals,
   weeklyAttendance,
+  weeklyCoachCups,
   customers,
 }: {
   month: string;
@@ -84,6 +86,7 @@ export function MetricsClient({
   weeklyTotals: WeeklyTotalsRow;
   weeklyNewRenewals: WeeklyNewRenewalRow[];
   weeklyAttendance: WeeklyCustomerAttendanceRow[];
+  weeklyCoachCups: WeeklyCoachCupRow[];
   customers: DemographicsCustomer[];
 }) {
   const consumptionVp = useMemo(
@@ -318,7 +321,12 @@ export function MetricsClient({
               </Button>
             </div>
           </div>
-          <MetricsWeekly totals={weeklyTotals} newRenewals={weeklyNewRenewals} attendance={weeklyAttendance} />
+          <MetricsWeekly
+            totals={weeklyTotals}
+            newRenewals={weeklyNewRenewals}
+            attendance={weeklyAttendance}
+            coachCups={weeklyCoachCups}
+          />
         </TabsContent>
 
         <TabsContent value="demographics" className="mt-4">

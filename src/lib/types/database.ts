@@ -395,6 +395,13 @@ export type WeeklyCustomerAttendanceRow = {
   daily: Record<string, number>;
 };
 
+export type WeeklyCoachCupRow = {
+  coach_id: string;
+  coach_name: string;
+  total_cups: number;
+  avg_cups_per_day: number;
+};
+
 export type BranchCoachCupsCompareRow = {
   club_id: string;
   coach_id: string;
@@ -729,6 +736,10 @@ export type Database = {
       weekly_customer_attendance: {
         Args: { p_date?: string; p_club_id?: string | null };
         Returns: WeeklyCustomerAttendanceRow[];
+      };
+      weekly_coach_cup_by_coach: {
+        Args: { p_date?: string; p_club_id?: string | null };
+        Returns: WeeklyCoachCupRow[];
       };
       list_branch_clubs: { Args: Record<string, never>; Returns: BranchClubRow[] };
       branches_daily_summary: {
