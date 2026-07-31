@@ -525,6 +525,7 @@ export function CheckinClient({
           coaches={coaches}
           customers={customers}
           recentWalkins={recentWalkins}
+          checkinDate={checkinDate}
           onDone={handleWalkinDone}
         />
       )}
