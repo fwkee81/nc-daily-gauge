@@ -1976,13 +1976,18 @@ $$;
 -- Every customer who checked in during the same 6-operating-day window,
 -- with how many times — powers the Weekly tab's attendance list so a coach
 -- meeting can spot who's coming in often vs. barely showing up.
+-- Adds a new output column, which CREATE OR REPLACE can't do (return-column
+-- change) — drop the old 5-column version first.
+drop function if exists weekly_customer_attendance(date, uuid);
+
 create or replace function weekly_customer_attendance(p_date date default current_date, p_club_id uuid default null)
 returns table (
   customer_id uuid,
   customer_name text,
   coach_name text,
   nc_level customer_nc_level,
-  visit_count bigint
+  visit_count bigint,
+  daily jsonb
 )
 language sql
 stable
@@ -2007,20 +2012,26 @@ as $$
     select min(checkin_date) as window_start, max(checkin_date) as window_end
     from ranked_days
     where rn <= 6
+  ),
+  per_day as (
+    select ci.customer_id, ci.checkin_date, count(*) as n
+    from checkins ci
+    cross join windows w
+    where ci.nc_club_id = (select id from target_club)
+      and not ci.voided
+      and ci.checkin_date between w.window_start and w.window_end
+    group by ci.customer_id, ci.checkin_date
   )
   select
     cu.id as customer_id,
     cu.name as customer_name,
     co.name as coach_name,
     cu.nc_level,
-    count(*) as visit_count
-  from checkins ci
-  cross join windows w
-  join customers cu on cu.id = ci.customer_id
+    sum(pd.n) as visit_count,
+    jsonb_object_agg(pd.checkin_date::text, pd.n) as daily
+  from per_day pd
+  join customers cu on cu.id = pd.customer_id
   left join coaches co on co.id = cu.coach_id
-  where ci.nc_club_id = (select id from target_club)
-    and not ci.voided
-    and ci.checkin_date between w.window_start and w.window_end
   group by cu.id, cu.name, co.name, cu.nc_level
   order by visit_count desc, cu.name;
 $$;
