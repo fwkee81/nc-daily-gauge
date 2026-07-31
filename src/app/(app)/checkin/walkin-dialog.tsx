@@ -38,6 +38,7 @@ export function WalkinDialog({
   coaches,
   customers,
   recentWalkins,
+  checkinDate,
   onDone,
 }: {
   open: boolean;
@@ -45,8 +46,12 @@ export function WalkinDialog({
   coaches: CoachOption[];
   customers: CustomerOption[];
   recentWalkins: RecentWalkinCustomer[];
+  // The date picked on the main check-in page — Ala Carte walk-ins used to
+  // always check in as today regardless, which broke backfilling a past date.
+  checkinDate: string;
   onDone: (result: { name: string; balance: number }) => void;
 }) {
+  const isBackfilling = checkinDate !== format(new Date(), "yyyy-MM-dd");
   // Search-first: pick a recent (last 30 days) Ala Carte walk-in to reuse
   // their record, or "Create" a brand-new one if they're not in the list.
   const [selectedExisting, setSelectedExisting] = useState<RecentWalkinCustomer | null>(null);
@@ -95,7 +100,6 @@ export function WalkinDialog({
     if (!selectedExisting) return;
     setError(null);
     setIsPending(true);
-    const checkinDate = format(new Date(), "yyyy-MM-dd");
     const result = await checkinExistingWalkin(selectedExisting.id, consumptionType, checkinDate);
     setIsPending(false);
 
@@ -121,7 +125,6 @@ export function WalkinDialog({
     }
 
     setIsPending(true);
-    const checkinDate = format(new Date(), "yyyy-MM-dd");
     const result = await submitWalkinCheckin({
       name: name.trim(),
       contact: contact.trim(),
@@ -157,6 +160,12 @@ export function WalkinDialog({
         <DialogHeader>
           <DialogTitle>Walk-in check-in (Ala Carte)</DialogTitle>
         </DialogHeader>
+
+        {isBackfilling && (
+          <p className="text-sm font-medium text-destructive">
+            Backfilling for {format(new Date(`${checkinDate}T00:00:00`), "d MMM yyyy")} — not today.
+          </p>
+        )}
 
         {!selectedExisting && !creatingNew && (
           <div className="space-y-4">
