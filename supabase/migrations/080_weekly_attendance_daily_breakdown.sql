@@ -1,6 +1,10 @@
 -- NC Metrics Weekly tab needs to show which day(s) each customer came in,
 -- not just a total — adds a per-day breakdown (date -> visit count) so the
 -- attendance table can render one column per operating day.
+-- Adds a new output column, which CREATE OR REPLACE can't do (return-column
+-- change) — drop the old 5-column version first.
+drop function if exists weekly_customer_attendance(date, uuid);
+
 create or replace function weekly_customer_attendance(p_date date default current_date, p_club_id uuid default null)
 returns table (
   customer_id uuid,
@@ -56,3 +60,5 @@ as $$
   group by cu.id, cu.name, co.name, cu.nc_level
   order by visit_count desc, cu.name;
 $$;
+
+grant execute on function weekly_customer_attendance(date, uuid) to authenticated;

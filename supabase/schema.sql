@@ -1976,6 +1976,10 @@ $$;
 -- Every customer who checked in during the same 6-operating-day window,
 -- with how many times — powers the Weekly tab's attendance list so a coach
 -- meeting can spot who's coming in often vs. barely showing up.
+-- Adds a new output column, which CREATE OR REPLACE can't do (return-column
+-- change) — drop the old 5-column version first.
+drop function if exists weekly_customer_attendance(date, uuid);
+
 create or replace function weekly_customer_attendance(p_date date default current_date, p_club_id uuid default null)
 returns table (
   customer_id uuid,
