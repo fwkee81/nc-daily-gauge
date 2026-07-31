@@ -113,7 +113,9 @@ export function MetricsWeekly({
   const [breakdownOpen, setBreakdownOpen] = useState<{ label: string; rows: WeeklyNewRenewalRow[] } | null>(
     null
   );
+  const [coachCupOpen, setCoachCupOpen] = useState(false);
   const hasActivity = totals.operating_days > 0;
+  const coachCupAvgDaily = totals.operating_days > 0 ? totals.coach_cup_total / totals.operating_days : 0;
 
   const statByLevel: Record<CustomerNcLevel, number | undefined> = {
     "5-day": totals.total_5day,
@@ -142,7 +144,11 @@ export function MetricsWeekly({
 
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
         <Stat label="Total Cups" value={totals.total_cups} />
-        <Stat label="Coach's Cup" value={totals.coach_cup_total} />
+        <Stat
+          label="Coach's Cup"
+          value={totals.coach_cup_total}
+          onClick={totals.daily.length > 0 ? () => setCoachCupOpen(true) : undefined}
+        />
         {NEW_RENEWAL_LEVELS.map(({ level, label }) => {
           const value = statByLevel[level];
           if (value === undefined) return null;
@@ -261,6 +267,26 @@ export function MetricsWeekly({
               <p className="py-4 text-center text-sm text-muted-foreground">No customers yet.</p>
             )}
           </ul>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={coachCupOpen} onOpenChange={setCoachCupOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Coach&apos;s Cup — this window</DialogTitle>
+          </DialogHeader>
+          <ul className="divide-y">
+            {totals.daily.map((d) => (
+              <li key={d.date} className="flex items-center justify-between py-2 text-sm">
+                <span>{format(parseISO(d.date), "EEE, d MMM")}</span>
+                <span className="font-medium">{d.coach_cup_total}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center justify-between border-t pt-2 text-sm">
+            <span className="text-muted-foreground">Average per operating day</span>
+            <span className="font-semibold">{coachCupAvgDaily.toFixed(2)}</span>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
