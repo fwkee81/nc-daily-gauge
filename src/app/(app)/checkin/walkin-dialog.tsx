@@ -38,7 +38,6 @@ export function WalkinDialog({
   coaches,
   customers,
   recentWalkins,
-  checkinDate,
   onDone,
 }: {
   open: boolean;
@@ -46,12 +45,15 @@ export function WalkinDialog({
   coaches: CoachOption[];
   customers: CustomerOption[];
   recentWalkins: RecentWalkinCustomer[];
-  // The date picked on the main check-in page — Ala Carte walk-ins used to
-  // always check in as today regardless, which broke backfilling a past date.
-  checkinDate: string;
   onDone: (result: { name: string; balance: number }) => void;
 }) {
-  const isBackfilling = checkinDate !== format(new Date(), "yyyy-MM-dd");
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  // Own backfill control, separate from the main page's — that one only
+  // exists once a package customer is selected from the search list, which
+  // an Ala Carte walk-in never is.
+  const [checkinDate, setCheckinDate] = useState(todayStr);
+  const [showBackfill, setShowBackfill] = useState(false);
+
   // Search-first: pick a recent (last 30 days) Ala Carte walk-in to reuse
   // their record, or "Create" a brand-new one if they're not in the list.
   const [selectedExisting, setSelectedExisting] = useState<RecentWalkinCustomer | null>(null);
@@ -93,6 +95,8 @@ export function WalkinDialog({
     setInvitedBy(PLUGIN_VALUE);
     setConsumptionType(CONSUMPTION_TYPES[0]);
     setError(null);
+    setCheckinDate(todayStr);
+    setShowBackfill(false);
   }
 
   async function handleSubmitExisting(e: FormEvent) {
@@ -161,11 +165,33 @@ export function WalkinDialog({
           <DialogTitle>Walk-in check-in (Ala Carte)</DialogTitle>
         </DialogHeader>
 
-        {isBackfilling && (
-          <p className="text-sm font-medium text-destructive">
-            Backfilling for {format(new Date(`${checkinDate}T00:00:00`), "d MMM yyyy")} — not today.
-          </p>
-        )}
+        <div>
+          {!showBackfill ? (
+            <button
+              type="button"
+              className="text-sm text-muted-foreground underline underline-offset-4"
+              onClick={() => setShowBackfill(true)}
+            >
+              Not today? Backfill a different date
+            </button>
+          ) : (
+            <div className="space-y-1">
+              <Label>Check-in date</Label>
+              <Input
+                type="date"
+                max={todayStr}
+                value={checkinDate}
+                onChange={(e) => setCheckinDate(e.target.value)}
+              />
+              {checkinDate !== todayStr && (
+                <p className="text-sm font-medium text-destructive">
+                  Backfilling for {format(new Date(`${checkinDate}T00:00:00`), "d MMM yyyy")} — not
+                  today.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         {!selectedExisting && !creatingNew && (
           <div className="space-y-4">
