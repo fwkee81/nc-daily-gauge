@@ -234,3 +234,26 @@ export async function unlinkCustomer(customerId: string) {
   revalidatePath("/admin/customers");
   return { success: true };
 }
+
+// True duplicate merge, not a shared-balance link — duplicateCustomerId's
+// check-ins, renewals, and balance move to keepCustomerId, then
+// duplicateCustomerId is deactivated. Use this when the same real person
+// somehow ended up with two profiles (most often an Ala Carte walk-in
+// re-created instead of reused).
+export async function mergeCustomer(duplicateCustomerId: string, keepCustomerId: string) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) {
+    return { error: "Not authorized." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("merge_customers", {
+    p_duplicate_customer_id: duplicateCustomerId,
+    p_keep_customer_id: keepCustomerId,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/customers");
+  return { success: true };
+}
