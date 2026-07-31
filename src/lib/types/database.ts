@@ -205,6 +205,7 @@ export type FinancePaymentMethod = "Cash" | "QR" | "Transfer";
 export type FinanceCategory =
   | "5-Day Card"
   | "10-Day Card"
+  | "20-Day Card"
   | "30-Day Card"
   | "Ala Carte"
   | "Power Cup"
