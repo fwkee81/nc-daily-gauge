@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
+import { cn } from "@/lib/utils";
 import { getMilestoneTier } from "@/lib/cup-milestones";
 import type {
   CustomerNcLevel,
@@ -185,19 +186,40 @@ export function MetricsWeekly({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {attendance.map((row) => (
-                <TableRow key={row.customer_id}>
-                  <TableCell>{row.customer_name}</TableCell>
-                  <TableCell>{row.coach_name ?? "—"}</TableCell>
-                  <TableCell>{row.nc_level}</TableCell>
-                  {totals.daily.map((d) => (
-                    <TableCell key={d.date} className="text-center">
-                      {row.daily[d.date] ?? ""}
+              {attendance.map((row) => {
+                const daysAttended = Object.keys(row.daily).length;
+                const perfectAttendance = totals.daily.length > 0 && daysAttended === totals.daily.length;
+                return (
+                  <TableRow key={row.customer_id} className={cn(perfectAttendance && "bg-primary/5")}>
+                    <TableCell>{row.customer_name}</TableCell>
+                    <TableCell>{row.coach_name ?? "—"}</TableCell>
+                    <TableCell>{row.nc_level}</TableCell>
+                    {totals.daily.map((d) => {
+                      const count = row.daily[d.date];
+                      return (
+                        <TableCell key={d.date} className="text-center">
+                          {count && (
+                            <span
+                              className={cn(
+                                "inline-flex size-6 items-center justify-center rounded-full text-xs font-semibold",
+                                count >= 2 ? "bg-primary/25 text-primary" : "bg-primary/10 text-primary"
+                              )}
+                            >
+                              {count}
+                            </span>
+                          )}
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell className="text-right">
+                      <span className="inline-flex items-center gap-1 font-semibold">
+                        {row.visit_count}
+                        {perfectAttendance && <span title="Came in every day this window">🔥</span>}
+                      </span>
                     </TableCell>
-                  ))}
-                  <TableCell className="text-right font-medium">{row.visit_count}</TableCell>
-                </TableRow>
-              ))}
+                  </TableRow>
+                );
+              })}
               {attendance.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4 + totals.daily.length} className="text-center text-muted-foreground">
