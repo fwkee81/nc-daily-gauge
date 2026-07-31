@@ -21,6 +21,7 @@ import type { CustomerGender, CustomerNcLevel, MemberType } from "@/lib/types/da
 import {
   createCustomer,
   linkCustomerToSpouse,
+  mergeCustomer,
   unlinkCustomer,
   updateCustomer,
   type CustomerFormInput,
@@ -86,6 +87,10 @@ export function CustomerForm({
   const [linkPending, setLinkPending] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
 
+  const [mergeTargetId, setMergeTargetId] = useState<string | null>(null);
+  const [mergePending, setMergePending] = useState(false);
+  const [mergeError, setMergeError] = useState<string | null>(null);
+
   // Couple/Family are no longer offered for new selections, but an existing
   // customer already set to one keeps showing it here instead of looking
   // blank — same reasoning as invitedByOptions below.
@@ -150,6 +155,37 @@ export function CustomerForm({
       return;
     }
     toast.success("Unlinked — their balance was forfeited.");
+    onDone();
+  }
+
+  // Same eligibility as linkOptions minus the "already active" carve-out —
+  // a merge target just needs to not be this customer and not itself be a
+  // linked-account (shared-balance) party.
+  const mergeOptions: ComboboxOption[] = useMemo(() => {
+    if (!editing) return [];
+    return customers
+      .filter(
+        (c) => c.id !== editing.id && c.active && !c.linked_to_customer_id && !primaryIds.has(c.id)
+      )
+      .map((c) => ({
+        value: c.id,
+        label: c.name,
+        description: `${c.consumption_balance} left`,
+      }));
+  }, [customers, editing, primaryIds]);
+
+  async function handleMerge() {
+    if (!editing || !mergeTargetId) return;
+    setMergeError(null);
+    setMergePending(true);
+    const result = await mergeCustomer(editing.id, mergeTargetId);
+    setMergePending(false);
+
+    if (result?.error) {
+      setMergeError(result.error);
+      return;
+    }
+    toast.success("Merged — this profile is now deactivated.");
     onDone();
   }
 
@@ -463,6 +499,36 @@ export function CustomerForm({
           </>
         )}
       </div>
+
+      {editing && (
+        <div className="space-y-2 rounded-md border p-3">
+          <Label>Merge duplicate</Label>
+          <p className="text-xs text-muted-foreground">
+            If this is the same real person as another profile (most often an Ala Carte walk-in
+            re-created instead of reused), pick that other profile below — this one&apos;s
+            check-in history and balance move over, then this profile is deactivated. Not for
+            couples sharing a balance; use Family / shared members above for that.
+          </p>
+          {mergeError && <p className="text-sm text-destructive">{mergeError}</p>}
+          <Combobox
+            options={mergeOptions}
+            value={mergeTargetId}
+            onChange={setMergeTargetId}
+            placeholder="Choose the profile to keep"
+            searchPlaceholder="Search customers..."
+            emptyText="No eligible customers found."
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!mergeTargetId || mergePending}
+            onClick={handleMerge}
+          >
+            {mergePending ? "Merging..." : "Merge into selected"}
+          </Button>
+        </div>
+      )}
 
       <Button type="submit" disabled={isPending} className="w-full">
         {isPending ? "Saving..." : editing ? "Save changes" : "Add customer"}

@@ -650,6 +650,10 @@ export type Database = {
         Args: { p_customer_id: string };
         Returns: Customer;
       };
+      merge_customers: {
+        Args: { p_duplicate_customer_id: string; p_keep_customer_id: string };
+        Returns: Customer;
+      };
       record_walkin_checkin: {
         Args: {
           p_name: string;
