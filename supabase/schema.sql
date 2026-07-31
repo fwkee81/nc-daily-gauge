@@ -33,7 +33,7 @@ create type finance_payment_method as enum ('Cash', 'QR', 'Transfer');
 -- 'Others (In)'/'Others (Out)') — the finance_txn_category_matches_direction
 -- check below still validates it's only ever paired with the right list.
 create type finance_category as enum (
-  '5-Day Card', '10-Day Card', '30-Day Card', 'Ala Carte',
+  '5-Day Card', '10-Day Card', '20-Day Card', '30-Day Card', 'Ala Carte',
   'Power Cup', 'Foodie', 'Fit Club', 'PJS', 'Membership', 'Product Purchased',
   'Ingredients', 'Stock-in', 'Claim', 'Rental', 'Cleaning', 'Others'
 );
@@ -342,7 +342,7 @@ create table finance_transactions (
   voided_at timestamptz,
   constraint finance_txn_category_matches_direction check (
     (direction = 'in' and category in (
-      '5-Day Card', '10-Day Card', '30-Day Card', 'Ala Carte',
+      '5-Day Card', '10-Day Card', '20-Day Card', '30-Day Card', 'Ala Carte',
       'Power Cup', 'Foodie', 'Fit Club', 'PJS', 'Membership', 'Product Purchased', 'Others'
     ))
     or

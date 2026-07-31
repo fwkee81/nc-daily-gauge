@@ -83,6 +83,7 @@ export const NC_LEVEL_CUPS: Record<CustomerNcLevel, number> = {
 export const FINANCE_INCOME_CATEGORIES: FinanceCategory[] = [
   "5-Day Card",
   "10-Day Card",
+  "20-Day Card",
   "30-Day Card",
   "Ala Carte",
   "Power Cup",
@@ -110,6 +111,7 @@ export const FINANCE_PAYMENT_METHODS: FinancePaymentMethod[] = ["Cash", "QR", "T
 export const FINANCE_INCOME_DEFAULT_AMOUNT: Partial<Record<FinanceCategory, number>> = {
   "5-Day Card": 98,
   "10-Day Card": 198,
+  "20-Day Card": 368,
   "30-Day Card": 518,
   "Ala Carte": 23,
 };
