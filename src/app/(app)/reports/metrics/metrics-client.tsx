@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { addMonths, differenceInYears, format, parse } from "date-fns";
+import { addDays, addMonths, differenceInYears, format, parse } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,11 @@ import type {
   InvitedByType,
   MonthlyInventoryOutRow,
   MonthlyPackageSaleRow,
+  WeeklyCustomerAttendanceRow,
+  WeeklyNewRenewalRow,
+  WeeklyTotalsRow,
 } from "@/lib/types/database";
+import { MetricsWeekly } from "./metrics-weekly";
 
 interface CoachCupRow {
   coach_id: string;
@@ -50,6 +54,8 @@ interface DemographicsCustomer {
 export function MetricsClient({
   month,
   hasExplicitMonth,
+  date,
+  hasExplicitDate,
   clubId,
   clubName,
   viewingBranch,
@@ -58,18 +64,26 @@ export function MetricsClient({
   coachCups,
   packageSales,
   inventoryOut,
+  weeklyTotals,
+  weeklyNewRenewals,
+  weeklyAttendance,
   customers,
 }: {
   month: string;
   hasExplicitMonth: boolean;
+  date: string;
+  hasExplicitDate: boolean;
   clubId: string;
   clubName: string | null;
   viewingBranch: boolean;
-  tab: "activity" | "demographics";
+  tab: "monthly" | "weekly" | "demographics";
   totals: { total_cups: number; days_in_period: number; avg_daily_cups: number };
   coachCups: CoachCupRow[];
   packageSales: MonthlyPackageSaleRow[];
   inventoryOut: MonthlyInventoryOutRow[];
+  weeklyTotals: WeeklyTotalsRow;
+  weeklyNewRenewals: WeeklyNewRenewalRow[];
+  weeklyAttendance: WeeklyCustomerAttendanceRow[];
   customers: DemographicsCustomer[];
 }) {
   const consumptionVp = useMemo(
@@ -78,27 +92,43 @@ export function MetricsClient({
   );
   const router = useRouter();
   const parsedMonth = parse(month, "yyyy-MM", new Date());
+  const parsedDate = parse(date, "yyyy-MM-dd", new Date());
 
   // Same "server thinks it's UTC" issue as Daily Report: self-correct to the
-  // browser's local month if none was explicitly requested.
+  // browser's local month/date if neither was explicitly requested.
   useEffect(() => {
     if (hasExplicitMonth) return;
     const clientMonth = format(new Date(), "yyyy-MM");
     if (clientMonth !== month) {
       const clubQuery = viewingBranch ? `&club=${clubId}` : "";
-      router.replace(`/reports/metrics?month=${clientMonth}${clubQuery}`);
+      router.replace(`/reports/metrics?month=${clientMonth}&date=${date}&tab=${tab}${clubQuery}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (hasExplicitDate) return;
+    const clientDate = format(new Date(), "yyyy-MM-dd");
+    if (clientDate !== date) {
+      const clubQuery = viewingBranch ? `&club=${clubId}` : "";
+      router.replace(`/reports/metrics?month=${month}&date=${clientDate}&tab=${tab}${clubQuery}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function goToMonth(m: string) {
     const clubQuery = viewingBranch ? `&club=${clubId}` : "";
-    router.push(`/reports/metrics?month=${m}${clubQuery}`);
+    router.push(`/reports/metrics?month=${m}&date=${date}&tab=${tab}${clubQuery}`);
+  }
+
+  function goToDate(d: string) {
+    const clubQuery = viewingBranch ? `&club=${clubId}` : "";
+    router.push(`/reports/metrics?month=${month}&date=${d}&tab=${tab}${clubQuery}`);
   }
 
   function goToTab(t: string) {
     const clubQuery = viewingBranch ? `&club=${clubId}` : "";
-    router.push(`/reports/metrics?month=${month}&tab=${t}${clubQuery}`);
+    router.push(`/reports/metrics?month=${month}&date=${date}&tab=${t}${clubQuery}`);
   }
 
   return (
@@ -136,11 +166,12 @@ export function MetricsClient({
 
       <Tabs value={tab} onValueChange={(v) => goToTab(String(v))}>
         <TabsList>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsTrigger value="monthly">Monthly</TabsTrigger>
+          <TabsTrigger value="weekly">Weekly</TabsTrigger>
           <TabsTrigger value="demographics">Customer Demographics</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="activity" className="mt-4 space-y-6">
+        <TabsContent value="monthly" className="mt-4 space-y-6">
           <div className="grid gap-4 sm:grid-cols-3">
             <Card className="border-2 border-primary bg-primary/5">
               <CardHeader>
@@ -257,6 +288,37 @@ export function MetricsClient({
               </Table>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="weekly" className="mt-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Your club&apos;s most recent 6 operating days, ending {format(parsedDate, "d MMM yyyy")}.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToDate(format(addDays(parsedDate, -1), "yyyy-MM-dd"))}
+              >
+                ← Prev day
+              </Button>
+              <Input
+                type="date"
+                className="w-auto"
+                value={date}
+                onChange={(e) => goToDate(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToDate(format(addDays(parsedDate, 1), "yyyy-MM-dd"))}
+              >
+                Next day →
+              </Button>
+            </div>
+          </div>
+          <MetricsWeekly totals={weeklyTotals} newRenewals={weeklyNewRenewals} attendance={weeklyAttendance} />
         </TabsContent>
 
         <TabsContent value="demographics" className="mt-4">

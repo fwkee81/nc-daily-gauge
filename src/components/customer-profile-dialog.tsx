@@ -2,14 +2,28 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { differenceInYears, parseISO } from "date-fns";
 import { ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCustomerProfile } from "@/lib/actions/customer-profile";
+import { deactivateCustomer, reactivateCustomer } from "@/app/(app)/admin/customers/actions";
 import { RecentCheckins } from "@/components/recent-checkins";
 import { RecentWellnessLogs } from "@/components/recent-wellness-logs";
 import { WhatsAppLink } from "@/components/whatsapp-link";
@@ -30,9 +44,12 @@ interface CustomerProfile {
   is_pjs: boolean;
   is_health_ambassador: boolean;
   active: boolean;
+  linked_to_customer_id: string | null;
   coach: { name: string } | null;
   invited_by_coach: { name: string } | null;
   invitedByCustomerName: string | null;
+  linkedToCustomerName: string | null;
+  linkedAccounts: { id: string; name: string }[];
   members: { id: string; name: string; contact: string | null; dob: string | null }[];
 }
 
@@ -58,22 +75,62 @@ export function CustomerProfileDialog({
   customerId,
   name,
   onOpenChange,
+  canManage = false,
 }: {
   customerId: string | null;
   name: string;
   onOpenChange: (open: boolean) => void;
+  // Only the Customers admin page (already admin-gated) passes this — Daily
+  // Report's read-only popup leaves it off so non-admin coaches never see a
+  // button that would just get rejected server-side.
+  canManage?: boolean;
 }) {
+  const router = useRouter();
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"visits" | "wellness">("visits");
+  const [statusPending, setStatusPending] = useState(false);
 
-  useEffect(() => {
+  function loadProfile() {
     if (!customerId) return;
     getCustomerProfile(customerId).then((res) => {
       if ("data" in res) setProfile(res.data as unknown as CustomerProfile);
       else setError(res.error ?? "Could not load customer.");
     });
+  }
+
+  useEffect(() => {
+    loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
+
+  async function handleDeactivate() {
+    if (!customerId) return;
+    setStatusPending(true);
+    const result = await deactivateCustomer(customerId);
+    setStatusPending(false);
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Customer deactivated.");
+    loadProfile();
+    router.refresh();
+  }
+
+  async function handleReactivate() {
+    if (!customerId) return;
+    setStatusPending(true);
+    const result = await reactivateCustomer(customerId);
+    setStatusPending(false);
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Customer reactivated.");
+    loadProfile();
+    router.refresh();
+  }
 
   return (
     <Dialog
@@ -151,6 +208,38 @@ export function CustomerProfileDialog({
               </div>
             </div>
 
+            {canManage && (
+              <div>
+                {profile.active ? (
+                  <AlertDialog>
+                    <AlertDialogTrigger
+                      render={<Button size="sm" variant="outline" disabled={statusPending} />}
+                    >
+                      Deactivate
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Deactivate {profile.name}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This hides the customer from check-in and the Customers list — it does
+                          not delete their record. Their past check-in history is kept for
+                          reporting, and you can undo this anytime with Reactivate.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeactivate}>Deactivate</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : (
+                  <Button size="sm" variant="outline" disabled={statusPending} onClick={handleReactivate}>
+                    Reactivate
+                  </Button>
+                )}
+              </div>
+            )}
+
             {(profile.is_pjs || profile.is_health_ambassador) && (
               <div className="flex gap-1.5">
                 {profile.is_pjs && <Badge variant="outline">PJS</Badge>}
@@ -177,6 +266,24 @@ export function CustomerProfileDialog({
                         </>
                       )}
                     </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {profile.linked_to_customer_id && (
+              <div>
+                <p className="text-xs text-muted-foreground">Linked account</p>
+                <p>Shares {profile.linkedToCustomerName ?? "—"}&apos;s balance</p>
+              </div>
+            )}
+
+            {profile.linkedAccounts.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground">Linked account</p>
+                <ul className="mt-1 space-y-0.5">
+                  {profile.linkedAccounts.map((a) => (
+                    <li key={a.id}>{a.name} shares this balance</li>
                   ))}
                 </ul>
               </div>
