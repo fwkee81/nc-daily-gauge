@@ -157,7 +157,7 @@ function VoidDialog({
   );
 }
 
-function CategoryBreakdownTable({ rows }: { rows: FinanceCategoryBreakdown[] }) {
+function CategoryBreakdownTable({ rows, grandTotal }: { rows: FinanceCategoryBreakdown[]; grandTotal: number }) {
   return (
     <div className="overflow-x-auto rounded-md border">
       <Table>
@@ -166,6 +166,7 @@ function CategoryBreakdownTable({ rows }: { rows: FinanceCategoryBreakdown[] }) 
             <TableHead>Category</TableHead>
             <TableHead className="text-right">Count</TableHead>
             <TableHead className="text-right">Total</TableHead>
+            <TableHead className="text-right">%</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -174,6 +175,9 @@ function CategoryBreakdownTable({ rows }: { rows: FinanceCategoryBreakdown[] }) 
               <TableCell>{r.category}</TableCell>
               <TableCell className="text-right">{r.count}</TableCell>
               <TableCell className="text-right">RM {r.total.toFixed(2)}</TableCell>
+              <TableCell className="text-right text-muted-foreground">
+                {grandTotal > 0 ? `${((r.total / grandTotal) * 100).toFixed(1)}%` : "—"}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -700,14 +704,20 @@ export function FinanceClient({
             <div>
               <h2 className="text-lg font-semibold">Income by Category</h2>
               <div className="mt-2">
-                <CategoryBreakdownTable rows={monthlySummary.incomeCategories} />
+                <CategoryBreakdownTable
+                  rows={monthlySummary.incomeCategories}
+                  grandTotal={monthlySummary.totalIncome}
+                />
               </div>
             </div>
 
             <div>
               <h2 className="text-lg font-semibold">Expenses by Category</h2>
               <div className="mt-2">
-                <CategoryBreakdownTable rows={monthlySummary.expenseCategories} />
+                <CategoryBreakdownTable
+                  rows={monthlySummary.expenseCategories}
+                  grandTotal={monthlySummary.totalExpense}
+                />
               </div>
             </div>
           </>
