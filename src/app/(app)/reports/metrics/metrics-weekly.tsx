@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { getMilestoneTier } from "@/lib/cup-milestones";
 import type {
   CustomerNcLevel,
+  WeeklyCoachCupRow,
   WeeklyCustomerAttendanceRow,
   WeeklyNewRenewalRow,
   WeeklyTotalsRow,
@@ -105,17 +106,18 @@ export function MetricsWeekly({
   totals,
   newRenewals,
   attendance,
+  coachCups,
 }: {
   totals: WeeklyTotalsRow;
   newRenewals: WeeklyNewRenewalRow[];
   attendance: WeeklyCustomerAttendanceRow[];
+  coachCups: WeeklyCoachCupRow[];
 }) {
   const [breakdownOpen, setBreakdownOpen] = useState<{ label: string; rows: WeeklyNewRenewalRow[] } | null>(
     null
   );
   const [coachCupOpen, setCoachCupOpen] = useState(false);
   const hasActivity = totals.operating_days > 0;
-  const coachCupAvgDaily = totals.operating_days > 0 ? totals.coach_cup_total / totals.operating_days : 0;
 
   const statByLevel: Record<CustomerNcLevel, number | undefined> = {
     "5-day": totals.total_5day,
@@ -147,7 +149,7 @@ export function MetricsWeekly({
         <Stat
           label="Coach's Cup"
           value={totals.coach_cup_total}
-          onClick={totals.daily.length > 0 ? () => setCoachCupOpen(true) : undefined}
+          onClick={() => setCoachCupOpen(true)}
         />
         {NEW_RENEWAL_LEVELS.map(({ level, label }) => {
           const value = statByLevel[level];
@@ -273,20 +275,22 @@ export function MetricsWeekly({
       <Dialog open={coachCupOpen} onOpenChange={setCoachCupOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Coach&apos;s Cup — this window</DialogTitle>
+            <DialogTitle>Coach&apos;s Cup — average per coach</DialogTitle>
           </DialogHeader>
           <ul className="divide-y">
-            {totals.daily.map((d) => (
-              <li key={d.date} className="flex items-center justify-between py-2 text-sm">
-                <span>{format(parseISO(d.date), "EEE, d MMM")}</span>
-                <span className="font-medium">{d.coach_cup_total}</span>
+            {coachCups.map((c) => (
+              <li key={c.coach_id} className="flex items-center justify-between py-2 text-sm">
+                <span>{c.coach_name}</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-muted-foreground">{c.total_cups} cups</span>
+                  <span className="font-semibold">{c.avg_cups_per_day.toFixed(2)}/day</span>
+                </span>
               </li>
             ))}
+            {coachCups.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">No coach&apos;s cup check-ins yet.</p>
+            )}
           </ul>
-          <div className="flex items-center justify-between border-t pt-2 text-sm">
-            <span className="text-muted-foreground">Average per operating day</span>
-            <span className="font-semibold">{coachCupAvgDaily.toFixed(2)}</span>
-          </div>
         </DialogContent>
       </Dialog>
     </div>

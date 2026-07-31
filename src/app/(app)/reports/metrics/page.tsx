@@ -28,6 +28,7 @@ export default async function MetricsPage({
     weeklyTotalsRes,
     weeklyNewRenewalsRes,
     weeklyAttendanceRes,
+    weeklyCoachCupsRes,
     clubRes,
     customersRes,
   ] = await Promise.all([
@@ -38,6 +39,7 @@ export default async function MetricsPage({
     supabase.rpc("weekly_totals", { p_date: date, p_club_id: clubId }),
     supabase.rpc("weekly_new_renewals", { p_date: date, p_club_id: clubId }),
     supabase.rpc("weekly_customer_attendance", { p_date: date, p_club_id: clubId }),
+    supabase.rpc("weekly_coach_cup_by_coach", { p_date: date, p_club_id: clubId }),
     supabase.from("nc_clubs").select("name").eq("id", clubId).maybeSingle(),
     // Snapshot of the current customer base for the Demographics tab (gender,
     // age, birthdays, Health Ambassadors) — not month-scoped like the rest of
@@ -82,6 +84,7 @@ export default async function MetricsPage({
       }
       weeklyNewRenewals={weeklyNewRenewalsRes.data ?? []}
       weeklyAttendance={weeklyAttendanceRes.data ?? []}
+      weeklyCoachCups={weeklyCoachCupsRes.data ?? []}
       customers={customersRes.data ?? []}
     />
   );
