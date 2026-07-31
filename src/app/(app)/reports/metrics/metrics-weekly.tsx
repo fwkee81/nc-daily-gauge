@@ -188,7 +188,11 @@ export function MetricsWeekly({
             <TableBody>
               {attendance.map((row) => {
                 const daysAttended = Object.keys(row.daily).length;
-                const perfectAttendance = totals.daily.length > 0 && daysAttended === totals.daily.length;
+                const windowDays = totals.daily.length;
+                const perfectAttendance = windowDays > 0 && daysAttended === windowDays;
+                // One day short of perfect still deserves a small nod — a
+                // step below the flame, not the flame itself.
+                const almostPerfect = windowDays > 1 && daysAttended === windowDays - 1;
                 return (
                   <TableRow key={row.customer_id} className={cn(perfectAttendance && "bg-primary/5")}>
                     <TableCell>{row.customer_name}</TableCell>
@@ -214,7 +218,10 @@ export function MetricsWeekly({
                     <TableCell className="text-right">
                       <span className="inline-flex items-center gap-1 font-semibold">
                         {row.visit_count}
-                        {perfectAttendance && <span title="Came in every day this window">🔥</span>}
+                        {perfectAttendance && <span title={`Came in every day this window (${windowDays}/${windowDays})`}>🔥</span>}
+                        {almostPerfect && (
+                          <span title={`Came in ${daysAttended} of ${windowDays} days this window`}>🌸</span>
+                        )}
                       </span>
                     </TableCell>
                   </TableRow>

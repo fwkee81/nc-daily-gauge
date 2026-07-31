@@ -160,17 +160,18 @@ export function CustomerForm({
 
   // Same eligibility as linkOptions minus the "already active" carve-out —
   // a merge target just needs to not be this customer and not itself be a
-  // linked-account (shared-balance) party.
+  // linked-account (shared-balance) party. Unlike linking, an inactive
+  // customer is a valid merge target: the whole point of merge is cleaning
+  // up a duplicate someone may have already deactivated by hand before this
+  // feature existed.
   const mergeOptions: ComboboxOption[] = useMemo(() => {
     if (!editing) return [];
     return customers
-      .filter(
-        (c) => c.id !== editing.id && c.active && !c.linked_to_customer_id && !primaryIds.has(c.id)
-      )
+      .filter((c) => c.id !== editing.id && !c.linked_to_customer_id && !primaryIds.has(c.id))
       .map((c) => ({
         value: c.id,
         label: c.name,
-        description: `${c.consumption_balance} left`,
+        description: c.active ? `${c.consumption_balance} left` : `${c.consumption_balance} left · Inactive`,
       }));
   }, [customers, editing, primaryIds]);
 
