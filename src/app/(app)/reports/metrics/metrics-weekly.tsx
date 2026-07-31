@@ -161,7 +161,8 @@ export function MetricsWeekly({
       <div>
         <h2 className="text-lg font-semibold">Customers This Week</h2>
         <p className="text-sm text-muted-foreground">
-          Everyone who checked in during this window, most visits first.
+          Everyone who checked in during this window, most visits first — blank means they
+          didn&apos;t come in that day.
         </p>
         <div className="mt-2 overflow-x-auto rounded-md border">
           <Table>
@@ -170,7 +171,17 @@ export function MetricsWeekly({
                 <TableHead>Customer</TableHead>
                 <TableHead>Coach</TableHead>
                 <TableHead>NC Level</TableHead>
-                <TableHead className="text-right">Visits</TableHead>
+                {totals.daily.map((d) => (
+                  <TableHead key={d.date} className="text-center">
+                    <div className="flex flex-col items-center leading-tight">
+                      <span>{format(parseISO(d.date), "d MMM")}</span>
+                      <span className="text-[11px] font-normal text-muted-foreground">
+                        {format(parseISO(d.date), "EEE")}
+                      </span>
+                    </div>
+                  </TableHead>
+                ))}
+                <TableHead className="text-right">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -179,12 +190,17 @@ export function MetricsWeekly({
                   <TableCell>{row.customer_name}</TableCell>
                   <TableCell>{row.coach_name ?? "—"}</TableCell>
                   <TableCell>{row.nc_level}</TableCell>
-                  <TableCell className="text-right">{row.visit_count}</TableCell>
+                  {totals.daily.map((d) => (
+                    <TableCell key={d.date} className="text-center">
+                      {row.daily[d.date] ?? ""}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right font-medium">{row.visit_count}</TableCell>
                 </TableRow>
               ))}
               {attendance.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4 + totals.daily.length} className="text-center text-muted-foreground">
                     No check-ins in this window yet.
                   </TableCell>
                 </TableRow>
