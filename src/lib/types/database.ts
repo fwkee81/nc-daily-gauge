@@ -358,6 +358,36 @@ export type BranchWeeklySummaryRow = {
   daily: BranchWeeklyDailyRow[];
 };
 
+export type WeeklyTotalsRow = {
+  operating_days: number;
+  window_start: string | null;
+  window_end: string | null;
+  total_cups: number;
+  coach_cup_total: number;
+  consumption_vp: number;
+  total_5day: number;
+  total_10day: number;
+  total_20day: number;
+  total_30day: number;
+  daily: BranchWeeklyDailyRow[];
+};
+
+export type WeeklyNewRenewalRow = {
+  nc_level: CustomerNcLevel;
+  kind: "new" | "renewal";
+  customer_name: string;
+  coach_name: string | null;
+  created_at: string;
+};
+
+export type WeeklyCustomerAttendanceRow = {
+  customer_id: string;
+  customer_name: string;
+  coach_name: string | null;
+  nc_level: CustomerNcLevel;
+  visit_count: number;
+};
+
 export type BranchCoachCupsCompareRow = {
   club_id: string;
   coach_id: string;
@@ -676,6 +706,18 @@ export type Database = {
       monthly_inventory_out: {
         Args: { p_month: string; p_club_id?: string | null };
         Returns: MonthlyInventoryOutRow[];
+      };
+      weekly_totals: {
+        Args: { p_date?: string; p_club_id?: string | null };
+        Returns: WeeklyTotalsRow[];
+      };
+      weekly_new_renewals: {
+        Args: { p_date?: string; p_club_id?: string | null };
+        Returns: WeeklyNewRenewalRow[];
+      };
+      weekly_customer_attendance: {
+        Args: { p_date?: string; p_club_id?: string | null };
+        Returns: WeeklyCustomerAttendanceRow[];
       };
       list_branch_clubs: { Args: Record<string, never>; Returns: BranchClubRow[] };
       branches_daily_summary: {
