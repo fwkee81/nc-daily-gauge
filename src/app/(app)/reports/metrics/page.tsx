@@ -47,7 +47,7 @@ export default async function MetricsPage({
     supabase
       .from("customers")
       .select(
-        "id, name, gender, dob, age_override, nc_level, member_id, invited_by_type, invited_by_customer_id"
+        "id, name, gender, dob, age_override, nc_level, member_id, invited_by_type, invited_by_customer_id, is_pjs"
       )
       .eq("nc_club_id", clubId)
       .eq("active", true),
