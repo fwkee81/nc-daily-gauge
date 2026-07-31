@@ -379,6 +379,19 @@ create table if not exists shake_recipes (
   body text not null,
   topping text not null,
   photo_url text,
+  -- Small fixed palette (see RECIPE_COLORS in the app) for "find the blue
+  -- ones" style filtering. Ingredient search is plain text search over the
+  -- fields above instead of a second tag list.
+  colors text[] not null default '{}',
+  -- A recipe is visible to every club when is_public, otherwise only to its
+  -- own club (nc_club_id, the creating coach's club) — a new recipe always
+  -- starts private/club-scoped. public_requested is a coach's "Share to
+  -- Public" flag, resolved by the super admin (who alone can set
+  -- is_public); once a recipe is public, only the super admin may edit or
+  -- delete it — see the RLS policies below.
+  nc_club_id uuid references nc_clubs (id),
+  is_public boolean not null default false,
+  public_requested boolean not null default false,
   created_by uuid references coaches (id),
   created_at timestamptz not null default now()
 );
@@ -724,21 +737,63 @@ create policy "finance_transactions_insert" on finance_transactions
     and recorded_by = current_coach_id()
   );
 
--- shake_recipes: admin-only test rollout — only is_super_admin() (see
--- HELPER FUNCTIONS above) can read or write the library while it's being
--- tried out. Widen this once it's ready for every coach.
+-- shake_recipes: any coach may read a public recipe or one from their own
+-- club. A coach may only insert their own club's recipes, and only the
+-- super admin may create one that's public or already flagged for public
+-- from the start. Once a recipe is public, only the super admin may
+-- update/delete it — the original creator's write access ends there;
+-- while it's still private, only the creator (or the super admin) can
+-- touch it, so one coach can't accidentally remove another's recipe.
+-- "Share to Public" (public_requested) is the only thing a creator can
+-- still flip once curation matters — going public itself is admin-only.
+-- The /tools/recipes page itself is still admin-only for now (see the
+-- page component) — these policies are the intended shape for when that
+-- page-level gate lifts.
 drop policy if exists "shake_recipes_select_admin" on shake_recipes;
-create policy "shake_recipes_select_admin" on shake_recipes
-  for select to authenticated using (is_super_admin());
 drop policy if exists "shake_recipes_insert_admin" on shake_recipes;
-create policy "shake_recipes_insert_admin" on shake_recipes
-  for insert to authenticated with check (is_super_admin());
 drop policy if exists "shake_recipes_delete_admin" on shake_recipes;
-create policy "shake_recipes_delete_admin" on shake_recipes
-  for delete to authenticated using (is_super_admin());
+drop policy if exists "shake_recipes_select" on shake_recipes;
+create policy "shake_recipes_select" on shake_recipes
+  for select to authenticated
+  using (
+    is_public
+    or nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
+    or is_super_admin()
+  );
+drop policy if exists "shake_recipes_insert" on shake_recipes;
+create policy "shake_recipes_insert" on shake_recipes
+  for insert to authenticated
+  with check (
+    created_by = current_coach_id()
+    and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
+    and (is_super_admin() or (not is_public and not public_requested))
+  );
+drop policy if exists "shake_recipes_update" on shake_recipes;
+create policy "shake_recipes_update" on shake_recipes
+  for update to authenticated
+  using (
+    is_super_admin()
+    or (created_by = current_coach_id() and not is_public)
+  )
+  with check (
+    is_super_admin()
+    or (
+      created_by = current_coach_id()
+      and not is_public
+      and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
+    )
+  );
+drop policy if exists "shake_recipes_delete" on shake_recipes;
+create policy "shake_recipes_delete" on shake_recipes
+  for delete to authenticated
+  using (
+    is_super_admin()
+    or (created_by = current_coach_id() and not is_public)
+  );
 
--- Storage bucket for recipe photos — public read (so <img src> just works)
--- but writes are locked to the same super admin as shake_recipes above.
+-- Storage bucket for recipe photos — public read (so <img src> just works);
+-- writes follow the same trust level as the table above (any coach), since
+-- the bucket has no per-object ownership to check against.
 insert into storage.buckets (id, name, public)
 values ('recipe-photos', 'recipe-photos', true)
 on conflict (id) do nothing;
@@ -747,11 +802,13 @@ drop policy if exists "recipe_photos_select_public" on storage.objects;
 create policy "recipe_photos_select_public" on storage.objects
   for select using (bucket_id = 'recipe-photos');
 drop policy if exists "recipe_photos_insert_admin" on storage.objects;
-create policy "recipe_photos_insert_admin" on storage.objects
-  for insert to authenticated with check (bucket_id = 'recipe-photos' and is_super_admin());
+drop policy if exists "recipe_photos_insert" on storage.objects;
+create policy "recipe_photos_insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'recipe-photos');
 drop policy if exists "recipe_photos_delete_admin" on storage.objects;
-create policy "recipe_photos_delete_admin" on storage.objects
-  for delete to authenticated using (bucket_id = 'recipe-photos' and is_super_admin());
+drop policy if exists "recipe_photos_delete" on storage.objects;
+create policy "recipe_photos_delete" on storage.objects
+  for delete to authenticated using (bucket_id = 'recipe-photos');
 
 -- =========================================================================
 -- WRITE RPCs (check-in, corrections)

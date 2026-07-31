@@ -5,10 +5,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { ShakeRecipe } from "@/lib/types/database";
-import { addRecipe } from "./actions";
+import { addRecipe, updateRecipe } from "./actions";
+import { RECIPE_COLORS } from "./colors";
 
 const FIELDS: { key: "base" | "side" | "shake" | "body" | "topping"; label: string; placeholder: string }[] = [
   { key: "base", label: "Base", placeholder: "e.g. Orange + Sweet Potato Cube" },
@@ -20,24 +24,42 @@ const FIELDS: { key: "base" | "side" | "shake" | "body" | "topping"; label: stri
 
 const EMPTY = { nameZh: "", nameEn: "", base: "", side: "", shake: "", body: "", topping: "" };
 
-export function AddRecipeDialog({
+export function RecipeFormDialog({
+  mode,
+  recipe,
+  isSuperAdmin,
   open,
   onOpenChange,
   onDone,
 }: {
+  mode: "add" | "edit";
+  recipe?: ShakeRecipe;
+  isSuperAdmin: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: (recipe: ShakeRecipe) => void;
 }) {
-  const [fields, setFields] = useState(EMPTY);
+  const [fields, setFields] = useState(
+    recipe
+      ? {
+          nameZh: recipe.name_zh,
+          nameEn: recipe.name_en,
+          base: recipe.base,
+          side: recipe.side,
+          shake: recipe.shake,
+          body: recipe.body,
+          topping: recipe.topping,
+        }
+      : EMPTY
+  );
+  const [colors, setColors] = useState<string[]>(recipe?.colors ?? []);
+  const [isPublic, setIsPublic] = useState(isSuperAdmin ? (recipe?.is_public ?? false) : false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function reset() {
-    setFields(EMPTY);
-    setPhoto(null);
-    setError(null);
+  function toggleColor(value: string) {
+    setColors((prev) => (prev.includes(value) ? prev.filter((c) => c !== value) : [...prev, value]));
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -57,7 +79,7 @@ export function AddRecipeDialog({
 
     setIsPending(true);
 
-    let photoUrl: string | null = null;
+    let photoUrl = recipe?.photo_url ?? null;
     if (photo) {
       const supabase = createClient();
       const path = `${crypto.randomUUID()}-${photo.name}`;
@@ -73,7 +95,7 @@ export function AddRecipeDialog({
       photoUrl = supabase.storage.from("recipe-photos").getPublicUrl(path).data.publicUrl;
     }
 
-    const result = await addRecipe({
+    const payload = {
       nameZh: fields.nameZh.trim(),
       nameEn: fields.nameEn.trim(),
       base: fields.base.trim(),
@@ -82,7 +104,10 @@ export function AddRecipeDialog({
       body: fields.body.trim(),
       topping: fields.topping.trim(),
       photoUrl,
-    });
+      colors,
+      isPublic,
+    };
+    const result = mode === "add" ? await addRecipe(payload) : await updateRecipe(recipe!.id, payload);
     setIsPending(false);
 
     if (result.error) {
@@ -91,23 +116,16 @@ export function AddRecipeDialog({
       return;
     }
 
-    toast.success(`Added ${result.recipe!.code}.`);
+    toast.success(mode === "add" ? `Added ${result.recipe!.code}.` : `Saved ${result.recipe!.code}.`);
     onDone(result.recipe!);
-    reset();
     onOpenChange(false);
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) reset();
-        onOpenChange(next);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add a recipe</DialogTitle>
+          <DialogTitle>{mode === "add" ? "Add a recipe" : `Edit ${recipe?.code}`}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -116,13 +134,48 @@ export function AddRecipeDialog({
           )}
 
           <div className="space-y-1">
-            <Label>Photo</Label>
+            <Label>Photo{mode === "edit" && " (leave empty to keep the current one)"}</Label>
             <Input
               type="file"
               accept="image/*"
               onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
             />
           </div>
+
+          <div className="space-y-1">
+            <Label>Colors</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {RECIPE_COLORS.map((c) => {
+                const active = colors.includes(c.value);
+                return (
+                  <Badge
+                    key={c.value}
+                    variant={active ? "default" : "outline"}
+                    render={<button type="button" onClick={() => toggleColor(c.value)} />}
+                    className={cn(!active && "text-foreground")}
+                  >
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: c.swatch }}
+                    />
+                    {c.value}
+                  </Badge>
+                );
+              })}
+            </div>
+          </div>
+
+          {isSuperAdmin ? (
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+              {isPublic ? "Public — visible to every club" : "Only my club can see this"}
+            </label>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Saved as private to your club. Use &quot;Share to Public&quot; on the recipe afterwards
+              to ask the admin to publish it.
+            </p>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -156,7 +209,7 @@ export function AddRecipeDialog({
           ))}
 
           <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? "Adding..." : "Add recipe"}
+            {isPending ? "Saving..." : mode === "add" ? "Add recipe" : "Save changes"}
           </Button>
         </form>
       </DialogContent>

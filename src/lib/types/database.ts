@@ -175,6 +175,10 @@ export type ShakeRecipe = {
   body: string;
   topping: string;
   photo_url: string | null;
+  colors: string[];
+  nc_club_id: string | null;
+  is_public: boolean;
+  public_requested: boolean;
   created_by: string | null;
   created_at: string;
 };
