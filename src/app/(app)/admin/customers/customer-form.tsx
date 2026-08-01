@@ -34,6 +34,7 @@ interface CoachOption {
 }
 
 const PLUGIN_VALUE = "plugin";
+const NO_COACH_VALUE = "none";
 
 // Temporarily hidden — a coach clicked this instead of Link (the two
 // sections sit right next to each other) and merged/deactivated a customer
@@ -214,7 +215,10 @@ export function CustomerForm({
   }, [coaches, customers, editing]);
 
   const coachOptions: ComboboxOption[] = useMemo(
-    () => coaches.map((c) => ({ value: c.id, label: c.name })),
+    () => [
+      { value: NO_COACH_VALUE, label: "None" },
+      ...coaches.map((c) => ({ value: c.id, label: c.name })),
+    ],
     [coaches]
   );
 
@@ -372,8 +376,8 @@ export function CustomerForm({
         <Label>Coach</Label>
         <Combobox
           options={coachOptions}
-          value={coachId}
-          onChange={setCoachId}
+          value={coachId ?? NO_COACH_VALUE}
+          onChange={(v) => setCoachId(v === NO_COACH_VALUE ? null : v)}
           placeholder="Choose coach"
           searchPlaceholder="Search coaches..."
           emptyText="No coaches found."
