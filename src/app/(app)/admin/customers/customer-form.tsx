@@ -35,6 +35,11 @@ interface CoachOption {
 
 const PLUGIN_VALUE = "plugin";
 
+// Temporarily hidden — a coach clicked this instead of Link (the two
+// sections sit right next to each other) and merged/deactivated a customer
+// by mistake. Flip back on once the two are visually harder to confuse.
+const MERGE_DUPLICATE_ENABLED = false;
+
 function invitedByValue(customer?: CustomerRow | null) {
   if (!customer) return PLUGIN_VALUE;
   if (customer.invited_by_type === "coach" && customer.invited_by_coach_id) {
@@ -501,7 +506,7 @@ export function CustomerForm({
         )}
       </div>
 
-      {editing && (
+      {editing && MERGE_DUPLICATE_ENABLED && (
         <div className="space-y-2 rounded-md border p-3">
           <Label>Merge duplicate</Label>
           <p className="text-xs text-muted-foreground">
