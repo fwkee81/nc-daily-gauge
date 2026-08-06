@@ -72,6 +72,10 @@ export type Customer = {
   coach_id: string | null;
   member_id: string | null;
   member_type: MemberType | null;
+  // First date member_type became SP/WT/AWT/TAB — set automatically by a DB
+  // trigger, not editable in the UI. See coach_cup_exclusion_dates() in
+  // supabase/schema.sql for how it makes Coach's Cup exclusion date-aware.
+  coach_cup_excluded_since: string | null;
   remark: string | null;
   linked_to_customer_id: string | null;
   is_pjs: boolean;

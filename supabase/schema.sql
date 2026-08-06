@@ -105,6 +105,12 @@ create table customers (
   coach_id uuid references coaches (id),
   member_id text,
   member_type member_type,
+  -- First date member_type became SP/WT/AWT/TAB (Coach's Cup-excluded) —
+  -- lets exclusion be date-aware: checkins before this date still count
+  -- toward the coach, only checkins from this date on stop counting. Set
+  -- automatically by the customers_set_coach_cup_excluded_since trigger,
+  -- not editable in the UI. Null means never excluded.
+  coach_cup_excluded_since date,
   remark text,
   -- One-directional and flat (no chains): set once this customer's own
   -- package is exhausted and their account is merged into another
@@ -427,6 +433,31 @@ $$;
 create trigger customers_set_updated_at
 before update on customers
 for each row execute function set_updated_at();
+
+-- Auto-stamps coach_cup_excluded_since the first time a customer's
+-- member_type becomes one of the Coach's Cup-excluded types (SP/WT/AWT/TAB)
+-- — covers every write path (app UI, admin scripts) uniformly, not just one
+-- form. Does not clear the date on a later demotion back to a non-excluded
+-- type (rare enough not to handle here); an admin would need to null it out
+-- by hand to reset that.
+create or replace function set_coach_cup_excluded_since()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.member_type in ('SP', 'WT', 'AWT', 'TAB')
+     and new.coach_cup_excluded_since is null
+     and (tg_op = 'INSERT' or old.member_type is distinct from new.member_type)
+  then
+    new.coach_cup_excluded_since := current_date;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger customers_set_coach_cup_excluded_since
+before insert or update on customers
+for each row execute function set_coach_cup_excluded_since();
 
 -- =========================================================================
 -- HELPER FUNCTIONS (identity + visibility)
@@ -1477,13 +1508,19 @@ grant execute on function recent_walkin_customers(uuid) to authenticated;
 -- across branches, so numbers are always attributable to one specific club.
 
 -- Every customer in a club whose checkins should NOT count toward any
--- coach's cup: their own member_type is SP/WT/AWT/TAB, or ANY ancestor in
--- their invited-by chain (any number of generations back, via
--- invited_by_customer_id) has one of those member types. This is a property
--- of the customer, independent of which coach they're assigned to.
+-- coach's cup, AS OF p_as_of: their own member_type is SP/WT/AWT/TAB (and
+-- was already, by p_as_of — see coach_cup_excluded_since), or ANY ancestor
+-- in their invited-by chain (any number of generations back, via
+-- invited_by_customer_id) already was by then. A downstream customer
+-- inherits their tainted ancestor's excluded_since date, not their own —
+-- the whole point is that becoming SP/WT/AWT/TAB stops counting from that
+-- moment on, not retroactively. For single-date callers (daily_totals,
+-- daily_coach_cups, daily_branch_coach_cups); range-aggregate callers
+-- (weekly/monthly/branches) use coach_cup_exclusion_dates() below instead,
+-- so they can compare per checkin_date row rather than one fixed date.
 -- `union` (not `union all`) also makes the recursion safe against a cyclical
--- invited-by chain, should one ever exist — it stops once no new ids surface.
-create or replace function coach_cup_excluded_customer_ids(p_club_id uuid default null)
+-- invited-by chain, should one ever exist — it stops once no new rows surface.
+create or replace function coach_cup_excluded_customer_ids(p_as_of date, p_club_id uuid default null)
 returns table (customer_id uuid)
 language sql
 stable
@@ -1491,19 +1528,56 @@ security definer
 set search_path = public
 as $$
   with recursive club_customers as (
-    select id, invited_by_customer_id, member_type
+    select id, invited_by_customer_id, member_type, coach_cup_excluded_since
     from customers
     where nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
       and nc_club_id in (select visible_club_ids(current_coach_id()))
   ),
   tainted as (
-    select id from club_customers where member_type in ('SP', 'WT', 'AWT', 'TAB')
+    select id, coalesce(coach_cup_excluded_since, date '1970-01-01') as excluded_since
+    from club_customers
+    where member_type in ('SP', 'WT', 'AWT', 'TAB')
     union
-    select cc.id
+    select cc.id, t.excluded_since
     from club_customers cc
     join tainted t on cc.invited_by_customer_id = t.id
   )
-  select id as customer_id from tainted;
+  select id as customer_id
+  from tainted
+  where excluded_since <= p_as_of;
+$$;
+
+-- Range-aggregate companion to coach_cup_excluded_customer_ids() above —
+-- same taint lineage, but returns each tainted customer's earliest
+-- applicable excluded_since instead of testing against one fixed date, so
+-- weekly/monthly/branches callers can compare it per checkin_date row (a
+-- customer's cups from before that date still count, only cups from that
+-- date on stop).
+create or replace function coach_cup_exclusion_dates(p_club_id uuid default null)
+returns table (customer_id uuid, excluded_since date)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with recursive club_customers as (
+    select id, invited_by_customer_id, member_type, coach_cup_excluded_since
+    from customers
+    where nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
+      and nc_club_id in (select visible_club_ids(current_coach_id()))
+  ),
+  tainted as (
+    select id, coalesce(coach_cup_excluded_since, date '1970-01-01') as excluded_since
+    from club_customers
+    where member_type in ('SP', 'WT', 'AWT', 'TAB')
+    union all
+    select cc.id, t.excluded_since
+    from club_customers cc
+    join tainted t on cc.invited_by_customer_id = t.id
+  )
+  select id as customer_id, min(excluded_since) as excluded_since
+  from tainted
+  group by id;
 $$;
 
 -- Every customer who traces back — through any number of customer-to-customer
@@ -1560,7 +1634,7 @@ as $$
     -- club/date.
     coalesce(sum(ci.cups) filter (
       where cu.coach_id is not null
-        and cu.id not in (select customer_id from coach_cup_excluded_customer_ids(p_club_id))
+        and cu.id not in (select customer_id from coach_cup_excluded_customer_ids(p_date, p_club_id))
     ), 0) as coach_cup_total,
     coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Dine-in'), 0) as dine_in_cups,
     coalesce(sum(ci.cups) filter (where ci.consumption_type = 'Take-away'), 0) as takeaway_cups,
@@ -1612,7 +1686,7 @@ as $$
     and not ci.voided
     and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()))
-    and cu.id not in (select customer_id from coach_cup_excluded_customer_ids(p_club_id))
+    and cu.id not in (select customer_id from coach_cup_excluded_customer_ids(p_date, p_club_id))
     and co.nc_club_id = ci.nc_club_id
   group by co.id, co.name
   order by cups desc;
@@ -1643,7 +1717,7 @@ as $$
     and not ci.voided
     and ci.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and ci.nc_club_id in (select visible_club_ids(current_coach_id()))
-    and cu.id not in (select customer_id from coach_cup_excluded_customer_ids(p_club_id))
+    and cu.id not in (select customer_id from coach_cup_excluded_customer_ids(p_date, p_club_id))
     and co.nc_club_id is distinct from ci.nc_club_id
   group by co.id, co.name, ncc.name
   order by cups desc;
@@ -1768,6 +1842,9 @@ as $$
   -- month, not just the subset that counts toward a coach's cup.
   operating_days as (
     select count(distinct checkin_date) as n from club_checkins
+  ),
+  excl as (
+    select customer_id, excluded_since from coach_cup_exclusion_dates((select id from target_club))
   )
   select
     co.id as coach_id,
@@ -1777,8 +1854,8 @@ as $$
   from club_checkins cc
   join customers cu on cu.id = cc.customer_id
   join coaches co on co.id = cu.coach_id
-  where cu.id not in (
-    select customer_id from coach_cup_excluded_customer_ids((select id from target_club))
+  where not exists (
+    select 1 from excl e where e.customer_id = cu.id and cc.checkin_date >= e.excluded_since
   )
   group by co.id, co.name
   order by total_cups desc;
@@ -1910,13 +1987,16 @@ as $$
     from window_days
   ),
   excluded as (
-    select customer_id from coach_cup_excluded_customer_ids((select id from target_club))
+    select customer_id, excluded_since from coach_cup_exclusion_dates((select id from target_club))
   ),
   cup_totals as (
     select
       coalesce(sum(ci.cups), 0) as total_cups,
       coalesce(sum(ci.cups) filter (
-        where cu.coach_id is not null and cu.id not in (select customer_id from excluded)
+        where cu.coach_id is not null
+          and not exists (
+            select 1 from excluded e where e.customer_id = cu.id and ci.checkin_date >= e.excluded_since
+          )
       ), 0) as coach_cup_total
     from window_days wd
     join checkins ci on ci.nc_club_id = (select id from target_club) and ci.checkin_date = wd.checkin_date and not ci.voided
@@ -1935,7 +2015,10 @@ as $$
       wd.checkin_date,
       coalesce(sum(ci.cups), 0) as total_cups,
       coalesce(sum(ci.cups) filter (
-        where cu.coach_id is not null and cu.id not in (select customer_id from excluded)
+        where cu.coach_id is not null
+          and not exists (
+            select 1 from excluded e where e.customer_id = cu.id and ci.checkin_date >= e.excluded_since
+          )
       ), 0) as coach_cup_total
     from window_days wd
     join checkins ci on ci.nc_club_id = (select id from target_club) and ci.checkin_date = wd.checkin_date and not ci.voided
@@ -2155,7 +2238,7 @@ as $$
     where rn <= 6
   ),
   excluded as (
-    select customer_id from coach_cup_excluded_customer_ids((select id from target_club))
+    select customer_id, excluded_since from coach_cup_exclusion_dates((select id from target_club))
   )
   select
     co.id as coach_id,
@@ -2169,7 +2252,9 @@ as $$
     on ci.customer_id = cu.id and ci.nc_club_id = (select id from target_club) and not ci.voided
     and ci.checkin_date between w.window_start and w.window_end
   where co.nc_club_id = (select id from target_club)
-    and cu.id not in (select customer_id from excluded)
+    and not exists (
+      select 1 from excluded e where e.customer_id = cu.id and ci.checkin_date >= e.excluded_since
+    )
   group by co.id, co.name, w.operating_days
   having coalesce(sum(ci.cups), 0) > 0
   order by avg_cups_per_day desc;
@@ -2246,9 +2331,9 @@ as $$
     group by mc.club_id
   ),
   excluded_per_club as (
-    select mc.club_id, e.customer_id
+    select mc.club_id, e.customer_id, e.excluded_since
     from my_clubs mc
-    cross join lateral coach_cup_excluded_customer_ids(mc.club_id) e
+    cross join lateral coach_cup_exclusion_dates(mc.club_id) e
   ),
   cup_totals as (
     select
@@ -2259,14 +2344,16 @@ as $$
         where ci.checkin_date = p_date
           and cu.coach_id is not null
           and not exists (
-            select 1 from excluded_per_club ec where ec.club_id = mc.club_id and ec.customer_id = cu.id
+            select 1 from excluded_per_club ec
+            where ec.club_id = mc.club_id and ec.customer_id = cu.id and ci.checkin_date >= ec.excluded_since
           )
       ), 0) as coach_cup_total,
       coalesce(sum(ci.cups) filter (
         where ci.checkin_date = pd.prev_date
           and cu.coach_id is not null
           and not exists (
-            select 1 from excluded_per_club ec where ec.club_id = mc.club_id and ec.customer_id = cu.id
+            select 1 from excluded_per_club ec
+            where ec.club_id = mc.club_id and ec.customer_id = cu.id and ci.checkin_date >= ec.excluded_since
           )
       ), 0) as prev_coach_cup_total
     from my_clubs mc
@@ -2419,9 +2506,9 @@ as $$
     group by club_id
   ),
   excluded_per_club as (
-    select mc.club_id, e.customer_id
+    select mc.club_id, e.customer_id, e.excluded_since
     from my_clubs mc
-    cross join lateral coach_cup_excluded_customer_ids(mc.club_id) e
+    cross join lateral coach_cup_exclusion_dates(mc.club_id) e
   ),
   cup_totals as (
     select
@@ -2430,7 +2517,8 @@ as $$
       coalesce(sum(ci.cups) filter (
         where cu.coach_id is not null
           and not exists (
-            select 1 from excluded_per_club ec where ec.club_id = wd.club_id and ec.customer_id = cu.id
+            select 1 from excluded_per_club ec
+            where ec.club_id = wd.club_id and ec.customer_id = cu.id and ci.checkin_date >= ec.excluded_since
           )
       ), 0) as coach_cup_total
     from window_days wd
@@ -2457,7 +2545,8 @@ as $$
       coalesce(sum(ci.cups) filter (
         where cu.coach_id is not null
           and not exists (
-            select 1 from excluded_per_club ec where ec.club_id = wd.club_id and ec.customer_id = cu.id
+            select 1 from excluded_per_club ec
+            where ec.club_id = wd.club_id and ec.customer_id = cu.id and ci.checkin_date >= ec.excluded_since
           )
       ), 0) as coach_cup_total
     from window_days wd
@@ -2632,9 +2721,9 @@ as $$
     group by mc.club_id
   ),
   excluded_per_club as (
-    select mc.club_id, e.customer_id
+    select mc.club_id, e.customer_id, e.excluded_since
     from my_clubs mc
-    cross join lateral coach_cup_excluded_customer_ids(mc.club_id) e
+    cross join lateral coach_cup_exclusion_dates(mc.club_id) e
   )
   select
     ci.nc_club_id as club_id,
@@ -2650,7 +2739,8 @@ as $$
     and not ci.voided
     and (ci.checkin_date = p_date or ci.checkin_date = pd.prev_date)
     and not exists (
-      select 1 from excluded_per_club ec where ec.club_id = ci.nc_club_id and ec.customer_id = cu.id
+      select 1 from excluded_per_club ec
+      where ec.club_id = ci.nc_club_id and ec.customer_id = cu.id and ci.checkin_date >= ec.excluded_since
     )
   group by ci.nc_club_id, co.id, co.name
   order by ci.nc_club_id, cups desc;
@@ -2756,9 +2846,9 @@ as $$
     group by club_id
   ),
   excluded_per_club as (
-    select mc.club_id, e.customer_id
+    select mc.club_id, e.customer_id, e.excluded_since
     from my_clubs mc
-    cross join lateral coach_cup_excluded_customer_ids(mc.club_id) e
+    cross join lateral coach_cup_exclusion_dates(mc.club_id) e
   ),
   cup_totals as (
     select
@@ -2767,7 +2857,8 @@ as $$
       coalesce(sum(cc.cups) filter (
         where cu.coach_id is not null
           and not exists (
-            select 1 from excluded_per_club ec where ec.club_id = cc.club_id and ec.customer_id = cu.id
+            select 1 from excluded_per_club ec
+            where ec.club_id = cc.club_id and ec.customer_id = cu.id and cc.checkin_date >= ec.excluded_since
           )
       ), 0) as coach_cup_total
     from club_checkins cc
@@ -2983,9 +3074,9 @@ as $$
     group by coach_id
   ),
   excluded_per_club as (
-    select mc.club_id, e.customer_id
+    select mc.club_id, e.customer_id, e.excluded_since
     from my_clubs mc
-    cross join lateral coach_cup_excluded_customer_ids(mc.club_id) e
+    cross join lateral coach_cup_exclusion_dates(mc.club_id) e
   ),
   club_checkins as (
     select ci.nc_club_id as club_id, ci.cups, ci.checkin_date, ci.customer_id
@@ -3008,7 +3099,8 @@ as $$
     where cu.coach_id is not null
       and co.nc_club_id = cc.club_id
       and not exists (
-        select 1 from excluded_per_club ec where ec.club_id = cc.club_id and ec.customer_id = cu.id
+        select 1 from excluded_per_club ec
+        where ec.club_id = cc.club_id and ec.customer_id = cu.id and cc.checkin_date >= ec.excluded_since
       )
     group by cu.coach_id, cc.club_id
   ),
@@ -3039,7 +3131,8 @@ as $$
   order by board, value desc;
 $$;
 
-grant execute on function coach_cup_excluded_customer_ids(uuid) to authenticated;
+grant execute on function coach_cup_excluded_customer_ids(date, uuid) to authenticated;
+grant execute on function coach_cup_exclusion_dates(uuid) to authenticated;
 grant execute on function plugin_lineage_customer_ids(uuid) to authenticated;
 grant execute on function daily_totals(date, uuid) to authenticated;
 grant execute on function daily_coach_cups(date, uuid) to authenticated;
