@@ -190,7 +190,40 @@ export async function reactivateCustomer(id: string) {
 // Family / shared members section now links two full customer profiles
 // instead (see linkCustomerToSpouse/unlinkCustomer above). The table and
 // its checkin-time lookups are untouched, so any existing customer_members
-// rows keep working.
+// rows keep working — these two just let the edit form show/retire them,
+// since they'd otherwise be invisible there (findable at check-in, but not
+// from the Customers page or Edit customer).
+export async function getCustomerMembers(customerId: string) {
+  const coach = await getCurrentCoach();
+  if (!coach) return { error: "Not authorized." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("customer_members")
+    .select("id, name, contact, dob")
+    .eq("customer_id", customerId)
+    .eq("active", true)
+    .order("name");
+
+  if (error) return { error: error.message };
+  return { data: data ?? [] };
+}
+
+export async function removeCustomerMember(memberId: string) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) return { error: "Not authorized." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("customer_members")
+    .update({ active: false })
+    .eq("id", memberId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/customers");
+  return { success: true };
+}
 
 // Merges customerId's account into linkedToCustomerId's — from then on,
 // check-ins for either draw from one shared balance. Any balance customerId

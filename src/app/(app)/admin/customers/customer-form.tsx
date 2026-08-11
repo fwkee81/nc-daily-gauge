@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { differenceInYears } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,10 @@ import { CUSTOMER_GENDERS, CUSTOMER_NC_LEVELS, MEMBER_TYPES } from "@/lib/consta
 import type { CustomerGender, CustomerNcLevel, MemberType } from "@/lib/types/database";
 import {
   createCustomer,
+  getCustomerMembers,
   linkCustomerToSpouse,
   mergeCustomer,
+  removeCustomerMember,
   unlinkCustomer,
   updateCustomer,
   type CustomerFormInput,
@@ -93,6 +95,22 @@ export function CustomerForm({
   const [linkPending, setLinkPending] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
 
+  // Legacy customer_members rows (typed name/contact, no profile of their
+  // own) — the old pre-Link way to share a balance. No longer creatable
+  // here, but existing ones were otherwise invisible outside of check-in
+  // search, so show them for reference and let an admin retire one.
+  const [legacyMembers, setLegacyMembers] = useState<
+    { id: string; name: string; contact: string | null; dob: string | null }[]
+  >([]);
+  const [legacyMemberPending, setLegacyMemberPending] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!editing) return;
+    getCustomerMembers(editing.id).then((result) => {
+      setLegacyMembers(result.data ?? []);
+    });
+  }, [editing]);
+
   const [mergeTargetId, setMergeTargetId] = useState<string | null>(null);
   const [mergePending, setMergePending] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
@@ -162,6 +180,19 @@ export function CustomerForm({
     }
     toast.success("Unlinked — their balance was forfeited.");
     onDone();
+  }
+
+  async function handleRemoveLegacyMember(memberId: string) {
+    setLegacyMemberPending(memberId);
+    const result = await removeCustomerMember(memberId);
+    setLegacyMemberPending(null);
+
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    setLegacyMembers((prev) => prev.filter((m) => m.id !== memberId));
+    toast.success("Removed.");
   }
 
   // Same eligibility as linkOptions minus the "already active" carve-out —
@@ -435,6 +466,34 @@ export function CustomerForm({
 
       <div className="space-y-2 rounded-md border p-3">
         <Label>Family / shared members</Label>
+
+        {editing && legacyMembers.length > 0 && (
+          <div className="space-y-1 rounded-md border bg-muted/30 p-2">
+            <p className="text-xs text-muted-foreground">
+              Added the old way (typed name/contact, no profile of their own) — still findable at
+              check-in. Not shown anywhere else, which is why it looked like it disappeared.
+            </p>
+            <ul className="space-y-1">
+              {legacyMembers.map((m) => (
+                <li key={m.id} className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm">
+                  <span>
+                    {m.name}
+                    {m.contact && <span className="text-muted-foreground"> · {m.contact}</span>}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={legacyMemberPending === m.id}
+                    onClick={() => handleRemoveLegacyMember(m.id)}
+                  >
+                    {legacyMemberPending === m.id ? "Removing..." : "Remove"}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {!editing ? (
           <p className="text-xs text-muted-foreground">
