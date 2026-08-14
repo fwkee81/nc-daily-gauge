@@ -33,7 +33,15 @@ const CLEAR_AFTER_MS = 3500;
 // covers the whole screen regardless of where it's rendered from (in
 // particular, above a Dialog's own z-50 stacking context — see z-[100]
 // below). Re-fires whenever triggerKey changes to a new non-null value.
-export function FullScreenConfetti({ triggerKey }: { triggerKey: string | null }) {
+export function FullScreenConfetti({
+  triggerKey,
+  count = 70,
+}: {
+  triggerKey: string | null;
+  // A bigger burst for the rarer, more special celebrations (e.g. an
+  // all-time record) — same piece design, just more of it.
+  count?: number;
+}) {
   const [mounted, setMounted] = useState(false);
   const [pieces, setPieces] = useState<Piece[]>([]);
 
@@ -45,9 +53,10 @@ export function FullScreenConfetti({ triggerKey }: { triggerKey: string | null }
   useEffect(() => {
     if (!triggerKey) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPieces(generatePieces(70));
+    setPieces(generatePieces(count));
     const timeout = setTimeout(() => setPieces([]), CLEAR_AFTER_MS);
     return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerKey]);
 
   if (!mounted || pieces.length === 0) return null;

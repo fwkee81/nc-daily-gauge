@@ -1,0 +1,39 @@
+name: Daily database backup
+
+on:
+  schedule:
+    # 18:00 UTC ≈ 2am Malaysia time — after the day's business has closed.
+    - cron: "0 18 * * *"
+  # Lets you trigger a backup on demand from the Actions tab, e.g. to test
+  # the setup after adding the secrets below.
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client gnupg
+
+      - name: Dump database
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          pg_dump --no-owner --no-privileges "$DATABASE_URL" | gzip > backup.sql.gz
+
+      - name: Encrypt backup
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          gpg --batch --yes --passphrase "$PASSPHRASE" --symmetric --cipher-algo AES256 \
+            --output "backup-$(date +%F).sql.gz.gpg" backup.sql.gz
+          rm backup.sql.gz
+
+      - name: Upload backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backup-*.sql.gz.gpg
+          # Auto-expires so this never quietly grows repo/org storage usage —
+          # bump this if you want backups kept longer than a month.
+          retention-days: 30

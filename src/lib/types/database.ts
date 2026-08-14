@@ -691,8 +691,12 @@ export type Database = {
         Returns: RecentWalkinCustomer[];
       };
       coach_cup_excluded_customer_ids: {
-        Args: { p_club_id?: string | null };
+        Args: { p_as_of: string; p_club_id?: string | null };
         Returns: { customer_id: string }[];
+      };
+      coach_cup_exclusion_dates: {
+        Args: { p_club_id?: string | null };
+        Returns: { customer_id: string; excluded_since: string }[];
       };
       plugin_lineage_customer_ids: {
         Args: { p_club_id?: string | null };
@@ -709,6 +713,14 @@ export type Database = {
       daily_branch_coach_cups: {
         Args: { p_date: string; p_club_id?: string | null };
         Returns: DailyBranchCoachCupsRow[];
+      };
+      club_all_time_high_cups: {
+        Args: { p_club_id?: string | null; p_date?: string };
+        Returns: { record_date: string; total_cups: number }[];
+      };
+      coach_all_time_high_cups: {
+        Args: { p_coach_id: string; p_club_id?: string | null; p_date?: string };
+        Returns: { record_date: string; cups: number }[];
       };
       upcoming_birthdays: {
         Args: { p_club_id?: string | null };
