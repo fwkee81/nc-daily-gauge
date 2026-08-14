@@ -59,7 +59,7 @@ import {
 import type { ConsumptionType } from "@/lib/types/database";
 import { CustomerProfileTrigger } from "@/components/customer-profile-dialog";
 import { FullScreenConfetti } from "@/components/full-screen-confetti";
-import { playWinSound } from "@/lib/chime";
+import { playWinSound, playRecordSound } from "@/lib/chime";
 import {
   correctCheckinAction,
   voidCheckinAction,
@@ -374,19 +374,29 @@ interface HistoryEntry {
 // other.
 type Celebration =
   | { kind: "total"; tier: MilestoneTier; cups: number }
-  | { kind: "coach"; tier: CoachMilestoneTier; coachName: string; cups: number };
+  | { kind: "coach"; tier: CoachMilestoneTier; coachName: string; cups: number }
+  | { kind: "club_record"; cups: number; previousCups: number; previousDate: string }
+  | { kind: "coach_record"; coachName: string; cups: number; previousCups: number; previousDate: string };
 
-// Keeps whatever's currently showing (index 0) in place, but bumps any new
-// "total" celebration ahead of pending (not-yet-shown) "coach" ones — so
-// the club total always pops before a coach's personal count when both are
-// queued around the same time, without interrupting a popup mid-display.
+// All-time records are the rarest, most exciting thing that can happen, so
+// they jump the queue ahead of everything else pending; the club total
+// still jumps ahead of a coach's personal tier as before.
+function celebrationRank(kind: Celebration["kind"]): number {
+  if (kind === "club_record" || kind === "coach_record") return 0;
+  if (kind === "total") return 1;
+  return 2;
+}
+
+// Keeps whatever's currently showing (index 0) in place, but inserts the
+// new item ahead of any pending (not-yet-shown) celebration of lower
+// priority, without interrupting a popup mid-display.
 function insertCelebration(queue: Celebration[], item: Celebration): Celebration[] {
   if (queue.length === 0) return [item];
   const [current, ...pending] = queue;
-  if (item.kind === "coach") return [current, ...pending, item];
-  const firstCoachIndex = pending.findIndex((c) => c.kind === "coach");
-  if (firstCoachIndex === -1) return [current, ...pending, item];
-  return [current, ...pending.slice(0, firstCoachIndex), item, ...pending.slice(firstCoachIndex)];
+  const rank = celebrationRank(item.kind);
+  const insertIndex = pending.findIndex((c) => celebrationRank(c.kind) > rank);
+  if (insertIndex === -1) return [current, ...pending, item];
+  return [current, ...pending.slice(0, insertIndex), item, ...pending.slice(insertIndex)];
 }
 
 export function DailyReportClient({
@@ -408,6 +418,8 @@ export function DailyReportClient({
   balanceCorrections,
   dailyLogs,
   stockTransactions,
+  clubRecord,
+  coachRecord,
 }: {
   date: string;
   hasExplicitDate: boolean;
@@ -434,6 +446,10 @@ export function DailyReportClient({
   balanceCorrections: BalanceCorrectionRow[];
   dailyLogs: DailyLogEntry[];
   stockTransactions: StockTxnRow[];
+  // Club's / this coach's best single day ever, excluding today (still
+  // climbing) — null when there's no history yet to compare against.
+  clubRecord: { record_date: string; total_cups: number } | null;
+  coachRecord: { record_date: string; cups: number } | null;
 }) {
   const router = useRouter();
   const [checkinSort, setCheckinSort] = useState<{ key: CheckinSortKey; dir: "asc" | "desc" } | null>(
@@ -444,7 +460,7 @@ export function DailyReportClient({
   const [breakdownOpen, setBreakdownOpen] = useState<"plugin" | "dine-in" | "takeaway" | null>(null);
   const [celebrationQueue, setCelebrationQueue] = useState<Celebration[]>([]);
   const celebrating = celebrationQueue[0] ?? null;
-  const celebrationKey = celebrating ? `${celebrating.kind}-${celebrating.tier.cups}` : null;
+  const celebrationKey = celebrating ? `${celebrating.kind}-${celebrating.cups}` : null;
   const dismissCelebration = () => setCelebrationQueue((q) => q.slice(1));
   const excludedCustomerIdSet = useMemo(() => new Set(excludedCustomerIds), [excludedCustomerIds]);
   const pluginCustomerIdSet = useMemo(() => new Set(pluginCustomerIds), [pluginCustomerIds]);
@@ -580,11 +596,61 @@ export function DailyReportClient({
     );
   }, [currentCoachId, date, myCoachRow, myCoachTier]);
 
-  // Plays once per popped celebration, in step with the full-screen
-  // confetti burst below (both keyed off celebrationKey).
+  // All-time club record — compares today's live total against the best
+  // day on record (excluding today). Re-fires if the total keeps climbing
+  // past whatever was last announced, not just once per day: the stored
+  // value tracks "last celebrated", starting from the record itself.
   useEffect(() => {
-    if (celebrationKey) playWinSound();
-  }, [celebrationKey]);
+    if (!clubRecord) return;
+    if (date !== format(new Date(), "yyyy-MM-dd")) return;
+
+    const key = `nc-cup-record-${clubId}-${date}`;
+    const lastAnnounced = Number(window.localStorage.getItem(key) ?? clubRecord.total_cups);
+    if (totals.total_cups <= lastAnnounced) return;
+    window.localStorage.setItem(key, String(totals.total_cups));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCelebrationQueue((q) =>
+      insertCelebration(q, {
+        kind: "club_record",
+        cups: totals.total_cups,
+        previousCups: clubRecord.total_cups,
+        previousDate: clubRecord.record_date,
+      })
+    );
+  }, [clubId, date, clubRecord, totals.total_cups]);
+
+  // Same idea, but the signed-in coach's own all-time best day.
+  useEffect(() => {
+    if (!coachRecord || !myCoachRow) return;
+    if (date !== format(new Date(), "yyyy-MM-dd")) return;
+
+    const key = `nc-coach-cup-record-${currentCoachId}-${date}`;
+    const lastAnnounced = Number(window.localStorage.getItem(key) ?? coachRecord.cups);
+    if (myCoachRow.cups <= lastAnnounced) return;
+    window.localStorage.setItem(key, String(myCoachRow.cups));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCelebrationQueue((q) =>
+      insertCelebration(q, {
+        kind: "coach_record",
+        coachName: myCoachRow.coach_name,
+        cups: myCoachRow.cups,
+        previousCups: coachRecord.cups,
+        previousDate: coachRecord.record_date,
+      })
+    );
+  }, [currentCoachId, date, coachRecord, myCoachRow]);
+
+  // Plays once per popped celebration, in step with the full-screen
+  // confetti burst below (both keyed off celebrationKey) — the rarer
+  // all-time records get their own, bigger sound.
+  useEffect(() => {
+    if (!celebrating) return;
+    if (celebrating.kind === "club_record" || celebrating.kind === "coach_record") {
+      playRecordSound();
+    } else {
+      playWinSound();
+    }
+  }, [celebrationKey, celebrating]);
 
   function goToDate(d: string) {
     const clubQuery = viewingBranch ? `&club=${clubId}` : "";
@@ -1032,42 +1098,111 @@ export function DailyReportClient({
         </div>
       </div>
 
-      <FullScreenConfetti triggerKey={celebrationKey} />
+      <FullScreenConfetti
+        triggerKey={celebrationKey}
+        count={celebrating?.kind === "club_record" || celebrating?.kind === "coach_record" ? 150 : 70}
+      />
       <Dialog open={!!celebrating} onOpenChange={(open) => !open && dismissCelebration()}>
-        <DialogContent className="overflow-hidden sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center text-2xl">
-              {celebrating?.tier.emoji} {celebrating?.tier.title} {celebrating?.tier.emoji}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-2 py-2 text-center">
-            <span
-              className="text-6xl"
-              style={{ display: "inline-block", animation: "cake-bounce 1s ease-in-out infinite" }}
+        {celebrating?.kind === "club_record" || celebrating?.kind === "coach_record" ? (
+          <DialogContent className="overflow-hidden border-[#a8721f]/40 bg-gradient-to-b from-[#241708] to-[#170e07] text-[#fbf1de] sm:max-w-sm [&_[data-slot=dialog-close]]:text-[#d9c7a3]">
+            <DialogHeader>
+              <DialogTitle className="text-center text-xs font-bold tracking-[0.2em] text-[#f6d182] uppercase">
+                {celebrating.kind === "club_record" ? "Club Record" : "Personal Best"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col items-center gap-1 py-1 text-center">
+              <div className="mb-1 flex items-center gap-2 text-[#a8721f]">
+                <svg viewBox="0 0 60 120" className="h-9 w-auto" fill="none" stroke="currentColor" strokeWidth="2.4">
+                  <path d="M50 5C34 15 24 35 24 60c0 22 8 40 20 55" strokeLinecap="round" />
+                  <g stroke="#f6d182">
+                    <path d="M46 16l-12 4" /><path d="M42 28l-13 3" /><path d="M39 40l-14 2" />
+                    <path d="M37 52l-14 1" /><path d="M36 64l-14 0" /><path d="M37 76l-13 -1" />
+                  </g>
+                </svg>
+                <svg
+                  viewBox="0 0 60 120"
+                  className="h-9 w-auto -scale-x-100"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                >
+                  <path d="M50 5C34 15 24 35 24 60c0 22 8 40 20 55" strokeLinecap="round" />
+                  <g stroke="#f6d182">
+                    <path d="M46 16l-12 4" /><path d="M42 28l-13 3" /><path d="M39 40l-14 2" />
+                    <path d="M37 52l-14 1" /><path d="M36 64l-14 0" /><path d="M37 76l-13 -1" />
+                  </g>
+                </svg>
+              </div>
+              <h2
+                className="bg-gradient-to-b from-[#f6d182] via-[#f3c14e] to-[#a8721f] bg-clip-text text-4xl leading-[0.95] font-extrabold text-transparent"
+                style={{ animation: "cake-bounce 1.4s ease-in-out infinite" }}
+              >
+                NEW
+                <br />
+                RECORD
+              </h2>
+              <p className="mt-2 max-w-[26ch] text-sm text-[#d9c7a3]">
+                {celebrating.kind === "club_record"
+                  ? `${clubName ?? "Your club"} just broke its all-time daily cup record!`
+                  : `${celebrating.coachName} just broke their personal best!`}
+              </p>
+              <div className="mt-3">
+                <span className="text-6xl font-extrabold tabular-nums text-[#fbf1de]">{celebrating.cups}</span>
+                <span className="mt-0.5 block text-xs font-bold tracking-[0.1em] text-[#f6d182] uppercase">
+                  cups today
+                </span>
+              </div>
+              <p className="mt-4 rounded-full border border-[#f3c14e]/20 bg-black/20 px-3.5 py-1.5 text-xs text-[#d9c7a3]">
+                Beat the previous record of{" "}
+                <b className="font-extrabold tabular-nums text-[#f6d182]">{celebrating.previousCups}</b> cups, set{" "}
+                <b className="font-extrabold text-[#f6d182]">
+                  {format(parseISO(celebrating.previousDate), "d MMM")}
+                </b>
+              </p>
+            </div>
+            <Button
+              className="w-full border-none bg-gradient-to-b from-[#f6d182] to-[#a8721f] py-6 text-lg font-extrabold text-[#241505] hover:brightness-105"
+              onClick={dismissCelebration}
             >
-              {celebrating?.tier.emoji}
-            </span>
-            {celebrating?.kind === "total" && (
-              <>
-                <p className="text-xl font-semibold">{celebrating.cups} cups today</p>
-                <p className="text-base text-muted-foreground">{celebrating.tier.message}</p>
-              </>
-            )}
-            {celebrating?.kind === "coach" && (
-              <>
-                <p className="text-xl font-semibold">
-                  {celebrating.coachName} · {celebrating.cups} cups today
-                </p>
-                <p className="text-base text-muted-foreground">
-                  {formatCoachMilestoneMessage(celebrating.tier, celebrating.coachName, celebrating.cups)}
-                </p>
-              </>
-            )}
-          </div>
-          <Button className="w-full py-6 text-lg" onClick={dismissCelebration}>
-            OK
-          </Button>
-        </DialogContent>
+              Let&apos;s go!
+            </Button>
+          </DialogContent>
+        ) : (
+          <DialogContent className="overflow-hidden sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-center text-2xl">
+                {celebrating?.tier.emoji} {celebrating?.tier.title} {celebrating?.tier.emoji}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col items-center gap-2 py-2 text-center">
+              <span
+                className="text-6xl"
+                style={{ display: "inline-block", animation: "cake-bounce 1s ease-in-out infinite" }}
+              >
+                {celebrating?.tier.emoji}
+              </span>
+              {celebrating?.kind === "total" && (
+                <>
+                  <p className="text-xl font-semibold">{celebrating.cups} cups today</p>
+                  <p className="text-base text-muted-foreground">{celebrating.tier.message}</p>
+                </>
+              )}
+              {celebrating?.kind === "coach" && (
+                <>
+                  <p className="text-xl font-semibold">
+                    {celebrating.coachName} · {celebrating.cups} cups today
+                  </p>
+                  <p className="text-base text-muted-foreground">
+                    {formatCoachMilestoneMessage(celebrating.tier, celebrating.coachName, celebrating.cups)}
+                  </p>
+                </>
+              )}
+            </div>
+            <Button className="w-full py-6 text-lg" onClick={dismissCelebration}>
+              OK
+            </Button>
+          </DialogContent>
+        )}
       </Dialog>
     </div>
   );

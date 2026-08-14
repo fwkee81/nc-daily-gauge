@@ -33,3 +33,10 @@ export function playWinSound() {
   const audio = new Audio("/sounds/win.mp3");
   void audio.play();
 }
+
+// Bigger clip for the rarer moment: a club or personal all-time cup record.
+export function playRecordSound() {
+  if (typeof window === "undefined") return;
+  const audio = new Audio("/sounds/record.mp3");
+  void audio.play();
+}

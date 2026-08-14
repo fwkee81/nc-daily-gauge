@@ -41,6 +41,8 @@ export default async function DailyReportPage({
     dailyLogsRes,
     stockTxnsRes,
     balanceCorrectionsRes,
+    clubRecordRes,
+    coachRecordRes,
   ] = await Promise.all([
     supabase.rpc("daily_totals", { p_date: date, p_club_id: clubId }),
     supabase.rpc("daily_coach_cups", { p_date: date, p_club_id: clubId }),
@@ -80,7 +82,7 @@ export default async function DailyReportPage({
     // Every customer disqualified from Coach's Cup — own or an ancestor's
     // (any generations back, via invited_by_customer_id) member_type is
     // SP/WT/AWT/TAB. Computed once server-side (recursive) and reused here.
-    supabase.rpc("coach_cup_excluded_customer_ids", { p_club_id: clubId }),
+    supabase.rpc("coach_cup_excluded_customer_ids", { p_as_of: date, p_club_id: clubId }),
     // Every customer descended from a Plug-in-invited root, any number of
     // generations — mirrors the exclusion query above but for Plug-in Cups.
     supabase.rpc("plugin_lineage_customer_ids", { p_club_id: clubId }),
@@ -115,6 +117,12 @@ export default async function DailyReportPage({
       .lt("created_at", `${nextDate}T00:00:00`)
       .eq("customer.nc_club_id", clubId)
       .order("created_at", { ascending: false }),
+    supabase.rpc("club_all_time_high_cups", { p_club_id: clubId, p_date: date }),
+    supabase.rpc("coach_all_time_high_cups", {
+      p_coach_id: coach.id,
+      p_club_id: clubId,
+      p_date: date,
+    }),
   ]);
 
   interface RawRenewal {
@@ -260,6 +268,8 @@ export default async function DailyReportPage({
       balanceCorrections={balanceCorrections}
       dailyLogs={dailyLogs}
       stockTransactions={stockTransactions}
+      clubRecord={clubRecordRes.data?.[0] ?? null}
+      coachRecord={coachRecordRes.data?.[0] ?? null}
     />
   );
 }
