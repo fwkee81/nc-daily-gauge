@@ -7,8 +7,19 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+function Dialog({ disablePointerDismissal = true, ...props }: DialogPrimitive.Root.Props) {
+  // Every dialog in this app holds a form or a decision a coach is mid-way
+  // through — an accidental tap outside it (easy to do on a phone) used to
+  // silently discard whatever was typed. Only Submit/Save/Cancel/X (or the
+  // explicit onOpenChange a caller wires up) should close one now; pass
+  // disablePointerDismissal={false} on a specific Dialog to opt back out.
+  return (
+    <DialogPrimitive.Root
+      data-slot="dialog"
+      disablePointerDismissal={disablePointerDismissal}
+      {...props}
+    />
+  )
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
