@@ -15,14 +15,11 @@ import {
 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
+import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 
 export default async function DashboardPage() {
   const coach = await getCurrentCoach();
-  const user = await getCurrentUser();
-  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
 
   let clubName: string | null = null;
   if (coach?.nc_club_id) {
@@ -119,17 +116,13 @@ export default async function DashboardPage() {
       icon: HeartPulse,
       tint: "bg-primary/15 text-primary",
     },
-    ...(isSuperAdmin
-      ? [
-          {
-            href: "/tools/recipes",
-            title: "Shake Recipes",
-            description: "Browse and add nutrition shake recipes (admin test).",
-            icon: Blender,
-            tint: "bg-secondary/25 text-[#8a5a00]",
-          },
-        ]
-      : []),
+    {
+      href: "/tools/recipes",
+      title: "Shake Recipes",
+      description: "Browse the nutrition shake recipe library.",
+      icon: Blender,
+      tint: "bg-secondary/25 text-[#8a5a00]",
+    },
   ];
 
   return (

@@ -16,11 +16,9 @@ type FormState = { mode: "add" } | { mode: "edit"; recipe: ShakeRecipe };
 
 export function RecipesClient({
   recipes: initialRecipes,
-  currentCoachId,
   isSuperAdmin,
 }: {
   recipes: ShakeRecipe[];
-  currentCoachId: string;
   isSuperAdmin: boolean;
 }) {
   const [recipes, setRecipes] = useState(initialRecipes);
@@ -52,13 +50,6 @@ export function RecipesClient({
     });
   }
 
-  // Keeps the currently-open detail dialog (which reads from `selected`,
-  // not the `recipes` array) in sync after a request/approve action.
-  function handleRecipeUpdated(recipe: ShakeRecipe) {
-    upsertRecipe(recipe);
-    setSelected(recipe);
-  }
-
   // Ingredients stay plain text search across the recipe's fields — matches
   // "dragon fruit" against whatever wording each recipe used (Base/Side/
   // Shake/Body/Topping and both names) instead of needing a second tag list
@@ -83,13 +74,15 @@ export function RecipesClient({
         <div>
           <h1 className="text-2xl">Shake Recipes</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {filtered.length} of {recipes.length} recipe{recipes.length === 1 ? "" : "s"}. Admin-only
-            test page.
+            {filtered.length} of {recipes.length} recipe{recipes.length === 1 ? "" : "s"}.
+            {!isSuperAdmin && " View only — ask the admin to add or change a recipe."}
           </p>
         </div>
-        <Button onClick={() => setFormState({ mode: "add" })}>
-          <Plus /> Add recipe
-        </Button>
+        {isSuperAdmin && (
+          <Button onClick={() => setFormState({ mode: "add" })}>
+            <Plus /> Add recipe
+          </Button>
+        )}
       </div>
 
       <div className="mt-4 space-y-2">
@@ -121,7 +114,9 @@ export function RecipesClient({
       </div>
 
       {recipes.length === 0 ? (
-        <p className="mt-8 text-sm text-muted-foreground">No recipes yet — add the first one.</p>
+        <p className="mt-8 text-sm text-muted-foreground">
+          {isSuperAdmin ? "No recipes yet — add the first one." : "No recipes yet."}
+        </p>
       ) : filtered.length === 0 ? (
         <p className="mt-8 text-sm text-muted-foreground">No recipes match that search/filter.</p>
       ) : (
@@ -169,12 +164,11 @@ export function RecipesClient({
         </div>
       )}
 
-      {formState && (
+      {formState && isSuperAdmin && (
         <RecipeFormDialog
           key={formState.mode === "edit" ? formState.recipe.id : "add"}
           mode={formState.mode}
           recipe={formState.mode === "edit" ? formState.recipe : undefined}
-          isSuperAdmin={isSuperAdmin}
           open={formState !== null}
           onOpenChange={(open) => !open && setFormState(null)}
           onDone={upsertRecipe}
@@ -183,14 +177,12 @@ export function RecipesClient({
 
       <RecipeDetailDialog
         recipe={selected}
-        currentCoachId={currentCoachId}
         isSuperAdmin={isSuperAdmin}
         onOpenChange={(open) => !open && setSelected(null)}
         onEdit={(recipe) => {
           setSelected(null);
           setFormState({ mode: "edit", recipe });
         }}
-        onUpdated={handleRecipeUpdated}
         onDeleted={(id) => {
           setRecipes((prev) => prev.filter((r) => r.id !== id));
           setSelected(null);
