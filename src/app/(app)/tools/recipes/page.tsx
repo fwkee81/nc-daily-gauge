@@ -9,18 +9,10 @@ export default async function RecipesPage() {
   if (!coach) redirect("/onboarding");
 
   const user = await getCurrentUser();
-  if (user?.email !== SUPER_ADMIN_EMAIL) {
-    return (
-      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        This page isn&apos;t available yet.
-      </div>
-    );
-  }
+  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
 
   const supabase = await createClient();
   const { data: recipes } = await supabase.from("shake_recipes").select("*").order("code");
 
-  return (
-    <RecipesClient recipes={recipes ?? []} currentCoachId={coach.id} isSuperAdmin={true} />
-  );
+  return <RecipesClient recipes={recipes ?? []} isSuperAdmin={isSuperAdmin} />;
 }

@@ -24,17 +24,18 @@ const FIELDS: { key: "base" | "side" | "shake" | "body" | "topping"; label: stri
 
 const EMPTY = { nameZh: "", nameEn: "", base: "", side: "", shake: "", body: "", topping: "" };
 
+// Only ever opened by the admin (see the Add/Edit buttons in
+// recipes-client.tsx and recipe-detail-dialog.tsx, both gated on
+// isSuperAdmin) — writes are admin-only, everyone else is view-only.
 export function RecipeFormDialog({
   mode,
   recipe,
-  isSuperAdmin,
   open,
   onOpenChange,
   onDone,
 }: {
   mode: "add" | "edit";
   recipe?: ShakeRecipe;
-  isSuperAdmin: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: (recipe: ShakeRecipe) => void;
@@ -53,7 +54,7 @@ export function RecipeFormDialog({
       : EMPTY
   );
   const [colors, setColors] = useState<string[]>(recipe?.colors ?? []);
-  const [isPublic, setIsPublic] = useState(isSuperAdmin ? (recipe?.is_public ?? false) : false);
+  const [isPublic, setIsPublic] = useState(recipe?.is_public ?? true);
   const [photo, setPhoto] = useState<File | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,17 +166,10 @@ export function RecipeFormDialog({
             </div>
           </div>
 
-          {isSuperAdmin ? (
-            <label className="flex items-center gap-2 text-sm">
-              <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-              {isPublic ? "Public — visible to every club" : "Only my club can see this"}
-            </label>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Saved as private to your club. Use &quot;Share to Public&quot; on the recipe afterwards
-              to ask the admin to publish it.
-            </p>
-          )}
+          <label className="flex items-center gap-2 text-sm">
+            <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+            {isPublic ? "Public — visible to every club" : "Only my club can see this"}
+          </label>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">

@@ -769,17 +769,10 @@ create policy "finance_transactions_insert" on finance_transactions
   );
 
 -- shake_recipes: any coach may read a public recipe or one from their own
--- club. A coach may only insert their own club's recipes, and only the
--- super admin may create one that's public or already flagged for public
--- from the start. Once a recipe is public, only the super admin may
--- update/delete it — the original creator's write access ends there;
--- while it's still private, only the creator (or the super admin) can
--- touch it, so one coach can't accidentally remove another's recipe.
--- "Share to Public" (public_requested) is the only thing a creator can
--- still flip once curation matters — going public itself is admin-only.
--- The /tools/recipes page itself is still admin-only for now (see the
--- page component) — these policies are the intended shape for when that
--- page-level gate lifts.
+-- club, but only the super admin may add, edit, or delete a recipe — the
+-- library is fully admin-curated, everyone else gets view-only.
+-- public_requested is unused by the app for now (left over from an
+-- earlier per-coach "Share to Public" flow that's been retired).
 drop policy if exists "shake_recipes_select_admin" on shake_recipes;
 drop policy if exists "shake_recipes_insert_admin" on shake_recipes;
 drop policy if exists "shake_recipes_delete_admin" on shake_recipes;
@@ -793,34 +786,13 @@ create policy "shake_recipes_select" on shake_recipes
   );
 drop policy if exists "shake_recipes_insert" on shake_recipes;
 create policy "shake_recipes_insert" on shake_recipes
-  for insert to authenticated
-  with check (
-    created_by = current_coach_id()
-    and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
-    and (is_super_admin() or (not is_public and not public_requested))
-  );
+  for insert to authenticated with check (is_super_admin());
 drop policy if exists "shake_recipes_update" on shake_recipes;
 create policy "shake_recipes_update" on shake_recipes
-  for update to authenticated
-  using (
-    is_super_admin()
-    or (created_by = current_coach_id() and not is_public)
-  )
-  with check (
-    is_super_admin()
-    or (
-      created_by = current_coach_id()
-      and not is_public
-      and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
-    )
-  );
+  for update to authenticated using (is_super_admin()) with check (is_super_admin());
 drop policy if exists "shake_recipes_delete" on shake_recipes;
 create policy "shake_recipes_delete" on shake_recipes
-  for delete to authenticated
-  using (
-    is_super_admin()
-    or (created_by = current_coach_id() and not is_public)
-  );
+  for delete to authenticated using (is_super_admin());
 
 -- Storage bucket for recipe photos — public read (so <img src> just works);
 -- writes follow the same trust level as the table above (any coach), since
