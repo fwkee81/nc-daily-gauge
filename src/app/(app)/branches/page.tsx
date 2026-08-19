@@ -3,6 +3,8 @@ import { format } from "date-fns";
 import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  BranchClubCupRecordRow,
+  BranchCoachCupRecordRow,
   BranchCoachCupsCompareRow,
   BranchDailyRemarkRow,
   BranchDailySummaryRow,
@@ -29,7 +31,14 @@ export default async function BranchesPage({
   }
 
   const { tab: tabParam, date: dateParam, month: monthParam } = await searchParams;
-  const tab = tabParam === "monthly" ? "monthly" : tabParam === "weekly" ? "weekly" : "daily";
+  const tab =
+    tabParam === "monthly"
+      ? "monthly"
+      : tabParam === "weekly"
+        ? "weekly"
+        : tabParam === "records"
+          ? "records"
+          : "daily";
   const date = dateParam ?? format(new Date(), "yyyy-MM-dd");
   const month = monthParam ?? format(new Date(), "yyyy-MM");
 
@@ -44,6 +53,8 @@ export default async function BranchesPage({
     monthlySummaryRes,
     monthlyNewRenewalsRes,
     leaderboardsRes,
+    cupRecordsRes,
+    coachCupRecordsRes,
   ] = await Promise.all([
     supabase.rpc("branches_daily_summary", { p_date: date }),
     supabase.rpc("branches_coach_cups_compare", { p_date: date }),
@@ -54,6 +65,8 @@ export default async function BranchesPage({
     supabase.rpc("branches_monthly_summary", { p_month: `${month}-01` }),
     supabase.rpc("branches_monthly_new_renewals", { p_month: `${month}-01` }),
     supabase.rpc("branches_monthly_leaderboards", { p_month: `${month}-01` }),
+    supabase.rpc("branches_cup_records"),
+    supabase.rpc("branches_coach_cup_records"),
   ]);
   const branches = (summaryRes.data ?? []) as BranchDailySummaryRow[];
   const coachCups = (coachCupsRes.data ?? []) as BranchCoachCupsCompareRow[];
@@ -64,6 +77,8 @@ export default async function BranchesPage({
   const monthlySummary = (monthlySummaryRes.data ?? []) as BranchMonthlySummaryRow[];
   const monthlyNewRenewals = (monthlyNewRenewalsRes.data ?? []) as BranchNewRenewalRow[];
   const leaderboards = (leaderboardsRes.data ?? []) as BranchLeaderboardRow[];
+  const cupRecords = (cupRecordsRes.data ?? []) as BranchClubCupRecordRow[];
+  const coachCupRecords = (coachCupRecordsRes.data ?? []) as BranchCoachCupRecordRow[];
 
   return (
     <div>
@@ -89,6 +104,8 @@ export default async function BranchesPage({
         monthlySummary={monthlySummary}
         monthlyNewRenewals={monthlyNewRenewals}
         leaderboards={leaderboards}
+        cupRecords={cupRecords}
+        coachCupRecords={coachCupRecords}
       />
     </div>
   );
