@@ -4,6 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type {
+  BranchClubCupRecordRow,
+  BranchCoachCupRecordRow,
   BranchCoachCupsCompareRow,
   BranchDailyRemarkRow,
   BranchDailySummaryRow,
@@ -17,6 +19,7 @@ import { BranchesMonthNav } from "./branches-month-nav";
 import { BranchesList } from "./branches-list";
 import { BranchesWeekly } from "./branches-weekly";
 import { BranchesMonthly } from "./branches-monthly";
+import { BranchesRecords } from "./branches-records";
 import { withParam } from "./url";
 
 export function BranchesTabs({
@@ -35,6 +38,8 @@ export function BranchesTabs({
   monthlySummary,
   monthlyNewRenewals,
   leaderboards,
+  cupRecords,
+  coachCupRecords,
 }: {
   tab: string;
   date: string;
@@ -51,6 +56,8 @@ export function BranchesTabs({
   monthlySummary: BranchMonthlySummaryRow[];
   monthlyNewRenewals: BranchNewRenewalRow[];
   leaderboards: BranchLeaderboardRow[];
+  cupRecords: BranchClubCupRecordRow[];
+  coachCupRecords: BranchCoachCupRecordRow[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -65,6 +72,7 @@ export function BranchesTabs({
         <TabsTrigger value="daily">Daily</TabsTrigger>
         <TabsTrigger value="weekly">Weekly</TabsTrigger>
         <TabsTrigger value="monthly">Monthly</TabsTrigger>
+        <TabsTrigger value="records">Records</TabsTrigger>
       </TabsList>
 
       <TabsContent value="daily" className="mt-4">
@@ -116,6 +124,14 @@ export function BranchesTabs({
           leaderboards={leaderboards}
           ownClubId={ownClubId}
         />
+      </TabsContent>
+
+      <TabsContent value="records" className="mt-4">
+        <p className="text-sm text-muted-foreground">
+          Each club&apos;s best single day ever, and every coach&apos;s own personal best —
+          all-time, across the full history of check-ins.
+        </p>
+        <BranchesRecords cupRecords={cupRecords} coachCupRecords={coachCupRecords} ownClubId={ownClubId} />
       </TabsContent>
     </Tabs>
   );
