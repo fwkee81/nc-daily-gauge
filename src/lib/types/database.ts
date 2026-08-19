@@ -448,6 +448,22 @@ export type BranchLeaderboardRow = {
   value: number;
 };
 
+export type BranchClubCupRecordRow = {
+  club_id: string;
+  club_name: string;
+  // Null when the club has no check-ins yet.
+  record_date: string | null;
+  total_cups: number | null;
+};
+
+export type BranchCoachCupRecordRow = {
+  club_id: string;
+  coach_id: string;
+  coach_name: string;
+  record_date: string;
+  cups: number;
+};
+
 // Owned by the separate "My Wellness" customer-facing app (own repo at
 // C:\Users\PC\Desktop\my-wellness), not by NC Daily Gauge — but it lives in
 // the same Supabase project and rows are linked back to this app's
@@ -794,6 +810,14 @@ export type Database = {
       branches_monthly_leaderboards: {
         Args: { p_month: string };
         Returns: BranchLeaderboardRow[];
+      };
+      branches_cup_records: {
+        Args: Record<string, never>;
+        Returns: BranchClubCupRecordRow[];
+      };
+      branches_coach_cup_records: {
+        Args: Record<string, never>;
+        Returns: BranchCoachCupRecordRow[];
       };
       visible_club_ids: {
         Args: { p_coach_id: string };
