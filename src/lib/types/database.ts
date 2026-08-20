@@ -394,9 +394,9 @@ export type WeeklyCustomerAttendanceRow = {
   customer_name: string;
   coach_name: string | null;
   nc_level: CustomerNcLevel;
-  visit_count: number;
-  // Keyed by date ("yyyy-MM-dd") to that day's visit count — only days the
-  // customer actually checked in are present.
+  total_cups: number;
+  // Keyed by date ("yyyy-MM-dd") to that day's cups (not visit count) —
+  // only days the customer actually checked in are present.
   daily: Record<string, number>;
 };
 
