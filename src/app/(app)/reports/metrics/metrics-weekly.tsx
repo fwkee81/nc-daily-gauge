@@ -170,7 +170,7 @@ export function MetricsWeekly({
       <div>
         <h2 className="text-lg font-semibold">Customers This Week</h2>
         <p className="text-sm text-muted-foreground">
-          Everyone who checked in during this window, most visits first — blank means they
+          Everyone who checked in during this window, most cups first — blank means they
           didn&apos;t come in that day.
         </p>
         <div className="mt-2 overflow-x-auto rounded-md border">
@@ -225,7 +225,7 @@ export function MetricsWeekly({
                     })}
                     <TableCell className="text-right">
                       <span className="inline-flex items-center gap-1 font-semibold">
-                        {row.visit_count}
+                        {row.total_cups}
                         {perfectAttendance && <span title={`Came in every day this window (${windowDays}/${windowDays})`}>🔥</span>}
                         {almostPerfect && (
                           <span title={`Came in ${daysAttended} of ${windowDays} days this window`}>🌸</span>

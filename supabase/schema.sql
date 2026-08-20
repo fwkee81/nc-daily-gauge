@@ -2164,10 +2164,13 @@ as $$
 $$;
 
 -- Every customer who checked in during the same 6-operating-day window,
--- with how many times — powers the Weekly tab's attendance list so a coach
--- meeting can spot who's coming in often vs. barely showing up.
--- Adds a new output column, which CREATE OR REPLACE can't do (return-column
--- change) — drop the old 5-column version first.
+-- with how many CUPS (not check-in events) each day — powers the Weekly
+-- tab's attendance list so a coach meeting can spot who's coming in often
+-- vs. barely showing up. Was previously counting check-in rows (count(*)),
+-- which happened to equal cups for a 1-cup-per-visit customer but silently
+-- undercounted anyone who checks in once for 2 cups — sum(ci.cups) instead.
+-- Renaming visit_count to total_cups to match what it now holds is itself
+-- a return-column change, which CREATE OR REPLACE can't do — drop first.
 drop function if exists weekly_customer_attendance(date, uuid);
 
 create or replace function weekly_customer_attendance(p_date date default current_date, p_club_id uuid default null)
@@ -2176,7 +2179,7 @@ returns table (
   customer_name text,
   coach_name text,
   nc_level customer_nc_level,
-  visit_count bigint,
+  total_cups bigint,
   daily jsonb
 )
 language sql
@@ -2204,7 +2207,7 @@ as $$
     where rn <= 6
   ),
   per_day as (
-    select ci.customer_id, ci.checkin_date, count(*) as n
+    select ci.customer_id, ci.checkin_date, sum(ci.cups) as n
     from checkins ci
     cross join windows w
     where ci.nc_club_id = (select id from target_club)
@@ -2217,13 +2220,13 @@ as $$
     cu.name as customer_name,
     co.name as coach_name,
     cu.nc_level,
-    sum(pd.n) as visit_count,
+    sum(pd.n) as total_cups,
     jsonb_object_agg(pd.checkin_date::text, pd.n) as daily
   from per_day pd
   join customers cu on cu.id = pd.customer_id
   left join coaches co on co.id = cu.coach_id
   group by cu.id, cu.name, co.name, cu.nc_level
-  order by visit_count desc, cu.name;
+  order by total_cups desc, cu.name;
 $$;
 
 -- Per-coach breakdown behind weekly_totals' Coach's Cup figure — same
