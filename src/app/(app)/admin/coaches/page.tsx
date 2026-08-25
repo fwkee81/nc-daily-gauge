@@ -25,24 +25,35 @@ export default async function AdminCoachesPage() {
   });
   const clubIds = (visibleClubRows ?? []).map((row) => row.club_id);
 
-  const [{ data: networkCoaches }, { data: allCoaches }, { data: clubs }] = await Promise.all([
-    supabase
-      .from("coaches")
-      .select(
-        "id, name, contact, dob, sponsor_id, member_id, level, nc_position, nc_club_id, active, nc_club:nc_clubs(name)"
-      )
-      .in("nc_club_id", clubIds.length > 0 ? clubIds : [""])
-      .eq("active", true)
-      .order("name"),
-    supabase.from("coaches").select("id, name").eq("active", true).order("name"),
-    supabase.from("nc_clubs").select("id, name").order("name"),
-  ]);
+  const [{ data: networkCoaches }, { data: allCoaches }, { data: clubs }, { data: emails }] =
+    await Promise.all([
+      supabase
+        .from("coaches")
+        .select(
+          "id, name, contact, dob, sponsor_id, member_id, level, nc_position, nc_club_id, active, nc_club:nc_clubs(name)"
+        )
+        .in("nc_club_id", clubIds.length > 0 ? clubIds : [""])
+        .eq("active", true)
+        .order("name"),
+      supabase.from("coaches").select("id, name").eq("active", true).order("name"),
+      supabase.from("nc_clubs").select("id, name").order("name"),
+      // auth.users isn't exposed to PostgREST — this RPC is the only way to
+      // get each coach's login email, useful for telling apart two accounts
+      // that registered with near-identical names.
+      supabase.rpc("network_coach_emails"),
+    ]);
+
+  const emailByCoachId = new Map((emails ?? []).map((e) => [e.coach_id, e.email]));
+  const coachesWithEmail = (networkCoaches ?? []).map((c) => ({
+    ...c,
+    email: emailByCoachId.get(c.id) ?? null,
+  }));
 
   return (
     <CoachesClient
       currentCoachId={coach.id}
       isSuperAdmin={isSuperAdmin}
-      coaches={(networkCoaches ?? []) as unknown as CoachRow[]}
+      coaches={coachesWithEmail as unknown as CoachRow[]}
       sponsorOptions={allCoaches ?? []}
       clubOptions={clubs ?? []}
     />

@@ -524,6 +524,25 @@ as $$
   select distinct nc_club_id from downline where nc_club_id is not null;
 $$;
 
+-- auth.users isn't exposed to PostgREST directly, so this is the only way
+-- for the Coaches admin page to show each coach's login email (handy for
+-- telling apart two accounts that registered with near-identical names).
+-- Admin-only, same visibility scope as the coaches list itself: your own
+-- club plus any downline branch that named you sponsor.
+create or replace function network_coach_emails()
+returns table (coach_id uuid, email text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select co.id as coach_id, u.email
+  from coaches co
+  join auth.users u on u.id = co.auth_user_id
+  where is_current_coach_admin()
+    and co.nc_club_id in (select visible_club_ids(current_coach_id()));
+$$;
+
 -- PostgREST's client representation of a bare `setof uuid` RPC result isn't
 -- something to rely on from the client — wrap it in a proper table type
 -- (one named column) for direct client-side calls, same pattern as
@@ -542,6 +561,7 @@ $$;
 grant execute on function current_coach_id() to authenticated;
 grant execute on function is_current_coach_admin() to authenticated;
 grant execute on function is_super_admin() to authenticated;
+grant execute on function network_coach_emails() to authenticated;
 grant execute on function visible_club_ids(uuid) to authenticated;
 grant execute on function list_visible_club_ids(uuid) to authenticated;
 
