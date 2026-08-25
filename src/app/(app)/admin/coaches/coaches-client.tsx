@@ -42,6 +42,8 @@ export interface CoachRow {
   nc_club_id: string | null;
   active: boolean;
   nc_club?: { name: string } | null;
+  // Login email, from auth.users — null if it couldn't be resolved.
+  email: string | null;
 }
 
 interface SponsorOption {
@@ -77,7 +79,10 @@ export function CoachesClient({
     const q = search.trim().toLowerCase();
     if (!q) return coaches;
     return coaches.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.contact.toLowerCase().includes(q)
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.contact.toLowerCase().includes(q) ||
+        (c.email?.toLowerCase().includes(q) ?? false)
     );
   }, [coaches, search]);
 
@@ -104,7 +109,7 @@ export function CoachesClient({
 
       <Input
         className="mt-4 max-w-sm"
-        placeholder="Search by name or contact..."
+        placeholder="Search by name, contact, or email..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -114,6 +119,7 @@ export function CoachesClient({
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
               <TableHead>Club</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Level</TableHead>
@@ -134,6 +140,7 @@ export function CoachesClient({
                     </Badge>
                   )}
                 </TableCell>
+                <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
                 <TableCell>{c.nc_club?.name ?? "—"}</TableCell>
                 <TableCell>{c.contact}</TableCell>
                 <TableCell>{c.level}</TableCell>
@@ -174,7 +181,7 @@ export function CoachesClient({
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isSuperAdmin ? 8 : 7} className="text-center text-muted-foreground">
+                <TableCell colSpan={isSuperAdmin ? 9 : 8} className="text-center text-muted-foreground">
                   No coaches found.
                 </TableCell>
               </TableRow>

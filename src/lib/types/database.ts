@@ -827,6 +827,10 @@ export type Database = {
         Args: { p_coach_id: string };
         Returns: { club_id: string }[];
       };
+      network_coach_emails: {
+        Args: Record<string, never>;
+        Returns: { coach_id: string; email: string }[];
+      };
       inventory_stock_levels: {
         Args: Record<string, never>;
         Returns: InventoryStockLevelRow[];
