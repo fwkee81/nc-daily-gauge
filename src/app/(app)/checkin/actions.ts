@@ -27,12 +27,28 @@ export async function submitCheckin(
 
   const { data: customer, error: customerError } = await supabase
     .from("customers")
-    .select("name, consumption_balance, nc_level")
+    .select("name, nc_level, linked_to_customer_id")
     .eq("id", customerId)
     .single();
 
   if (customerError || !customer) {
     return { error: customerError?.message ?? "Check-in recorded but could not load balance." };
+  }
+
+  // A linked account's own consumption_balance is always 0 — the real
+  // balance lives on whoever they're linked to (see link_customer_to_spouse
+  // in supabase/schema.sql). record_checkin() already resolves this same
+  // way when deducting; mirror it here so the popup shows what was
+  // actually left, not the linked account's frozen 0.
+  const balanceCustomerId = customer.linked_to_customer_id ?? customerId;
+  const { data: balanceCustomer, error: balanceError } = await supabase
+    .from("customers")
+    .select("consumption_balance")
+    .eq("id", balanceCustomerId)
+    .single();
+
+  if (balanceError || !balanceCustomer) {
+    return { error: balanceError?.message ?? "Check-in recorded but could not load balance." };
   }
 
   // Show the family member's own name when they checked in themselves,
@@ -51,7 +67,7 @@ export async function submitCheckin(
     success: true,
     checkin: data,
     name: displayName,
-    balance: customer.consumption_balance,
+    balance: balanceCustomer.consumption_balance,
     ncLevel: customer.nc_level,
     isBirthdayShake,
   };
