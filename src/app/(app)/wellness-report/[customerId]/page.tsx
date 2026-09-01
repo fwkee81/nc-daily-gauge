@@ -221,14 +221,14 @@ export default async function WellnessReportDetailPage({
             </p>
           ) : (
             <div className="mt-2 space-y-4">
-              <CollapsibleSection title="Basic" icon={User}>
+              <CollapsibleSection title="Basic" icon={<User className="size-4 text-primary" strokeWidth={2.25} />}>
                 <Field label="Gender" value={prettify(healthProfile.ref_gender)} />
                 <Field label="Height" value={healthProfile.height_cm != null ? `${healthProfile.height_cm} cm` : "—"} />
                 <Field label="Goal" value={prettify(healthProfile.goal_type)} />
                 <Field label="Goal target weight" value={healthProfile.goal_target_kg != null ? `${healthProfile.goal_target_kg} kg` : "—"} />
               </CollapsibleSection>
 
-              <CollapsibleSection title="Medical" icon={Stethoscope}>
+              <CollapsibleSection title="Medical" icon={<Stethoscope className="size-4 text-primary" strokeWidth={2.25} />}>
                 <Field label="Self-assessment" value={prettify(healthProfile.self_assessment)} />
                 <Field label="On medication" value={yesNo(healthProfile.on_medication)} />
                 <Field label="Medications" value={healthProfile.medications || "—"} />
@@ -240,7 +240,7 @@ export default async function WellnessReportDetailPage({
                 <Field label="Smoking detail" value={healthProfile.smoking_detail || "—"} />
               </CollapsibleSection>
 
-              <CollapsibleSection title="Weight history" icon={Scale}>
+              <CollapsibleSection title="Weight history" icon={<Scale className="size-4 text-primary" strokeWidth={2.25} />}>
                 <Field label="Main motive" value={prettify(healthProfile.main_motive)} />
                 <Field
                   label="Reasons for overweight"
@@ -253,7 +253,7 @@ export default async function WellnessReportDetailPage({
                 <Field label="Why past methods failed" value={joinList(healthProfile.fail_reasons)} />
               </CollapsibleSection>
 
-              <CollapsibleSection title="Motivation" icon={Target}>
+              <CollapsibleSection title="Motivation" icon={<Target className="size-4 text-primary" strokeWidth={2.25} />}>
                 <Field label="Breakfast motives" value={joinList(healthProfile.breakfast_motives)} />
                 <Field label="Weight loss motives" value={joinList(healthProfile.weight_loss_motives)} />
                 <Field
@@ -273,7 +273,7 @@ export default async function WellnessReportDetailPage({
                 <Field label="Avg meal spend" value={healthProfile.avg_meal_spend != null ? `RM${healthProfile.avg_meal_spend}` : "—"} />
               </CollapsibleSection>
 
-              <CollapsibleSection title="Eating habits" icon={Utensils} defaultOpen={false}>
+              <CollapsibleSection title="Eating habits" icon={<Utensils className="size-4 text-primary" strokeWidth={2.25} />} defaultOpen={false}>
                 <Field label="Breakfast time" value={healthProfile.breakfast_time || "—"} />
                 <Field label="Breakfast choices" value={joinList(healthProfile.breakfast_choices, healthProfile.breakfast_other)} />
                 <Field label="Morning tea" value={prettify(healthProfile.morning_tea)} />
@@ -285,7 +285,7 @@ export default async function WellnessReportDetailPage({
                 <Field label="Supper" value={prettify(healthProfile.supper)} />
               </CollapsibleSection>
 
-              <CollapsibleSection title="Lifestyle" icon={Moon} defaultOpen={false}>
+              <CollapsibleSection title="Lifestyle" icon={<Moon className="size-4 text-primary" strokeWidth={2.25} />} defaultOpen={false}>
                 <Field label="Most tired time" value={healthProfile.most_tired_time || "—"} />
                 <Field label="Hungriest time" value={healthProfile.hungriest_time || "—"} />
                 <Field label="Wake time" value={healthProfile.wake_time || "—"} />

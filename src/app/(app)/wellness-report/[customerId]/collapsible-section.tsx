@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, type LucideIcon } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function CollapsibleSection({
   title,
-  icon: Icon,
+  icon,
   defaultOpen = true,
   children,
 }: {
   title: string;
-  icon: LucideIcon;
+  // A pre-rendered element, not a component reference — a Server Component
+  // (page.tsx) can't pass a raw component/function as a prop to a Client
+  // Component like this one; only serializable JSX survives that boundary.
+  icon: ReactNode;
   defaultOpen?: boolean;
   children: ReactNode;
 }) {
@@ -22,7 +25,7 @@ export function CollapsibleSection({
       <button type="button" className="w-full text-left" onClick={() => setOpen((v) => !v)}>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Icon className="size-4 text-primary" strokeWidth={2.25} />
+            {icon}
             {title}
           </CardTitle>
           {open ? (
