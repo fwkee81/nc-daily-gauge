@@ -6,6 +6,7 @@ import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
   MonthlyCoachCupsByDayRow,
+  MonthlyCoachCupsRow,
   MonthlyCupRecordsRow,
   MonthlyDailyBreakdownRow,
   MonthlyInventoryOutRow,
@@ -85,6 +86,7 @@ export function MonthlyReportClient({
   clubName,
   month,
   totals,
+  coachCups,
   packageSales,
   inventoryOut,
   dailyBreakdown,
@@ -98,6 +100,7 @@ export function MonthlyReportClient({
   clubName: string;
   month: string;
   totals: { total_cups: number; days_in_period: number; avg_daily_cups: number };
+  coachCups: MonthlyCoachCupsRow[];
   packageSales: MonthlyPackageSaleRow[];
   inventoryOut: MonthlyInventoryOutRow[];
   dailyBreakdown: MonthlyDailyBreakdownRow[];
@@ -131,6 +134,7 @@ export function MonthlyReportClient({
   }
 
   const allDates = Array.from(new Set(coachCupsByDay.flatMap((c) => Object.keys(c.daily)))).sort();
+  const avgByCoach = new Map(coachCups.map((c) => [c.coach_id, c.avg_daily_cups]));
 
   return (
     <div className="mx-auto max-w-[900px] px-4 py-6 print:max-w-none print:px-0 print:py-0">
@@ -400,6 +404,14 @@ export function MonthlyReportClient({
                 {coachCupsByDay.map((c) => (
                   <td key={c.coach_id} className="py-1.5 text-right">
                     {c.total_cups}
+                  </td>
+                ))}
+              </tr>
+              <tr className="text-muted-foreground">
+                <td className="py-1">Avg / operating day</td>
+                {coachCupsByDay.map((c) => (
+                  <td key={c.coach_id} className="py-1 text-right">
+                    {avgByCoach.get(c.coach_id) ?? "—"}
                   </td>
                 ))}
               </tr>
