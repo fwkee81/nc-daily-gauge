@@ -44,6 +44,10 @@ export async function createCustomer(input: CustomerFormInput) {
     dob: input.dob,
     age_override: input.ageOverride,
     nc_level: input.ncLevel,
+    // Set once, at creation, and never updated again — see the comment on
+    // customers.initial_nc_level in supabase/schema.sql for why nc_level
+    // itself can't be used to answer "what level did they start at".
+    initial_nc_level: input.ncLevel,
     consumption_balance: input.consumptionBalance,
     invited_by_type: input.invitedByType,
     invited_by_coach_id: input.invitedByCoachId,

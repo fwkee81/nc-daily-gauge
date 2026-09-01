@@ -95,6 +95,13 @@ create table customers (
   dob date,
   age_override integer,
   nc_level customer_nc_level not null,
+  -- Set once at creation and never touched again (nc_level above is CURRENT
+  -- level and gets overwritten by renew_customer() on every renewal) — the
+  -- only reliable way to answer "what level did this customer start at",
+  -- which is what every New 5-Day/10-Day/20-Day/30-Day count needs to
+  -- classify a "new" signup correctly even if the customer has since
+  -- upgraded within the same reporting window.
+  initial_nc_level customer_nc_level not null,
   consumption_balance integer not null default 0,
   invited_by_type invited_by_type not null,
   invited_by_coach_id uuid references coaches (id),
@@ -940,12 +947,12 @@ begin
   select nc_club_id into v_club_id from coaches where id = v_coach_id;
 
   insert into customers (
-    nc_club_id, name, gender, contact, dob, nc_level, consumption_balance,
+    nc_club_id, name, gender, contact, dob, nc_level, initial_nc_level, consumption_balance,
     invited_by_type, invited_by_coach_id, invited_by_customer_id, coach_id,
     created_by, active
   )
   values (
-    v_club_id, p_name, 'Others', p_contact, null, 'Ala Carte', 1,
+    v_club_id, p_name, 'Others', p_contact, null, 'Ala Carte', 'Ala Carte', 1,
     p_invited_by_type, p_invited_by_coach_id, p_invited_by_customer_id,
     -- Invited by a coach: attribute directly to that coach. Invited by a
     -- customer: inherit whichever coach that customer is under, so the
@@ -1945,7 +1952,7 @@ as $$
   ),
   new_customers as (
     select
-      cu.nc_level::text as nc_level,
+      cu.initial_nc_level::text as nc_level,
       cu.coach_id,
       co.name as coach_name,
       cu.id as customer_id,
@@ -1958,7 +1965,7 @@ as $$
     cross join bounds b
     where cu.nc_club_id = (select id from target_club)
       and cu.nc_club_id in (select visible_club_ids(current_coach_id()))
-      and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
+      and cu.initial_nc_level in ('5-day', '10-day', '20-day', '30-day')
       and cu.created_at::date between b.month_start and b.month_end
   ),
   renewals as (
@@ -2078,13 +2085,13 @@ as $$
     from daily_cup_totals
   ),
   new_signups as (
-    select cu.nc_level, count(*) as n
+    select cu.initial_nc_level as nc_level, count(*) as n
     from customers cu
     cross join windows w
     where cu.nc_club_id = (select id from target_club)
-      and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
+      and cu.initial_nc_level in ('5-day', '10-day', '20-day', '30-day')
       and cu.created_at::date between w.window_start and w.window_end
-    group by cu.nc_level
+    group by cu.initial_nc_level
   ),
   renewals as (
     select cr.nc_level, count(*) as n
@@ -2152,7 +2159,7 @@ as $$
     where rn <= 6
   )
   select
-    cu.nc_level,
+    cu.initial_nc_level as nc_level,
     'new'::text as kind,
     cu.name as customer_name,
     co.name as coach_name,
@@ -2161,7 +2168,7 @@ as $$
   cross join windows w
   left join coaches co on co.id = cu.coach_id
   where cu.nc_club_id = (select id from target_club)
-    and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
+    and cu.initial_nc_level in ('5-day', '10-day', '20-day', '30-day')
     and cu.created_at::date between w.window_start and w.window_end
 
   union all
@@ -2426,11 +2433,11 @@ as $$
     group by mc.club_id
   ),
   new_signups as (
-    select cu.nc_club_id as club_id, cu.nc_level, cu.created_at::date as d, count(*) as n
+    select cu.nc_club_id as club_id, cu.initial_nc_level as nc_level, cu.created_at::date as d, count(*) as n
     from customers cu
     where cu.nc_club_id in (select club_id from my_clubs)
-      and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
-    group by cu.nc_club_id, cu.nc_level, cu.created_at::date
+      and cu.initial_nc_level in ('5-day', '10-day', '20-day', '30-day')
+    group by cu.nc_club_id, cu.initial_nc_level, cu.created_at::date
   ),
   renewals as (
     select cu.nc_club_id as club_id, cr.nc_level, cr.created_at::date as d, count(*) as n
@@ -2617,13 +2624,13 @@ as $$
     group by club_id
   ),
   new_signups as (
-    select cu.nc_club_id as club_id, cu.nc_level, count(*) as n
+    select cu.nc_club_id as club_id, cu.initial_nc_level as nc_level, count(*) as n
     from customers cu
     join windows w on w.club_id = cu.nc_club_id
     where cu.nc_club_id in (select club_id from my_clubs)
-      and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
+      and cu.initial_nc_level in ('5-day', '10-day', '20-day', '30-day')
       and cu.created_at::date between w.window_start and w.window_end
-    group by cu.nc_club_id, cu.nc_level
+    group by cu.nc_club_id, cu.initial_nc_level
   ),
   renewals as (
     select cu.nc_club_id as club_id, cr.nc_level, count(*) as n
@@ -2708,7 +2715,7 @@ as $$
   )
   select
     cu.nc_club_id as club_id,
-    cu.nc_level,
+    cu.initial_nc_level as nc_level,
     'new'::text as kind,
     cu.name as customer_name,
     co.name as coach_name,
@@ -2717,7 +2724,7 @@ as $$
   join windows w on w.club_id = cu.nc_club_id
   left join coaches co on co.id = cu.coach_id
   where cu.nc_club_id in (select club_id from my_clubs)
-    and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
+    and cu.initial_nc_level in ('5-day', '10-day', '20-day', '30-day')
     and cu.created_at::date between w.window_start and w.window_end
 
   union all
@@ -2818,7 +2825,7 @@ as $$
   )
   select
     cu.nc_club_id as club_id,
-    cu.nc_level,
+    cu.initial_nc_level as nc_level,
     'new'::text as kind,
     cu.name as customer_name,
     co.name as coach_name,
@@ -2826,7 +2833,7 @@ as $$
   from customers cu
   left join coaches co on co.id = cu.coach_id
   where cu.nc_club_id in (select club_id from my_clubs)
-    and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
+    and cu.initial_nc_level in ('5-day', '10-day', '20-day', '30-day')
     and cu.created_at::date = p_date
 
   union all
@@ -2926,13 +2933,13 @@ as $$
     group by mc.club_id
   ),
   new_signups as (
-    select cu.nc_club_id as club_id, cu.nc_level, count(*) as n
+    select cu.nc_club_id as club_id, cu.initial_nc_level as nc_level, count(*) as n
     from customers cu
     cross join bounds b
     where cu.nc_club_id in (select club_id from my_clubs)
-      and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
+      and cu.initial_nc_level in ('5-day', '10-day', '20-day', '30-day')
       and cu.created_at::date between b.month_start and b.month_end
-    group by cu.nc_club_id, cu.nc_level
+    group by cu.nc_club_id, cu.initial_nc_level
   ),
   renewals as (
     select cu.nc_club_id as club_id, cr.nc_level, count(*) as n
@@ -3000,7 +3007,7 @@ as $$
   )
   select
     cu.nc_club_id as club_id,
-    cu.nc_level,
+    cu.initial_nc_level as nc_level,
     'new'::text as kind,
     cu.name as customer_name,
     co.name as coach_name,
@@ -3009,7 +3016,7 @@ as $$
   cross join bounds b
   left join coaches co on co.id = cu.coach_id
   where cu.nc_club_id in (select club_id from my_clubs)
-    and cu.nc_level in ('5-day', '10-day', '20-day', '30-day')
+    and cu.initial_nc_level in ('5-day', '10-day', '20-day', '30-day')
     and cu.created_at::date between b.month_start and b.month_end
 
   union all
@@ -3082,7 +3089,7 @@ as $$
     cross join bounds b
     where cu.nc_club_id in (select club_id from my_clubs)
       and cu.nc_club_id = co.nc_club_id
-      and cu.nc_level = '5-day'
+      and cu.initial_nc_level = '5-day'
       and cu.created_at::date between b.month_start and b.month_end
       and cu.coach_id is not null
     group by cu.coach_id
@@ -3094,7 +3101,7 @@ as $$
     cross join bounds b
     where cu.nc_club_id in (select club_id from my_clubs)
       and cu.nc_club_id = co.nc_club_id
-      and cu.nc_level = '30-day'
+      and cu.initial_nc_level = '30-day'
       and cu.created_at::date between b.month_start and b.month_end
       and cu.coach_id is not null
     group by cu.coach_id
