@@ -13,6 +13,15 @@ import {
 } from "@/components/ui/table";
 import type { WellnessLog } from "@/lib/types/database";
 
+// Reading dates come from an external system (My Wellness) whose data isn't
+// guaranteed clean — an empty string or otherwise malformed log_date makes
+// date-fns' format() throw and crash the whole table. Fall back to "—"
+// instead of letting one bad row take down every other reading with it.
+function formatLogDate(value: string): string {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "—" : format(d, "d MMM yyyy");
+}
+
 export function WellnessReadingsTable({ readings }: { readings: WellnessLog[] }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -47,7 +56,7 @@ export function WellnessReadingsTable({ readings }: { readings: WellnessLog[] })
             <TableBody>
               {readings.map((log) => (
                 <TableRow key={log.id}>
-                  <TableCell>{format(new Date(log.log_date), "d MMM yyyy")}</TableCell>
+                  <TableCell>{formatLogDate(log.log_date)}</TableCell>
                   <TableCell>{log.weight_kg != null ? `${log.weight_kg} kg` : "—"}</TableCell>
                   <TableCell>{log.body_fat_pct != null ? `${log.body_fat_pct}%` : "—"}</TableCell>
                   <TableCell>{log.body_water_pct != null ? `${log.body_water_pct}%` : "—"}</TableCell>

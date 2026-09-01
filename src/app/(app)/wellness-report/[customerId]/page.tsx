@@ -28,6 +28,16 @@ const WATER_BAND_LABELS: Record<string, string> = {
   gt4l: "> 4L",
 };
 
+// Reading dates come from an external system (My Wellness) whose data isn't
+// guaranteed clean — an empty string or otherwise malformed log_date makes
+// date-fns' format() throw and crash the whole page, taking down every
+// other reading with it. Fall back to "—" instead of letting one bad row
+// do that.
+function formatLogDate(value: string): string {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "—" : format(d, "d MMM yyyy");
+}
+
 function prettify(value: string | null | undefined): string {
   if (!value) return "—";
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -153,7 +163,7 @@ export default async function WellnessReportDetailPage({
             <div className="mt-2 grid gap-4 sm:grid-cols-2">
               <Card className="border-2 border-primary bg-primary/5">
                 <CardHeader>
-                  <CardDescription>Latest reading — {format(new Date(latest.log_date), "d MMM yyyy")}</CardDescription>
+                  <CardDescription>Latest reading — {formatLogDate(latest.log_date)}</CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-3 gap-3">
                   <BigField label="Weight" value={latest.weight_kg != null ? `${latest.weight_kg} kg` : "—"} />
@@ -171,7 +181,7 @@ export default async function WellnessReportDetailPage({
                 <CardHeader>
                   <CardDescription>
                     Change since first reading
-                    {earliest && earliest.id !== latest.id && ` (${format(new Date(earliest.log_date), "d MMM yyyy")})`}
+                    {earliest && earliest.id !== latest.id && ` (${formatLogDate(earliest.log_date)})`}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-3">
