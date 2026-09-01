@@ -316,6 +316,44 @@ export type MonthlyInventoryOutRow = {
   total_vp: number;
 };
 
+export type MonthlyDailyBreakdownRow = {
+  checkin_date: string;
+  total_cups: number;
+  dine_in_cups: number;
+  takeaway_cups: number;
+  plugin_cups: number;
+  consumption_vp: number;
+};
+
+export type MonthlyCoachCupsByDayRow = {
+  coach_id: string;
+  coach_name: string;
+  total_cups: number;
+  daily: Record<string, number>;
+};
+
+export type MonthlyCupRecordsRow = {
+  highest_date: string | null;
+  highest_cups: number | null;
+  lowest_date: string | null;
+  lowest_cups: number | null;
+  best_coach_id: string | null;
+  best_coach_name: string | null;
+  best_coach_date: string | null;
+  best_coach_cups: number | null;
+};
+
+export type MonthlyInventoryReportRow = {
+  product_id: string;
+  product_name: string;
+  vp: number;
+  opening_balance: number;
+  restocked_qty: number;
+  consumed_qty: number;
+  sold_qty: number;
+  closing_balance: number;
+};
+
 export type BranchClubRow = {
   club_id: string;
   club_name: string;
@@ -760,6 +798,22 @@ export type Database = {
       monthly_inventory_out: {
         Args: { p_month: string; p_club_id?: string | null };
         Returns: MonthlyInventoryOutRow[];
+      };
+      monthly_daily_breakdown: {
+        Args: { p_month: string; p_club_id?: string | null };
+        Returns: MonthlyDailyBreakdownRow[];
+      };
+      monthly_coach_cups_by_day: {
+        Args: { p_month: string; p_club_id?: string | null };
+        Returns: MonthlyCoachCupsByDayRow[];
+      };
+      monthly_cup_records: {
+        Args: { p_month: string; p_club_id?: string | null };
+        Returns: MonthlyCupRecordsRow[];
+      };
+      monthly_inventory_report: {
+        Args: { p_month: string; p_club_id?: string | null };
+        Returns: MonthlyInventoryReportRow[];
       };
       weekly_totals: {
         Args: { p_date?: string; p_club_id?: string | null };
