@@ -39,7 +39,9 @@ function formatLogDate(value: string): string {
 }
 
 function prettify(value: string | null | undefined): string {
-  if (!value) return "—";
+  // value is external (My Wellness) data — guard against it not actually
+  // being a string, which would throw on .replace.
+  if (!value || typeof value !== "string") return "—";
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -49,7 +51,9 @@ function yesNo(value: boolean | null | undefined): string {
 }
 
 function joinList(items: string[] | null | undefined, other?: string | null): string {
-  const all = [...(items ?? [])];
+  // items is external (My Wellness) data — guard against it not actually
+  // being an array (e.g. a stray object), which would throw on spread.
+  const all = Array.isArray(items) ? [...items] : [];
   if (other) all.push(other);
   return all.length > 0 ? all.join(", ") : "—";
 }
