@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addDays, addMonths, differenceInYears, format, parse } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -176,6 +176,17 @@ export function MetricsClient({
         </TabsList>
 
         <TabsContent value="monthly" className="mt-4 space-y-6">
+          <div className="flex justify-end">
+            <a
+              href={`/reports/metrics/monthly-report?month=${month}${viewingBranch ? `&club=${clubId}` : ""}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Generate Monthly Report
+            </a>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-3">
             <Card className="border-2 border-primary bg-primary/5">
               <CardHeader>
