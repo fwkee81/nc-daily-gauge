@@ -257,7 +257,7 @@ export function CustomerForm({
     e.preventDefault();
     setError(null);
 
-    if (!name || !gender || !contact || !dob || !ncLevel) {
+    if (!name || !gender || !contact || !ncLevel) {
       setError("Please fill in all required fields.");
       return;
     }
@@ -270,7 +270,7 @@ export function CustomerForm({
       name,
       gender: gender as CustomerGender,
       contact,
-      dob,
+      dob: dob || null,
       ageOverride: manualAge ? Number(ageOverride) : null,
       ncLevel: ncLevel as CustomerNcLevel,
       consumptionBalance: Number(consumptionBalance),
@@ -335,8 +335,13 @@ export function CustomerForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label>Date of birth *</Label>
-          <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} required />
+          <Label>Date of birth</Label>
+          <Input
+            type="date"
+            value={dob}
+            onChange={(e) => setDob(e.target.value)}
+            placeholder="Unknown"
+          />
         </div>
         <div className="space-y-1">
           <div className="flex items-center justify-between">

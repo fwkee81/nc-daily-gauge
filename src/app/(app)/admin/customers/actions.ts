@@ -14,7 +14,7 @@ export interface CustomerFormInput {
   name: string;
   gender: CustomerGender;
   contact: string;
-  dob: string;
+  dob: string | null;
   ageOverride: number | null;
   ncLevel: CustomerNcLevel;
   consumptionBalance: number;
