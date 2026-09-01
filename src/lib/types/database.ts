@@ -65,6 +65,9 @@ export type Customer = {
   dob: string | null;
   age_override: number | null;
   nc_level: CustomerNcLevel;
+  // Set once at creation and never updated again — see the comment on
+  // customers.initial_nc_level in supabase/schema.sql.
+  initial_nc_level: CustomerNcLevel;
   consumption_balance: number;
   invited_by_type: InvitedByType;
   invited_by_coach_id: string | null;
