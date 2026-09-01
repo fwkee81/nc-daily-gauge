@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { differenceInYears, parseISO } from "date-fns";
+import { differenceInYears, format, parseISO } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -179,6 +179,10 @@ export function CustomerProfileDialog({
               <div>
                 <p className="text-xs text-muted-foreground">Age</p>
                 <p>{ageOf(profile) ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Birthday</p>
+                <p>{profile.dob ? format(parseISO(profile.dob), "d MMM yyyy") : "—"}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">NC Level</p>
