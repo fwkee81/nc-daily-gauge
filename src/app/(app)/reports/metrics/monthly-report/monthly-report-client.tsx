@@ -139,6 +139,12 @@ export function MonthlyReportClient({
           @page { size: A4; margin: 14mm; }
           body { background: white; }
         }
+        /* Chrome/Edge print backgrounds and colors even when the print
+           dialog's "Background graphics" option is left unchecked. */
+        .report-page, .report-page * {
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
       `}</style>
 
       <div className="mb-6 flex items-center justify-between print:hidden">
