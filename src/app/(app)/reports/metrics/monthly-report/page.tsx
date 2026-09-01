@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FINANCE_EXPENSE_CATEGORIES, FINANCE_INCOME_CATEGORIES } from "@/lib/constants";
 import type {
   MonthlyCoachCupsByDayRow,
+  MonthlyCoachCupsRow,
   MonthlyCupRecordsRow,
   MonthlyDailyBreakdownRow,
   MonthlyInventoryOutRow,
@@ -76,6 +77,7 @@ export default async function MonthlyReportPage({
 
   const [
     totalsRes,
+    coachCupsRes,
     packageSalesRes,
     inventoryOutRes,
     dailyBreakdownRes,
@@ -87,6 +89,7 @@ export default async function MonthlyReportPage({
     financeRes,
   ] = await Promise.all([
     supabase.rpc("monthly_totals", { p_month: monthStart, p_club_id: clubId }),
+    supabase.rpc("monthly_coach_cups", { p_month: monthStart, p_club_id: clubId }),
     supabase.rpc("monthly_package_sales", { p_month: monthStart, p_club_id: clubId }),
     supabase.rpc("monthly_inventory_out", { p_month: monthStart, p_club_id: clubId }),
     supabase.rpc("monthly_daily_breakdown", { p_month: monthStart, p_club_id: clubId }),
@@ -130,6 +133,7 @@ export default async function MonthlyReportPage({
       clubName={clubRes.data?.name ?? "—"}
       month={month}
       totals={totalsRes.data?.[0] ?? { total_cups: 0, days_in_period: 0, avg_daily_cups: 0 }}
+      coachCups={(coachCupsRes.data ?? []) as MonthlyCoachCupsRow[]}
       packageSales={(packageSalesRes.data ?? []) as MonthlyPackageSaleRow[]}
       inventoryOut={(inventoryOutRes.data ?? []) as MonthlyInventoryOutRow[]}
       dailyBreakdown={(dailyBreakdownRes.data ?? []) as MonthlyDailyBreakdownRow[]}
