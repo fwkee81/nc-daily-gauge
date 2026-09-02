@@ -4,6 +4,8 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,6 +79,49 @@ function fmt(iso: string) {
   return format(new Date(iso), "d MMM, h:mma");
 }
 
+type CustomerSortKey = "name" | "nc_level" | "points";
+
+function SortableHead({
+  label,
+  sortKeyName,
+  sortKey,
+  sortDir,
+  onSort,
+  align,
+}: {
+  label: string;
+  sortKeyName: CustomerSortKey;
+  sortKey: CustomerSortKey;
+  sortDir: "asc" | "desc";
+  onSort: (key: CustomerSortKey) => void;
+  align?: "right";
+}) {
+  const active = sortKey === sortKeyName;
+  return (
+    <TableHead className={align === "right" ? "text-right" : undefined}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKeyName)}
+        className={cn(
+          "inline-flex items-center gap-1 hover:text-foreground",
+          align === "right" && "flex-row-reverse"
+        )}
+      >
+        {label}
+        {active ? (
+          sortDir === "asc" ? (
+            <ArrowUp className="size-3.5" />
+          ) : (
+            <ArrowDown className="size-3.5" />
+          )
+        ) : (
+          <ArrowUpDown className="size-3.5 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  );
+}
+
 export function LoyaltyClient({
   isAdmin,
   settings,
@@ -98,12 +143,30 @@ export function LoyaltyClient({
   const [awarding, setAwarding] = useState<LoyaltyCustomerRow | null>(null);
   const [redeeming, setRedeeming] = useState<LoyaltyCustomerRow | null>(null);
   const [voiding, setVoiding] = useState<LoyaltyPointsLedgerEntry | null>(null);
+  const [sortKey, setSortKey] = useState<CustomerSortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function toggleSort(key: CustomerSortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter((c) => c.name.toLowerCase().includes(q));
-  }, [customers, search]);
+    const base = q ? customers.filter((c) => c.name.toLowerCase().includes(q)) : customers;
+    const sorted = [...base].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") cmp = a.name.localeCompare(b.name);
+      else if (sortKey === "nc_level") cmp = a.nc_level.localeCompare(b.nc_level);
+      else cmp = a.loyalty_points_balance - b.loyalty_points_balance;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  }, [customers, search, sortKey, sortDir]);
 
   const enabled = settings?.enabled ?? false;
 
@@ -156,9 +219,28 @@ export function LoyaltyClient({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>NC Level</TableHead>
-                    <TableHead className="text-right">Points</TableHead>
+                    <SortableHead
+                      label="Name"
+                      sortKeyName="name"
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="NC Level"
+                      sortKeyName="nc_level"
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Points"
+                      sortKeyName="points"
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                      align="right"
+                    />
                     {isAdmin && <TableHead />}
                   </TableRow>
                 </TableHeader>
