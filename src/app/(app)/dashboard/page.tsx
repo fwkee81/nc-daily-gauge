@@ -11,6 +11,7 @@ import {
   Package,
   Wallet,
   Blender,
+  Award,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,6 +100,13 @@ export default async function DashboardPage() {
           },
         ]
       : []),
+    {
+      href: "/loyalty",
+      title: "Loyalty Program",
+      description: "Track check-in points, award bonuses, and redeem rewards.",
+      icon: Award,
+      tint: "bg-primary/15 text-primary",
+    },
   ];
 
   const toolTiles: typeof tiles = [
