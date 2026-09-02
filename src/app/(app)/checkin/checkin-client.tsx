@@ -140,6 +140,7 @@ export function CheckinClient({
     balance: number;
     ncLevel?: CustomerNcLevel;
     isBirthdayShake?: boolean;
+    loyaltyPoints?: number | null;
   } | null>(null);
   const [walkinOpen, setWalkinOpen] = useState(false);
 
@@ -217,6 +218,7 @@ export function CheckinClient({
       balance: res.balance!,
       ncLevel: res.ncLevel ?? undefined,
       isBirthdayShake: res.isBirthdayShake,
+      loyaltyPoints: res.loyaltyPoints ?? null,
     });
     setSelectedKey(null);
     setCups(1);
@@ -483,6 +485,11 @@ export function CheckinClient({
                 <p className="text-base text-muted-foreground">
                   Enjoy your free birthday breakfast — balance not deducted!
                 </p>
+                {result.loyaltyPoints != null && (
+                  <p className="text-base font-medium text-primary">
+                    Loyalty Points: {result.loyaltyPoints}
+                  </p>
+                )}
               </div>
               <Button className="w-full py-6 text-lg" onClick={() => setResult(null)}>
                 OK
@@ -501,6 +508,11 @@ export function CheckinClient({
                   ) : (
                     <p className="text-base text-muted-foreground">
                       Consumption balance left: {result.balance}
+                    </p>
+                  )}
+                  {result.loyaltyPoints != null && (
+                    <p className="text-base font-medium text-primary">
+                      Loyalty Points: {result.loyaltyPoints}
                     </p>
                   )}
                   {result.balance < RENEWAL_REMINDER_THRESHOLD && (
