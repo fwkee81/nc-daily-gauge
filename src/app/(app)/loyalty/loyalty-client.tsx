@@ -158,7 +158,7 @@ export function LoyaltyClient({
                       {isAdmin && (
                         <TableCell className="flex justify-end gap-2">
                           <Button size="sm" variant="outline" onClick={() => setAwarding(c)}>
-                            Add points
+                            Add LP
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => setRedeeming(c)}>
                             Redeem
@@ -542,7 +542,7 @@ function AwardPointsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add points — {customer.name}</DialogTitle>
+          <DialogTitle>Add LP — {customer.name}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -591,7 +591,7 @@ function AwardPointsDialog({
           )}
 
           <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? "Saving..." : "Add points"}
+            {isPending ? "Saving..." : "Add LP"}
           </Button>
         </form>
       </DialogContent>
