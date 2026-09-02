@@ -27,7 +27,7 @@ export async function submitCheckin(
 
   const { data: customer, error: customerError } = await supabase
     .from("customers")
-    .select("name, nc_level, linked_to_customer_id")
+    .select("name, nc_level, nc_club_id, linked_to_customer_id, loyalty_points_balance")
     .eq("id", customerId)
     .single();
 
@@ -63,6 +63,22 @@ export async function submitCheckin(
     if (member) displayName = member.name;
   }
 
+  // Loyalty points live on this customer's own row (unlike consumption
+  // balance, they're never shared across a linked account — see
+  // record_checkin() in supabase/schema.sql), and only exist for eligible
+  // nc_levels with the club's Loyalty Program turned on.
+  let loyaltyPoints: number | null = null;
+  if (["10-day", "20-day", "30-day"].includes(customer.nc_level)) {
+    const { data: loyaltySettings } = await supabase
+      .from("loyalty_settings")
+      .select("enabled")
+      .eq("nc_club_id", customer.nc_club_id)
+      .maybeSingle();
+    if (loyaltySettings?.enabled) {
+      loyaltyPoints = customer.loyalty_points_balance;
+    }
+  }
+
   return {
     success: true,
     checkin: data,
@@ -70,6 +86,7 @@ export async function submitCheckin(
     balance: balanceCustomer.consumption_balance,
     ncLevel: customer.nc_level,
     isBirthdayShake,
+    loyaltyPoints,
   };
 }
 
