@@ -973,6 +973,18 @@ create policy "loyalty_earn_rules_update_admin" on loyalty_earn_rules
     and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
   );
 
+-- Lets an admin remove a mistakenly-added rule outright, not just
+-- deactivate it. Still safe: loyalty_points_ledger.earn_rule_id references
+-- this table with no cascade, so Postgres refuses to delete one that's
+-- already been used (foreign key violation) — surfaced by the app as
+-- "turn it off instead" rather than a raw DB error.
+create policy "loyalty_earn_rules_delete_admin" on loyalty_earn_rules
+  for delete to authenticated
+  using (
+    is_current_coach_admin()
+    and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
+  );
+
 create policy "loyalty_rewards_select" on loyalty_rewards
   for select to authenticated
   using (nc_club_id in (select visible_club_ids(current_coach_id())));
@@ -991,6 +1003,14 @@ create policy "loyalty_rewards_update_admin" on loyalty_rewards
     and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
   )
   with check (
+    is_current_coach_admin()
+    and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
+  );
+
+-- Same reasoning as loyalty_earn_rules_delete_admin above.
+create policy "loyalty_rewards_delete_admin" on loyalty_rewards
+  for delete to authenticated
+  using (
     is_current_coach_admin()
     and nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
   );

@@ -97,6 +97,38 @@ export async function setLoyaltyEarnRuleActive(id: string, active: boolean) {
   return { success: true };
 }
 
+export async function updateLoyaltyEarnRule(id: string, label: string, points: number) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) return { error: "Not authorized." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("loyalty_earn_rules").update({ label, points }).eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/loyalty");
+  return { success: true };
+}
+
+// A rule already used to award points can't be deleted — loyalty_points_
+// ledger.earn_rule_id references it with no cascade, so Postgres raises a
+// foreign key violation (23503) rather than silently orphaning history.
+export async function deleteLoyaltyEarnRule(id: string) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) return { error: "Not authorized." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("loyalty_earn_rules").delete().eq("id", id);
+
+  if (error) {
+    if (error.code === "23503") {
+      return { error: "Can't delete — it's already been used to award points. Turn it off instead." };
+    }
+    return { error: error.message };
+  }
+  revalidatePath("/loyalty");
+  return { success: true };
+}
+
 export async function createLoyaltyReward(name: string, pointsCost: number) {
   const coach = await getCurrentCoach();
   if (!coach || !coach.is_admin || !coach.nc_club_id) return { error: "Not authorized." };
@@ -119,6 +151,40 @@ export async function setLoyaltyRewardActive(id: string, active: boolean) {
   const { error } = await supabase.from("loyalty_rewards").update({ active }).eq("id", id);
 
   if (error) return { error: error.message };
+  revalidatePath("/loyalty");
+  return { success: true };
+}
+
+export async function updateLoyaltyReward(id: string, name: string, pointsCost: number) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) return { error: "Not authorized." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("loyalty_rewards")
+    .update({ name, points_cost: pointsCost })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/loyalty");
+  return { success: true };
+}
+
+// Same reasoning as deleteLoyaltyEarnRule — blocked by a foreign key
+// violation (23503) if it's already been redeemed.
+export async function deleteLoyaltyReward(id: string) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) return { error: "Not authorized." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("loyalty_rewards").delete().eq("id", id);
+
+  if (error) {
+    if (error.code === "23503") {
+      return { error: "Can't delete — it's already been used for a redemption. Turn it off instead." };
+    }
+    return { error: error.message };
+  }
   revalidatePath("/loyalty");
   return { success: true };
 }

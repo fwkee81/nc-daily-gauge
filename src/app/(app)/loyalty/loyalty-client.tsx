@@ -26,14 +26,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { CustomerNcLevel, LoyaltyEarnRule, LoyaltyPointsLedgerEntry, LoyaltyReward, LoyaltySettings } from "@/lib/types/database";
 import {
   awardLoyaltyPoints,
   createLoyaltyEarnRule,
   createLoyaltyReward,
+  deleteLoyaltyEarnRule,
+  deleteLoyaltyReward,
   redeemLoyaltyReward,
   setLoyaltyEarnRuleActive,
   setLoyaltyRewardActive,
+  updateLoyaltyEarnRule,
+  updateLoyaltyReward,
   upsertLoyaltySettings,
   voidLoyaltyRedemption,
 } from "./actions";
@@ -158,7 +173,7 @@ export function LoyaltyClient({
                       {isAdmin && (
                         <TableCell className="flex justify-end gap-2">
                           <Button size="sm" variant="outline" onClick={() => setAwarding(c)}>
-                            Add points
+                            Add LP
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => setRedeeming(c)}>
                             Redeem
@@ -409,12 +424,7 @@ function SettingsPanel({
         <p className="text-sm font-semibold">Earn rules (for manual bonus points)</p>
         <ul className="mt-2 space-y-1">
           {earnRules.map((r) => (
-            <li key={r.id} className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm">
-              <span className={r.active ? undefined : "text-muted-foreground line-through"}>
-                {r.label} — {r.points} pts
-              </span>
-              <Switch checked={r.active} onCheckedChange={(v) => handleToggleRule(r.id, v)} />
-            </li>
+            <EarnRuleRow key={r.id} rule={r} onToggle={(v) => handleToggleRule(r.id, v)} onDone={onDone} />
           ))}
           {earnRules.length === 0 && <p className="text-sm text-muted-foreground">No earn rules yet.</p>}
         </ul>
@@ -448,12 +458,7 @@ function SettingsPanel({
         <p className="text-sm font-semibold">Rewards catalog</p>
         <ul className="mt-2 space-y-1">
           {rewards.map((r) => (
-            <li key={r.id} className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm">
-              <span className={r.active ? undefined : "text-muted-foreground line-through"}>
-                {r.name} — {r.points_cost} pts
-              </span>
-              <Switch checked={r.active} onCheckedChange={(v) => handleToggleReward(r.id, v)} />
-            </li>
+            <RewardRow key={r.id} reward={r} onToggle={(v) => handleToggleReward(r.id, v)} onDone={onDone} />
           ))}
           {rewards.length === 0 && <p className="text-sm text-muted-foreground">No rewards yet.</p>}
         </ul>
@@ -483,6 +488,198 @@ function SettingsPanel({
         </div>
       </div>
     </div>
+  );
+}
+
+function EarnRuleRow({
+  rule,
+  onToggle,
+  onDone,
+}: {
+  rule: LoyaltyEarnRule;
+  onToggle: (active: boolean) => void;
+  onDone: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [label, setLabel] = useState(rule.label);
+  const [points, setPoints] = useState(String(rule.points));
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    const p = Number(points);
+    if (!label.trim()) {
+      toast.error("Label can't be empty.");
+      return;
+    }
+    if (!Number.isInteger(p) || p <= 0) {
+      toast.error("Points must be a whole number greater than 0.");
+      return;
+    }
+    setSaving(true);
+    const result = await updateLoyaltyEarnRule(rule.id, label.trim(), p);
+    setSaving(false);
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    setEditing(false);
+    onDone();
+  }
+
+  async function handleDelete() {
+    const result = await deleteLoyaltyEarnRule(rule.id);
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    onDone();
+  }
+
+  if (editing) {
+    return (
+      <li className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+        <Input className="w-40" value={label} onChange={(e) => setLabel(e.target.value)} />
+        <Input
+          type="number"
+          min={1}
+          className="w-20"
+          value={points}
+          onChange={(e) => setPoints(e.target.value)}
+        />
+        <Button size="sm" disabled={saving} onClick={handleSave}>
+          {saving ? "Saving..." : "Save"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+          Cancel
+        </Button>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm">
+      <span className={rule.active ? undefined : "text-muted-foreground line-through"}>
+        {rule.label} — {rule.points} pts
+      </span>
+      <div className="flex items-center gap-2">
+        <Switch checked={rule.active} onCheckedChange={onToggle} />
+        <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+          Edit
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>Delete</AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete &quot;{rule.label}&quot;?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This can&apos;t be undone. If it&apos;s already been used to award points, deleting will
+                fail — turn it off instead in that case.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </li>
+  );
+}
+
+function RewardRow({
+  reward,
+  onToggle,
+  onDone,
+}: {
+  reward: LoyaltyReward;
+  onToggle: (active: boolean) => void;
+  onDone: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(reward.name);
+  const [pointsCost, setPointsCost] = useState(String(reward.points_cost));
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    const cost = Number(pointsCost);
+    if (!name.trim()) {
+      toast.error("Name can't be empty.");
+      return;
+    }
+    if (!Number.isInteger(cost) || cost <= 0) {
+      toast.error("Points cost must be a whole number greater than 0.");
+      return;
+    }
+    setSaving(true);
+    const result = await updateLoyaltyReward(reward.id, name.trim(), cost);
+    setSaving(false);
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    setEditing(false);
+    onDone();
+  }
+
+  async function handleDelete() {
+    const result = await deleteLoyaltyReward(reward.id);
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    onDone();
+  }
+
+  if (editing) {
+    return (
+      <li className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+        <Input className="w-40" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          type="number"
+          min={1}
+          className="w-20"
+          value={pointsCost}
+          onChange={(e) => setPointsCost(e.target.value)}
+        />
+        <Button size="sm" disabled={saving} onClick={handleSave}>
+          {saving ? "Saving..." : "Save"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+          Cancel
+        </Button>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm">
+      <span className={reward.active ? undefined : "text-muted-foreground line-through"}>
+        {reward.name} — {reward.points_cost} pts
+      </span>
+      <div className="flex items-center gap-2">
+        <Switch checked={reward.active} onCheckedChange={onToggle} />
+        <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+          Edit
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>Delete</AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete &quot;{reward.name}&quot;?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This can&apos;t be undone. If it&apos;s already been used for a redemption, deleting
+                will fail — turn it off instead in that case.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </li>
   );
 }
 
@@ -542,7 +739,7 @@ function AwardPointsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add points — {customer.name}</DialogTitle>
+          <DialogTitle>Add LP — {customer.name}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -591,7 +788,7 @@ function AwardPointsDialog({
           )}
 
           <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? "Saving..." : "Add points"}
+            {isPending ? "Saving..." : "Add LP"}
           </Button>
         </form>
       </DialogContent>
