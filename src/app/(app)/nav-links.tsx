@@ -36,6 +36,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
       ? [{ href: "/admin/customers", label: "Customers" }]
       : [{ href: "/reports/metrics", label: "NC Metrics" }]),
     { href: "/finance", label: "Finance" },
+    { href: "/loyalty", label: "Loyalty" },
   ];
 
   return (

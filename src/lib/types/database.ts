@@ -69,6 +69,9 @@ export type Customer = {
   // customers.initial_nc_level in supabase/schema.sql.
   initial_nc_level: CustomerNcLevel;
   consumption_balance: number;
+  // Loyalty Program running balance — see loyalty_points_ledger in
+  // supabase/schema.sql for the audit trail behind it.
+  loyalty_points_balance: number;
   invited_by_type: InvitedByType;
   invited_by_coach_id: string | null;
   invited_by_customer_id: string | null;
@@ -352,6 +355,53 @@ export type MonthlyInventoryReportRow = {
   consumed_qty: number;
   sold_qty: number;
   closing_balance: number;
+};
+
+export type LoyaltySettings = {
+  id: string;
+  nc_club_id: string;
+  enabled: boolean;
+  points_per_cup: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LoyaltyEarnRule = {
+  id: string;
+  nc_club_id: string;
+  label: string;
+  points: number;
+  active: boolean;
+  is_default: boolean;
+  created_at: string;
+};
+
+export type LoyaltyReward = {
+  id: string;
+  nc_club_id: string;
+  name: string;
+  points_cost: number;
+  active: boolean;
+  is_default: boolean;
+  created_at: string;
+};
+
+export type LoyaltyPointsLedgerEntry = {
+  id: string;
+  customer_id: string;
+  nc_club_id: string;
+  points: number;
+  kind: "checkin" | "adjustment" | "manual" | "redeem";
+  checkin_id: string | null;
+  earn_rule_id: string | null;
+  reward_id: string | null;
+  reason: string | null;
+  recorded_by: string;
+  created_at: string;
+  voided: boolean;
+  voided_by: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
 };
 
 export type BranchClubRow = {
@@ -663,6 +713,26 @@ export type Database = {
         Insert: Partial<FinanceTransaction>;
         Update: Partial<FinanceTransaction>;
       } & NoRelationships;
+      loyalty_settings: {
+        Row: LoyaltySettings;
+        Insert: Partial<LoyaltySettings>;
+        Update: Partial<LoyaltySettings>;
+      } & NoRelationships;
+      loyalty_earn_rules: {
+        Row: LoyaltyEarnRule;
+        Insert: Partial<LoyaltyEarnRule>;
+        Update: Partial<LoyaltyEarnRule>;
+      } & NoRelationships;
+      loyalty_rewards: {
+        Row: LoyaltyReward;
+        Insert: Partial<LoyaltyReward>;
+        Update: Partial<LoyaltyReward>;
+      } & NoRelationships;
+      loyalty_points_ledger: {
+        Row: LoyaltyPointsLedgerEntry;
+        Insert: Partial<LoyaltyPointsLedgerEntry>;
+        Update: Partial<LoyaltyPointsLedgerEntry>;
+      } & NoRelationships;
       shake_recipes: {
         Row: ShakeRecipe;
         Insert: Partial<ShakeRecipe>;
@@ -814,6 +884,27 @@ export type Database = {
       monthly_inventory_report: {
         Args: { p_month: string; p_club_id?: string | null };
         Returns: MonthlyInventoryReportRow[];
+      };
+      award_loyalty_points: {
+        Args: {
+          p_customer_id: string;
+          p_earn_rule_id?: string | null;
+          p_points?: number | null;
+          p_reason?: string | null;
+        };
+        Returns: Customer;
+      };
+      redeem_loyalty_reward: {
+        Args: { p_customer_id: string; p_reward_id: string };
+        Returns: Customer;
+      };
+      void_loyalty_redemption: {
+        Args: { p_entry_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      upsert_loyalty_settings: {
+        Args: { p_enabled: boolean; p_points_per_cup: number };
+        Returns: LoyaltySettings;
       };
       weekly_totals: {
         Args: { p_date?: string; p_club_id?: string | null };
