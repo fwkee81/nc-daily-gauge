@@ -8,6 +8,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PaginationBar } from "@/components/ui/pagination-bar";
 import {
   Table,
   TableBody,
@@ -94,6 +95,8 @@ const NC_LEVEL_LABEL: Record<string, string> = {
   "20-day": "20-Day",
   "30-day": "30-Day",
 };
+
+const CUSTOMERS_PAGE_SIZE = 25;
 
 const CONFETTI_COLORS = [
   "#9ec835",
@@ -200,6 +203,7 @@ export function CustomersClient({
   const [viewing, setViewing] = useState<CustomerRow | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [newSignup, setNewSignup] = useState<{ name: string; ncLevel: CustomerNcLevel } | null>(null);
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -230,7 +234,15 @@ export function CustomersClient({
       }
       return { key, dir: "asc" };
     });
+    setPage(1);
   }
+
+  // Clamp rather than reset via effect — if the search/filter shrinks the
+  // page count out from under the current page, this settles on the last
+  // valid page without an extra render pass.
+  const pageCount = Math.max(1, Math.ceil(sorted.length / CUSTOMERS_PAGE_SIZE));
+  const pageSafe = Math.min(page, pageCount);
+  const paged = sorted.slice((pageSafe - 1) * CUSTOMERS_PAGE_SIZE, pageSafe * CUSTOMERS_PAGE_SIZE);
 
   async function handleDeactivate(id: string) {
     const result = await deactivateCustomer(id);
@@ -310,13 +322,19 @@ export function CustomersClient({
           className="max-w-sm"
           placeholder="Search by name or contact..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
         />
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <input
             type="checkbox"
             checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
+            onChange={(e) => {
+              setShowInactive(e.target.checked);
+              setPage(1);
+            }}
           />
           Show inactive customers
         </label>
@@ -398,7 +416,7 @@ export function CustomersClient({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.map((c) => (
+            {paged.map((c) => (
               <TableRow key={c.id} className={c.active ? undefined : "opacity-60"}>
                 <TableCell className="sticky left-0 z-10 border-r bg-background font-medium">
                   <Button
@@ -523,6 +541,13 @@ export function CustomersClient({
             )}
           </TableBody>
         </Table>
+        <PaginationBar
+          page={pageSafe}
+          pageCount={pageCount}
+          totalItems={sorted.length}
+          pageSize={CUSTOMERS_PAGE_SIZE}
+          onPageChange={setPage}
+        />
       </div>
 
       {renewing && (

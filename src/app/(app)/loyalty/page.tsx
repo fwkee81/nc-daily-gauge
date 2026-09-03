@@ -42,7 +42,7 @@ export default async function LoyaltyPage() {
         .select("*, customer:customers(name)")
         .eq("nc_club_id", coach.nc_club_id)
         .order("created_at", { ascending: false })
-        .limit(30),
+        .limit(150),
     ]);
 
   return (

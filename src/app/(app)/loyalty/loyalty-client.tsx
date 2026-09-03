@@ -4,7 +4,10 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PaginationBar } from "@/components/ui/pagination-bar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,8 +76,54 @@ const KIND_LABEL: Record<string, string> = {
   redeem: "Redeemed",
 };
 
+const CUSTOMERS_PAGE_SIZE = 20;
+const ACTIVITY_PAGE_SIZE = 15;
+
 function fmt(iso: string) {
   return format(new Date(iso), "d MMM, h:mma");
+}
+
+type CustomerSortKey = "name" | "nc_level" | "points";
+
+function SortableHead({
+  label,
+  sortKeyName,
+  sortKey,
+  sortDir,
+  onSort,
+  align,
+}: {
+  label: string;
+  sortKeyName: CustomerSortKey;
+  sortKey: CustomerSortKey;
+  sortDir: "asc" | "desc";
+  onSort: (key: CustomerSortKey) => void;
+  align?: "right";
+}) {
+  const active = sortKey === sortKeyName;
+  return (
+    <TableHead className={align === "right" ? "text-right" : undefined}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKeyName)}
+        className={cn(
+          "inline-flex items-center gap-1 hover:text-foreground",
+          align === "right" && "flex-row-reverse"
+        )}
+      >
+        {label}
+        {active ? (
+          sortDir === "asc" ? (
+            <ArrowUp className="size-3.5" />
+          ) : (
+            <ArrowDown className="size-3.5" />
+          )
+        ) : (
+          <ArrowUpDown className="size-3.5 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  );
 }
 
 export function LoyaltyClient({
@@ -98,12 +147,50 @@ export function LoyaltyClient({
   const [awarding, setAwarding] = useState<LoyaltyCustomerRow | null>(null);
   const [redeeming, setRedeeming] = useState<LoyaltyCustomerRow | null>(null);
   const [voiding, setVoiding] = useState<LoyaltyPointsLedgerEntry | null>(null);
+  const [sortKey, setSortKey] = useState<CustomerSortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [customerPage, setCustomerPage] = useState(1);
+  const [activityPage, setActivityPage] = useState(1);
+
+  function toggleSort(key: CustomerSortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setCustomerPage(1);
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter((c) => c.name.toLowerCase().includes(q));
-  }, [customers, search]);
+    const base = q ? customers.filter((c) => c.name.toLowerCase().includes(q)) : customers;
+    const sorted = [...base].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") cmp = a.name.localeCompare(b.name);
+      else if (sortKey === "nc_level") cmp = a.nc_level.localeCompare(b.nc_level);
+      else cmp = a.loyalty_points_balance - b.loyalty_points_balance;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  }, [customers, search, sortKey, sortDir]);
+
+  // Clamp rather than reset via effect — if a filter/sort shrinks the page
+  // count out from under the current page, this settles back onto the last
+  // valid page without an extra render pass.
+  const customerPageCount = Math.max(1, Math.ceil(filtered.length / CUSTOMERS_PAGE_SIZE));
+  const customerPageSafe = Math.min(customerPage, customerPageCount);
+  const pagedCustomers = filtered.slice(
+    (customerPageSafe - 1) * CUSTOMERS_PAGE_SIZE,
+    customerPageSafe * CUSTOMERS_PAGE_SIZE
+  );
+
+  const activityPageCount = Math.max(1, Math.ceil(recentActivity.length / ACTIVITY_PAGE_SIZE));
+  const activityPageSafe = Math.min(activityPage, activityPageCount);
+  const pagedActivity = recentActivity.slice(
+    (activityPageSafe - 1) * ACTIVITY_PAGE_SIZE,
+    activityPageSafe * ACTIVITY_PAGE_SIZE
+  );
 
   const enabled = settings?.enabled ?? false;
 
@@ -150,20 +237,42 @@ export function LoyaltyClient({
               className="max-w-sm"
               placeholder="Search by name..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCustomerPage(1);
+              }}
             />
             <div className="mt-4 overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>NC Level</TableHead>
-                    <TableHead className="text-right">Points</TableHead>
+                    <SortableHead
+                      label="Name"
+                      sortKeyName="name"
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="NC Level"
+                      sortKeyName="nc_level"
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Points"
+                      sortKeyName="points"
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                      align="right"
+                    />
                     {isAdmin && <TableHead />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((c) => (
+                  {pagedCustomers.map((c) => (
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>{NC_LEVEL_LABEL[c.nc_level] ?? c.nc_level}</TableCell>
@@ -192,6 +301,13 @@ export function LoyaltyClient({
                   )}
                 </TableBody>
               </Table>
+              <PaginationBar
+                page={customerPageSafe}
+                pageCount={customerPageCount}
+                totalItems={filtered.length}
+                pageSize={CUSTOMERS_PAGE_SIZE}
+                onPageChange={setCustomerPage}
+              />
             </div>
           </div>
 
@@ -210,7 +326,7 @@ export function LoyaltyClient({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentActivity.map((entry) => (
+                  {pagedActivity.map((entry) => (
                     <TableRow key={entry.id} className={entry.voided ? "opacity-50" : undefined}>
                       <TableCell className="whitespace-nowrap text-muted-foreground">{fmt(entry.created_at)}</TableCell>
                       <TableCell>{entry.customer?.name ?? "—"}</TableCell>
@@ -241,6 +357,13 @@ export function LoyaltyClient({
                   )}
                 </TableBody>
               </Table>
+              <PaginationBar
+                page={activityPageSafe}
+                pageCount={activityPageCount}
+                totalItems={recentActivity.length}
+                pageSize={ACTIVITY_PAGE_SIZE}
+                onPageChange={setActivityPage}
+              />
             </div>
           </div>
         </>
