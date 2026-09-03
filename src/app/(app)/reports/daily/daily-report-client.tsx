@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
@@ -559,20 +559,29 @@ export function DailyReportClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pop the confetti for today's live total whenever the cup count reaches a
-  // new, higher tier (25/35/50/75/100) — not when just browsing back through
-  // a past date, and not again on refresh unless a new tier was reached.
+  // Each of the four refs below tracks "highest value already celebrated
+  // during THIS page visit" — starting fresh (0, or the record itself) on
+  // every mount, unlike the old localStorage-backed version which
+  // remembered across visits and so only ever congratulated once per new
+  // tier/record for the whole day. Landing on today's Daily Report now
+  // re-announces whatever's already been reached, every single visit, while
+  // still only firing once per visit for a given value (and still firing
+  // again within the same visit if the total keeps climbing live).
+  const totalTierShownRef = useRef(0);
+  const coachTierShownRef = useRef(0);
+  const clubRecordShownRef = useRef(clubRecord?.total_cups ?? 0);
+  const coachRecordShownRef = useRef(coachRecord?.cups ?? 0);
+
+  // Pop the confetti for today's live total whenever the cup count is at or
+  // has reached a tier (25/35/50/75/100) — not when just browsing back
+  // through a past date.
   useEffect(() => {
     if (!currentTier) return;
     if (date !== format(new Date(), "yyyy-MM-dd")) return;
-
-    const key = `nc-cup-milestone-${clubId}-${date}`;
-    const lastCelebratedTier = Number(window.localStorage.getItem(key) ?? "0");
-    if (currentTier.cups <= lastCelebratedTier) return;
-    window.localStorage.setItem(key, String(currentTier.cups));
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (currentTier.cups <= totalTierShownRef.current) return;
+    totalTierShownRef.current = currentTier.cups;
     setCelebrationQueue((q) => insertCelebration(q, { kind: "total", tier: currentTier, cups: totals.total_cups }));
-  }, [clubId, date, currentTier, totals.total_cups]);
+  }, [date, currentTier, totals.total_cups]);
 
   // Same idea, but for the signed-in coach's own Coach's Cup count — 5
   // cups and up, celebrated for that coach only (not popped for every
@@ -580,12 +589,8 @@ export function DailyReportClient({
   useEffect(() => {
     if (!myCoachRow || !myCoachTier) return;
     if (date !== format(new Date(), "yyyy-MM-dd")) return;
-
-    const key = `nc-coach-cup-milestone-${currentCoachId}-${date}`;
-    const lastCelebratedTier = Number(window.localStorage.getItem(key) ?? "0");
-    if (myCoachTier.cups <= lastCelebratedTier) return;
-    window.localStorage.setItem(key, String(myCoachTier.cups));
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (myCoachTier.cups <= coachTierShownRef.current) return;
+    coachTierShownRef.current = myCoachTier.cups;
     setCelebrationQueue((q) =>
       insertCelebration(q, {
         kind: "coach",
@@ -594,21 +599,15 @@ export function DailyReportClient({
         cups: myCoachRow.cups,
       })
     );
-  }, [currentCoachId, date, myCoachRow, myCoachTier]);
+  }, [date, myCoachRow, myCoachTier]);
 
   // All-time club record — compares today's live total against the best
-  // day on record (excluding today). Re-fires if the total keeps climbing
-  // past whatever was last announced, not just once per day: the stored
-  // value tracks "last celebrated", starting from the record itself.
+  // day on record (excluding today).
   useEffect(() => {
     if (!clubRecord) return;
     if (date !== format(new Date(), "yyyy-MM-dd")) return;
-
-    const key = `nc-cup-record-${clubId}-${date}`;
-    const lastAnnounced = Number(window.localStorage.getItem(key) ?? clubRecord.total_cups);
-    if (totals.total_cups <= lastAnnounced) return;
-    window.localStorage.setItem(key, String(totals.total_cups));
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (totals.total_cups <= clubRecordShownRef.current) return;
+    clubRecordShownRef.current = totals.total_cups;
     setCelebrationQueue((q) =>
       insertCelebration(q, {
         kind: "club_record",
@@ -617,18 +616,14 @@ export function DailyReportClient({
         previousDate: clubRecord.record_date,
       })
     );
-  }, [clubId, date, clubRecord, totals.total_cups]);
+  }, [date, clubRecord, totals.total_cups]);
 
   // Same idea, but the signed-in coach's own all-time best day.
   useEffect(() => {
     if (!coachRecord || !myCoachRow) return;
     if (date !== format(new Date(), "yyyy-MM-dd")) return;
-
-    const key = `nc-coach-cup-record-${currentCoachId}-${date}`;
-    const lastAnnounced = Number(window.localStorage.getItem(key) ?? coachRecord.cups);
-    if (myCoachRow.cups <= lastAnnounced) return;
-    window.localStorage.setItem(key, String(myCoachRow.cups));
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (myCoachRow.cups <= coachRecordShownRef.current) return;
+    coachRecordShownRef.current = myCoachRow.cups;
     setCelebrationQueue((q) =>
       insertCelebration(q, {
         kind: "coach_record",
@@ -638,7 +633,7 @@ export function DailyReportClient({
         previousDate: coachRecord.record_date,
       })
     );
-  }, [currentCoachId, date, coachRecord, myCoachRow]);
+  }, [date, coachRecord, myCoachRow]);
 
   // Plays once per popped celebration, in step with the full-screen
   // confetti burst below (both keyed off celebrationKey) — the rarer
