@@ -101,6 +101,7 @@ export const FINANCE_EXPENSE_CATEGORIES: FinanceCategory[] = [
   "Claim",
   "Rental",
   "Cleaning",
+  "Utility bills",
   "Others",
 ];
 

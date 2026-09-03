@@ -229,6 +229,7 @@ export type FinanceCategory =
   | "Claim"
   | "Rental"
   | "Cleaning"
+  | "Utility bills"
   | "Others";
 
 export type FinanceTransaction = {

@@ -35,7 +35,7 @@ create type finance_payment_method as enum ('Cash', 'QR', 'Transfer');
 create type finance_category as enum (
   '5-Day Card', '10-Day Card', '20-Day Card', '30-Day Card', 'Ala Carte',
   'Power Cup', 'Foodie', 'Fit Club', 'PJS', 'Membership', 'Product Purchased',
-  'Ingredients', 'Stock-in', 'Claim', 'Rental', 'Cleaning', 'Others'
+  'Ingredients', 'Stock-in', 'Claim', 'Rental', 'Cleaning', 'Utility bills', 'Others'
 );
 
 -- =========================================================================
@@ -364,7 +364,7 @@ create table finance_transactions (
     ))
     or
     (direction = 'out' and category in (
-      'Ingredients', 'Stock-in', 'Claim', 'Rental', 'Cleaning', 'Others'
+      'Ingredients', 'Stock-in', 'Claim', 'Rental', 'Cleaning', 'Utility bills', 'Others'
     ))
   ),
   constraint finance_txn_customer_name_for_in check (
