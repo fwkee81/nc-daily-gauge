@@ -169,6 +169,11 @@ export function BranchesWeekly({
               <DailyBars daily={branch.daily} />
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
                 <Stat label="Total Cups" value={branch.total_cups} />
+                <Stat
+                  label="Avg Cups/Day"
+                  value={branch.operating_days > 0 ? branch.total_cups / branch.operating_days : 0}
+                  decimals={1}
+                />
                 <Stat label="Coach's Cup" value={branch.coach_cup_total} />
                 {NEW_RENEWAL_LEVELS.map(({ level, label }) => {
                   const value = statByLevel[level];
