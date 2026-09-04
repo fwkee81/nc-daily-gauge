@@ -374,6 +374,7 @@ export type LoyaltyEarnRule = {
   points: number;
   active: boolean;
   is_default: boolean;
+  sort_order: number;
   created_at: string;
 };
 
@@ -384,6 +385,7 @@ export type LoyaltyReward = {
   points_cost: number;
   active: boolean;
   is_default: boolean;
+  sort_order: number;
   created_at: string;
 };
 

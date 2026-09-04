@@ -4,7 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PaginationBar } from "@/components/ui/pagination-bar";
@@ -47,6 +47,8 @@ import {
   createLoyaltyReward,
   deleteLoyaltyEarnRule,
   deleteLoyaltyReward,
+  moveLoyaltyEarnRule,
+  moveLoyaltyReward,
   redeemLoyaltyReward,
   setLoyaltyEarnRuleActive,
   setLoyaltyRewardActive,
@@ -546,8 +548,15 @@ function SettingsPanel({
       <div>
         <p className="text-sm font-semibold">Earn rules (for manual bonus points)</p>
         <ul className="mt-2 space-y-1">
-          {earnRules.map((r) => (
-            <EarnRuleRow key={r.id} rule={r} onToggle={(v) => handleToggleRule(r.id, v)} onDone={onDone} />
+          {earnRules.map((r, i) => (
+            <EarnRuleRow
+              key={r.id}
+              rule={r}
+              onToggle={(v) => handleToggleRule(r.id, v)}
+              onDone={onDone}
+              isFirst={i === 0}
+              isLast={i === earnRules.length - 1}
+            />
           ))}
           {earnRules.length === 0 && <p className="text-sm text-muted-foreground">No earn rules yet.</p>}
         </ul>
@@ -580,8 +589,15 @@ function SettingsPanel({
       <div>
         <p className="text-sm font-semibold">Rewards catalog</p>
         <ul className="mt-2 space-y-1">
-          {rewards.map((r) => (
-            <RewardRow key={r.id} reward={r} onToggle={(v) => handleToggleReward(r.id, v)} onDone={onDone} />
+          {rewards.map((r, i) => (
+            <RewardRow
+              key={r.id}
+              reward={r}
+              onToggle={(v) => handleToggleReward(r.id, v)}
+              onDone={onDone}
+              isFirst={i === 0}
+              isLast={i === rewards.length - 1}
+            />
           ))}
           {rewards.length === 0 && <p className="text-sm text-muted-foreground">No rewards yet.</p>}
         </ul>
@@ -618,15 +634,31 @@ function EarnRuleRow({
   rule,
   onToggle,
   onDone,
+  isFirst,
+  isLast,
 }: {
   rule: LoyaltyEarnRule;
   onToggle: (active: boolean) => void;
   onDone: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(rule.label);
   const [points, setPoints] = useState(String(rule.points));
   const [saving, setSaving] = useState(false);
+  const [moving, setMoving] = useState(false);
+
+  async function handleMove(direction: "up" | "down") {
+    setMoving(true);
+    const result = await moveLoyaltyEarnRule(rule.id, direction);
+    setMoving(false);
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    onDone();
+  }
 
   async function handleSave() {
     const p = Number(points);
@@ -685,6 +717,26 @@ function EarnRuleRow({
         {rule.label} — {rule.points} pts
       </span>
       <div className="flex items-center gap-2">
+        <div className="flex flex-col">
+          <Button
+            size="icon-xs"
+            variant="outline"
+            disabled={isFirst || moving}
+            onClick={() => handleMove("up")}
+            aria-label="Move up"
+          >
+            <ChevronUp />
+          </Button>
+          <Button
+            size="icon-xs"
+            variant="outline"
+            disabled={isLast || moving}
+            onClick={() => handleMove("down")}
+            aria-label="Move down"
+          >
+            <ChevronDown />
+          </Button>
+        </div>
         <Switch checked={rule.active} onCheckedChange={onToggle} />
         <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
           Edit
@@ -714,15 +766,31 @@ function RewardRow({
   reward,
   onToggle,
   onDone,
+  isFirst,
+  isLast,
 }: {
   reward: LoyaltyReward;
   onToggle: (active: boolean) => void;
   onDone: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(reward.name);
   const [pointsCost, setPointsCost] = useState(String(reward.points_cost));
   const [saving, setSaving] = useState(false);
+  const [moving, setMoving] = useState(false);
+
+  async function handleMove(direction: "up" | "down") {
+    setMoving(true);
+    const result = await moveLoyaltyReward(reward.id, direction);
+    setMoving(false);
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    onDone();
+  }
 
   async function handleSave() {
     const cost = Number(pointsCost);
@@ -781,6 +849,26 @@ function RewardRow({
         {reward.name} — {reward.points_cost} pts
       </span>
       <div className="flex items-center gap-2">
+        <div className="flex flex-col">
+          <Button
+            size="icon-xs"
+            variant="outline"
+            disabled={isFirst || moving}
+            onClick={() => handleMove("up")}
+            aria-label="Move up"
+          >
+            <ChevronUp />
+          </Button>
+          <Button
+            size="icon-xs"
+            variant="outline"
+            disabled={isLast || moving}
+            onClick={() => handleMove("down")}
+            aria-label="Move down"
+          >
+            <ChevronDown />
+          </Button>
+        </div>
         <Switch checked={reward.active} onCheckedChange={onToggle} />
         <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
           Edit

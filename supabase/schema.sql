@@ -876,6 +876,11 @@ create table loyalty_earn_rules (
   points integer not null check (points > 0),
   active boolean not null default true,
   is_default boolean not null default false,
+  -- Manual display order within a club, admin-adjustable via the up/down
+  -- reorder buttons on the Loyalty Program Settings panel — lower sorts
+  -- first. New rows default to 0 (created_at breaks the tie); actions.ts
+  -- assigns the next-highest value on insert so new rules land at the end.
+  sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
 
@@ -888,6 +893,7 @@ create table loyalty_rewards (
   points_cost integer not null check (points_cost > 0),
   active boolean not null default true,
   is_default boolean not null default false,
+  sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
 

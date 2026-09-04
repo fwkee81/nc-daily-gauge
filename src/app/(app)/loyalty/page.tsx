@@ -24,8 +24,14 @@ export default async function LoyaltyPage() {
         .from("loyalty_earn_rules")
         .select("*")
         .eq("nc_club_id", coach.nc_club_id)
+        .order("sort_order")
         .order("created_at"),
-      supabase.from("loyalty_rewards").select("*").eq("nc_club_id", coach.nc_club_id).order("created_at"),
+      supabase
+        .from("loyalty_rewards")
+        .select("*")
+        .eq("nc_club_id", coach.nc_club_id)
+        .order("sort_order")
+        .order("created_at"),
       // Eligible customers only — 5-Day/Ala Carte never appear here since
       // they can never earn or hold points (see award_loyalty_points()/
       // redeem_loyalty_reward() in supabase/schema.sql for the same rule
