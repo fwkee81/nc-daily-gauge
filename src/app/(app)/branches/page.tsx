@@ -11,6 +11,7 @@ import type {
   BranchLeaderboardRow,
   BranchMonthlySummaryRow,
   BranchNewRenewalRow,
+  BranchWeeklyCoachCupRow,
   BranchWeeklySummaryRow,
 } from "@/lib/types/database";
 import { BranchesTabs } from "./branches-tabs";
@@ -50,6 +51,7 @@ export default async function BranchesPage({
     remarksRes,
     weeklySummaryRes,
     weeklyNewRenewalsRes,
+    weeklyCoachCupsRes,
     monthlySummaryRes,
     monthlyNewRenewalsRes,
     leaderboardsRes,
@@ -62,6 +64,7 @@ export default async function BranchesPage({
     supabase.rpc("branches_daily_remarks", { p_date: date }),
     supabase.rpc("branches_weekly_summary", { p_date: date }),
     supabase.rpc("branches_weekly_new_renewals", { p_date: date }),
+    supabase.rpc("branches_weekly_coach_cups", { p_date: date }),
     supabase.rpc("branches_monthly_summary", { p_month: `${month}-01` }),
     supabase.rpc("branches_monthly_new_renewals", { p_month: `${month}-01` }),
     supabase.rpc("branches_monthly_leaderboards", { p_month: `${month}-01` }),
@@ -74,6 +77,7 @@ export default async function BranchesPage({
   const remarks = (remarksRes.data ?? []) as BranchDailyRemarkRow[];
   const weeklySummary = (weeklySummaryRes.data ?? []) as BranchWeeklySummaryRow[];
   const weeklyNewRenewals = (weeklyNewRenewalsRes.data ?? []) as BranchNewRenewalRow[];
+  const weeklyCoachCups = (weeklyCoachCupsRes.data ?? []) as BranchWeeklyCoachCupRow[];
   const monthlySummary = (monthlySummaryRes.data ?? []) as BranchMonthlySummaryRow[];
   const monthlyNewRenewals = (monthlyNewRenewalsRes.data ?? []) as BranchNewRenewalRow[];
   const leaderboards = (leaderboardsRes.data ?? []) as BranchLeaderboardRow[];
@@ -101,6 +105,7 @@ export default async function BranchesPage({
         remarks={remarks}
         weeklySummary={weeklySummary}
         weeklyNewRenewals={weeklyNewRenewals}
+        weeklyCoachCups={weeklyCoachCups}
         monthlySummary={monthlySummary}
         monthlyNewRenewals={monthlyNewRenewals}
         leaderboards={leaderboards}

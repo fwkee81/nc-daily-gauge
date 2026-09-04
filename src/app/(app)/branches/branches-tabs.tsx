@@ -12,6 +12,7 @@ import type {
   BranchLeaderboardRow,
   BranchMonthlySummaryRow,
   BranchNewRenewalRow,
+  BranchWeeklyCoachCupRow,
   BranchWeeklySummaryRow,
 } from "@/lib/types/database";
 import { BranchesDateNav } from "./branches-date-nav";
@@ -35,6 +36,7 @@ export function BranchesTabs({
   remarks,
   weeklySummary,
   weeklyNewRenewals,
+  weeklyCoachCups,
   monthlySummary,
   monthlyNewRenewals,
   leaderboards,
@@ -53,6 +55,7 @@ export function BranchesTabs({
   remarks: BranchDailyRemarkRow[];
   weeklySummary: BranchWeeklySummaryRow[];
   weeklyNewRenewals: BranchNewRenewalRow[];
+  weeklyCoachCups: BranchWeeklyCoachCupRow[];
   monthlySummary: BranchMonthlySummaryRow[];
   monthlyNewRenewals: BranchNewRenewalRow[];
   leaderboards: BranchLeaderboardRow[];
@@ -104,6 +107,7 @@ export function BranchesTabs({
         <BranchesWeekly
           summary={weeklySummary}
           newRenewals={weeklyNewRenewals}
+          coachCups={weeklyCoachCups}
           ownClubId={ownClubId}
           date={date}
           month={month}
