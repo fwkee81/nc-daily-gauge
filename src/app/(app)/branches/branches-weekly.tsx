@@ -10,6 +10,7 @@ import { format, parseISO } from "date-fns";
 import { getMilestoneTier } from "@/lib/cup-milestones";
 import type {
   BranchNewRenewalRow,
+  BranchWeeklyCoachCupRow,
   BranchWeeklyDailyRow,
   BranchWeeklySummaryRow,
   CustomerNcLevel,
@@ -97,12 +98,14 @@ function DailyBars({ daily }: { daily: BranchWeeklyDailyRow[] }) {
 export function BranchesWeekly({
   summary,
   newRenewals,
+  coachCups,
   ownClubId,
   date,
   month,
 }: {
   summary: BranchWeeklySummaryRow[];
   newRenewals: BranchNewRenewalRow[];
+  coachCups: BranchWeeklyCoachCupRow[];
   ownClubId: string | null;
   date: string;
   month: string;
@@ -111,6 +114,10 @@ export function BranchesWeekly({
     clubName: string;
     label: string;
     rows: BranchNewRenewalRow[];
+  } | null>(null);
+  const [coachCupOpen, setCoachCupOpen] = useState<{
+    clubName: string;
+    rows: BranchWeeklyCoachCupRow[];
   } | null>(null);
 
   const newRenewalsByKey = useMemo(() => {
@@ -122,6 +129,15 @@ export function BranchesWeekly({
     }
     return map;
   }, [newRenewals]);
+
+  const coachCupsByClub = useMemo(() => {
+    const map = new Map<string, BranchWeeklyCoachCupRow[]>();
+    for (const row of coachCups) {
+      if (!map.has(row.club_id)) map.set(row.club_id, []);
+      map.get(row.club_id)!.push(row);
+    }
+    return map;
+  }, [coachCups]);
 
   if (summary.length === 0) {
     return (
@@ -174,7 +190,16 @@ export function BranchesWeekly({
                   value={branch.operating_days > 0 ? branch.total_cups / branch.operating_days : 0}
                   decimals={1}
                 />
-                <Stat label="Coach's Cup" value={branch.coach_cup_total} />
+                <Stat
+                  label="Coach's Cup"
+                  value={branch.coach_cup_total}
+                  onClick={() =>
+                    setCoachCupOpen({
+                      clubName: branch.club_name,
+                      rows: coachCupsByClub.get(branch.club_id) ?? [],
+                    })
+                  }
+                />
                 {NEW_RENEWAL_LEVELS.map(({ level, label }) => {
                   const value = statByLevel[level];
                   if (value === undefined) return null;
@@ -243,6 +268,30 @@ export function BranchesWeekly({
             ))}
             {breakdownOpen?.rows.length === 0 && (
               <p className="py-4 text-center text-sm text-muted-foreground">No customers yet.</p>
+            )}
+          </ul>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!coachCupOpen} onOpenChange={(open) => !open && setCoachCupOpen(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{coachCupOpen?.clubName} — Coach&apos;s Cup, average per coach</DialogTitle>
+          </DialogHeader>
+          <ul className="divide-y">
+            {coachCupOpen?.rows.map((c) => (
+              <li key={c.coach_id} className="flex items-center justify-between py-2 text-sm">
+                <span>{c.coach_name}</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-muted-foreground">{c.total_cups} cups</span>
+                  <span className="font-semibold">{c.avg_cups_per_day.toFixed(2)}/day</span>
+                </span>
+              </li>
+            ))}
+            {coachCupOpen?.rows.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No coach&apos;s cup check-ins yet.
+              </p>
             )}
           </ul>
         </DialogContent>
