@@ -517,8 +517,8 @@ function SettingsPanel({
   }
 
   return (
-    <div className="space-y-6 rounded-md border p-4">
-      <div>
+    <div className="space-y-4 rounded-md border p-4">
+      <div className="rounded-lg border bg-muted/20 p-4">
         <p className="text-sm font-semibold">Program status</p>
         <div className="mt-2 flex flex-wrap items-end gap-4">
           <label className="flex items-center gap-2 text-sm">
@@ -545,7 +545,7 @@ function SettingsPanel({
         </p>
       </div>
 
-      <div>
+      <div className="rounded-lg border bg-muted/20 p-4">
         <p className="text-sm font-semibold">Earn rules (for manual bonus points)</p>
         <ul className="mt-2 space-y-1">
           {earnRules.map((r, i) => (
@@ -586,7 +586,7 @@ function SettingsPanel({
         </div>
       </div>
 
-      <div>
+      <div className="rounded-lg border bg-muted/20 p-4">
         <p className="text-sm font-semibold">Rewards catalog</p>
         <ul className="mt-2 space-y-1">
           {rewards.map((r, i) => (
