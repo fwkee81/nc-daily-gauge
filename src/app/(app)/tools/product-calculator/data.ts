@@ -90,7 +90,7 @@ export const PROMO: Product[] = [
   { id: "pr-shaker5", n: "HLN摇摇杯 (5个套装)", s: "HLN Shaker Cup x5", vp: 1.65, price: 58.81, flat: true },
   { id: "pr-bottle1l", n: "1L Tritan水瓶", s: "1L Tritan Water Bottle", vp: 1.25, price: 41.27, flat: true },
   { id: "pr-bottle2l", n: "2L Tritan水瓶", s: "2L Tritan Water Bottle", vp: 1.45, price: 48.87, flat: true },
-  { id: "pr-hdp", n: "会员包", s: "Herbalife Distributor Pack", vp: 0, price: 97.24, flat: true },
+  { id: "pr-hdp", n: "会员包", s: "Herbalife Distributor Pack", vp: 0, price: 64.8, flat: true },
 ];
 
 // 'oth-nrg' and 'pop-nrg' share an id prefix collision risk but are distinct
