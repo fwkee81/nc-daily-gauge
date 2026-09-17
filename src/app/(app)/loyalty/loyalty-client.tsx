@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -55,6 +55,7 @@ import {
   createLoyaltyReward,
   deleteLoyaltyEarnRule,
   deleteLoyaltyReward,
+  getLoyaltyCustomerHistory,
   moveLoyaltyEarnRule,
   moveLoyaltyReward,
   redeemLoyaltyProduct,
@@ -161,6 +162,7 @@ export function LoyaltyClient({
   const [awarding, setAwarding] = useState<LoyaltyCustomerRow | null>(null);
   const [redeeming, setRedeeming] = useState<LoyaltyCustomerRow | null>(null);
   const [voiding, setVoiding] = useState<LoyaltyPointsLedgerEntry | null>(null);
+  const [viewingHistory, setViewingHistory] = useState<LoyaltyCustomerRow | null>(null);
   const [sortKey, setSortKey] = useState<CustomerSortKey>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [customerPage, setCustomerPage] = useState(1);
@@ -288,7 +290,15 @@ export function LoyaltyClient({
                 <TableBody>
                   {pagedCustomers.map((c) => (
                     <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 font-medium"
+                          onClick={() => setViewingHistory(c)}
+                        >
+                          {c.name}
+                        </Button>
+                      </TableCell>
                       <TableCell>{NC_LEVEL_LABEL[c.nc_level] ?? c.nc_level}</TableCell>
                       <TableCell className="text-right">
                         <Badge variant="secondary">{c.loyalty_points_balance}</Badge>
@@ -420,6 +430,14 @@ export function LoyaltyClient({
             setVoiding(null);
             router.refresh();
           }}
+        />
+      )}
+
+      {viewingHistory && (
+        <CustomerLoyaltyHistoryDialog
+          customer={viewingHistory}
+          open={!!viewingHistory}
+          onOpenChange={(open) => !open && setViewingHistory(null)}
         />
       )}
     </div>
@@ -1323,6 +1341,131 @@ function VoidRedemptionDialog({
             {isPending ? "Voiding..." : "Void redemption"}
           </Button>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CustomerLoyaltyHistoryDialog({
+  customer,
+  open,
+  onOpenChange,
+}: {
+  customer: LoyaltyCustomerRow;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [entries, setEntries] = useState<LoyaltyPointsLedgerEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // The parent only ever mounts this dialog when it's open (see
+    // {viewingHistory && <CustomerLoyaltyHistoryDialog .../>}), so a fresh
+    // mount is all "open" ever means here — no need to reset state first.
+    getLoyaltyCustomerHistory(customer.id).then((result) => {
+      if ("error" in result) {
+        setError(result.error ?? "Could not load history.");
+        return;
+      }
+      setEntries(result.data);
+    });
+  }, [customer.id]);
+
+  const active = (entries ?? []).filter((e) => !e.voided);
+  const visitEntries = active.filter((e) => e.kind === "checkin");
+  const visitPoints = active
+    .filter((e) => e.kind === "checkin" || e.kind === "adjustment")
+    .reduce((sum, e) => sum + e.points, 0);
+  const manualEntries = active.filter((e) => e.kind === "manual");
+  const monthlyBonusEntries = active.filter((e) => e.kind === "monthly_bonus");
+  const redemptions = (entries ?? []).filter((e) => e.kind === "redeem");
+
+  const earnBuckets = [
+    { label: "NC Visit check-ins", count: visitEntries.length, points: visitPoints },
+    ...(manualEntries.length > 0
+      ? [
+          {
+            label: "Bonus awards",
+            count: manualEntries.length,
+            points: manualEntries.reduce((sum, e) => sum + e.points, 0),
+          },
+        ]
+      : []),
+    ...(monthlyBonusEntries.length > 0
+      ? [
+          {
+            label: "Monthly bonus",
+            count: monthlyBonusEntries.length,
+            points: monthlyBonusEntries.reduce((sum, e) => sum + e.points, 0),
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{customer.name} — Loyalty Points</DialogTitle>
+        </DialogHeader>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {!entries && !error && (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        )}
+
+        {entries && (
+          <div className="space-y-5">
+            <div className="rounded-md border bg-secondary/15 p-3 text-center">
+              <p className="text-xs text-muted-foreground">Current balance</p>
+              <p className="text-2xl font-bold text-primary">{customer.loyalty_points_balance}</p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold">Points earned, by source</h3>
+              <ul className="mt-2 divide-y rounded-md border">
+                {earnBuckets.map((b) => (
+                  <li key={b.label} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <span>
+                      {b.label} <span className="text-muted-foreground">({b.count})</span>
+                    </span>
+                    <span className="font-medium">+{b.points}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold">Redemption history</h3>
+              <ul className="mt-2 divide-y rounded-md border">
+                {redemptions.map((r) => (
+                  <li
+                    key={r.id}
+                    className={cn(
+                      "flex items-center justify-between px-3 py-2 text-sm",
+                      r.voided && "opacity-50"
+                    )}
+                  >
+                    <div>
+                      <p className={r.voided ? "line-through" : undefined}>{r.reason || "Redemption"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {fmt(r.created_at)}
+                        {r.voided && ` — Voided: ${r.void_reason}`}
+                      </p>
+                    </div>
+                    <span className="font-medium">{r.points}</span>
+                  </li>
+                ))}
+                {redemptions.length === 0 && (
+                  <li className="px-3 py-4 text-center text-sm text-muted-foreground">
+                    No redemptions yet.
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
