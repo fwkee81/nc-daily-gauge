@@ -866,6 +866,11 @@ create table loyalty_settings (
   -- points_per_cup.
   monthly_checkin_bonus_threshold integer not null default 0,
   monthly_checkin_bonus_points integer not null default 0,
+  -- LP cost of any Herbalife product = round(products.vp * points_per_vp) —
+  -- lets a customer redeem LP for ANY product in the shared catalog
+  -- (see redeem_loyalty_product()) instead of the club having to add a
+  -- Rewards catalog entry per product by hand. 0 (the default) disables it.
+  points_per_vp integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -919,6 +924,11 @@ create table loyalty_points_ledger (
   checkin_id uuid references checkins (id),
   earn_rule_id uuid references loyalty_earn_rules (id),
   reward_id uuid references loyalty_rewards (id),
+  -- Set instead of reward_id for a 'redeem' row from redeem_loyalty_product()
+  -- (any Herbalife product, priced off products.vp) rather than a curated
+  -- Rewards catalog entry. No cascade — same "can't delete what history
+  -- points to" safety net as reward_id/earn_rule_id.
+  product_id uuid references products (id),
   -- First day of the calendar month a 'monthly_bonus' row is for — lets
   -- record_checkin()/void_checkin() look up "was this month's bonus
   -- already awarded/does it need clawing back" without parsing reason
@@ -1630,6 +1640,72 @@ begin
 end;
 $$;
 
+-- Redeem LP for ANY active Herbalife product, priced off the shared
+-- products.vp catalog (round(vp * points_per_vp)) instead of a curated
+-- Rewards catalog entry — same admin-only/eligibility/balance checks as
+-- redeem_loyalty_reward(), just a different, formula-based price source.
+create or replace function redeem_loyalty_product(
+  p_customer_id uuid,
+  p_product_id uuid
+)
+returns customers
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_coach_id uuid := current_coach_id();
+  v_customer customers%rowtype;
+  v_club_id uuid;
+  v_points_per_vp integer;
+  v_product products%rowtype;
+  v_cost integer;
+begin
+  if v_coach_id is null or not is_current_coach_admin() then
+    raise exception 'Only admins can redeem loyalty rewards';
+  end if;
+
+  select nc_club_id into v_club_id from coaches where id = v_coach_id;
+
+  select * into v_customer from customers where id = p_customer_id and nc_club_id = v_club_id and active for update;
+  if not found then
+    raise exception 'Customer not found in your club';
+  end if;
+  if v_customer.nc_level not in ('10-day', '20-day', '30-day') then
+    raise exception 'Only 10-Day, 20-Day, and 30-Day customers are eligible for the loyalty program';
+  end if;
+
+  select points_per_vp into v_points_per_vp
+  from loyalty_settings where nc_club_id = v_club_id and enabled;
+  if not found then
+    raise exception 'Loyalty program is not enabled for your club';
+  end if;
+  if v_points_per_vp <= 0 then
+    raise exception 'Redeeming for products is not turned on for your club';
+  end if;
+
+  select * into v_product from products where id = p_product_id and active;
+  if not found then
+    raise exception 'Product not found';
+  end if;
+
+  v_cost := round(v_product.vp * v_points_per_vp);
+
+  if v_customer.loyalty_points_balance < v_cost then
+    raise exception 'Not enough points to redeem this product';
+  end if;
+
+  insert into loyalty_points_ledger (customer_id, nc_club_id, points, kind, product_id, reason, recorded_by)
+  values (p_customer_id, v_club_id, -v_cost, 'redeem', p_product_id, v_product.name, v_coach_id);
+
+  update customers set loyalty_points_balance = loyalty_points_balance - v_cost
+  where id = p_customer_id
+  returning * into v_customer;
+
+  return v_customer;
+end;
+$$;
+
 -- Admin-only undo for a mis-clicked redemption — refunds the points.
 -- Deliberately scoped to kind='redeem' only; the automatic void-on-
 -- checkin-void above is a separate mechanism (system-triggered, not an
@@ -1679,13 +1755,14 @@ $$;
 -- Admin-only, own club — creates or updates the club's single settings row.
 -- Adding the monthly-bonus params changes the argument list — drop the old
 -- 2-arg signature first, same reasoning as record_checkin() above.
-drop function if exists upsert_loyalty_settings(boolean, integer);
+drop function if exists upsert_loyalty_settings(boolean, integer, integer, integer);
 
 create or replace function upsert_loyalty_settings(
   p_enabled boolean,
   p_points_per_cup integer,
   p_monthly_bonus_threshold integer default 0,
-  p_monthly_bonus_points integer default 0
+  p_monthly_bonus_points integer default 0,
+  p_points_per_vp integer default 0
 )
 returns loyalty_settings
 language plpgsql
@@ -1709,28 +1786,34 @@ begin
   if p_monthly_bonus_points < 0 then
     raise exception 'Monthly check-in bonus points cannot be negative';
   end if;
+  if p_points_per_vp < 0 then
+    raise exception 'Points per VP cannot be negative';
+  end if;
 
   select nc_club_id into v_club_id from coaches where id = v_coach_id;
 
   insert into loyalty_settings (
-    nc_club_id, enabled, points_per_cup, monthly_checkin_bonus_threshold, monthly_checkin_bonus_points
+    nc_club_id, enabled, points_per_cup, monthly_checkin_bonus_threshold, monthly_checkin_bonus_points,
+    points_per_vp
   )
-  values (v_club_id, p_enabled, p_points_per_cup, p_monthly_bonus_threshold, p_monthly_bonus_points)
+  values (v_club_id, p_enabled, p_points_per_cup, p_monthly_bonus_threshold, p_monthly_bonus_points, p_points_per_vp)
   on conflict (nc_club_id) do update
     set enabled = excluded.enabled,
         points_per_cup = excluded.points_per_cup,
         monthly_checkin_bonus_threshold = excluded.monthly_checkin_bonus_threshold,
-        monthly_checkin_bonus_points = excluded.monthly_checkin_bonus_points
+        monthly_checkin_bonus_points = excluded.monthly_checkin_bonus_points,
+        points_per_vp = excluded.points_per_vp
   returning * into v_settings;
 
   return v_settings;
 end;
 $$;
 
-grant execute on function upsert_loyalty_settings(boolean, integer, integer, integer) to authenticated;
+grant execute on function upsert_loyalty_settings(boolean, integer, integer, integer, integer) to authenticated;
 
 grant execute on function award_loyalty_points(uuid, uuid, integer, text) to authenticated;
 grant execute on function redeem_loyalty_reward(uuid, uuid) to authenticated;
+grant execute on function redeem_loyalty_product(uuid, uuid) to authenticated;
 grant execute on function void_loyalty_redemption(uuid, text) to authenticated;
 
 -- Adds cups to a customer's consumption balance when they renew their NC

@@ -40,7 +40,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { CustomerNcLevel, LoyaltyEarnRule, LoyaltyPointsLedgerEntry, LoyaltyReward, LoyaltySettings } from "@/lib/types/database";
+import type {
+  CustomerNcLevel,
+  LoyaltyEarnRule,
+  LoyaltyPointsLedgerEntry,
+  LoyaltyReward,
+  LoyaltySettings,
+  Product,
+} from "@/lib/types/database";
+import { Combobox, type ComboboxOption } from "@/components/combobox";
 import {
   awardLoyaltyPoints,
   createLoyaltyEarnRule,
@@ -49,6 +57,7 @@ import {
   deleteLoyaltyReward,
   moveLoyaltyEarnRule,
   moveLoyaltyReward,
+  redeemLoyaltyProduct,
   redeemLoyaltyReward,
   setLoyaltyEarnRuleActive,
   setLoyaltyRewardActive,
@@ -136,6 +145,7 @@ export function LoyaltyClient({
   rewards,
   customers,
   recentActivity,
+  products,
 }: {
   isAdmin: boolean;
   settings: LoyaltySettings | null;
@@ -143,6 +153,7 @@ export function LoyaltyClient({
   rewards: LoyaltyReward[];
   customers: LoyaltyCustomerRow[];
   recentActivity: (LoyaltyPointsLedgerEntry & { customer: { name: string } | null })[];
+  products: Product[];
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -389,6 +400,8 @@ export function LoyaltyClient({
         <RedeemDialog
           customer={redeeming}
           rewards={rewards.filter((r) => r.active)}
+          products={products}
+          pointsPerVp={settings?.points_per_vp ?? 0}
           open={!!redeeming}
           onOpenChange={(open) => !open && setRedeeming(null)}
           onDone={() => {
@@ -432,6 +445,7 @@ function SettingsPanel({
   const [monthlyBonusPoints, setMonthlyBonusPoints] = useState(
     String(settings?.monthly_checkin_bonus_points ?? 0)
   );
+  const [pointsPerVp, setPointsPerVp] = useState(String(settings?.points_per_vp ?? 0));
   const [savingSettings, setSavingSettings] = useState(false);
 
   const [newRuleLabel, setNewRuleLabel] = useState("");
@@ -458,8 +472,13 @@ function SettingsPanel({
       toast.error("Monthly bonus points must be a whole number, 0 or more.");
       return;
     }
+    const perVp = Number(pointsPerVp);
+    if (!Number.isInteger(perVp) || perVp < 0) {
+      toast.error("Points per VP must be a whole number, 0 or more.");
+      return;
+    }
     setSavingSettings(true);
-    const result = await upsertLoyaltySettings(enabled, value, bonusThreshold, bonusPoints);
+    const result = await upsertLoyaltySettings(enabled, value, bonusThreshold, bonusPoints, perVp);
     setSavingSettings(false);
     if (result?.error) {
       toast.error(result.error);
@@ -579,13 +598,30 @@ function SettingsPanel({
               onChange={(e) => setMonthlyBonusPoints(e.target.value)}
             />
           </div>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Automatically awards the bonus points once a customer hits this many check-ins in a
+          calendar month — set check-ins to 0 to turn this off.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-end gap-4">
+          <div className="space-y-1">
+            <Label>LP per VP (redeem for any product)</Label>
+            <Input
+              type="number"
+              min={0}
+              className="w-32"
+              value={pointsPerVp}
+              onChange={(e) => setPointsPerVp(e.target.value)}
+            />
+          </div>
           <Button size="sm" disabled={savingSettings} onClick={handleSaveSettings}>
             {savingSettings ? "Saving..." : "Save"}
           </Button>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Automatically awards the bonus points once a customer hits this many check-ins in a
-          calendar month — set check-ins to 0 to turn this off.
+          Lets a customer redeem LP for any active Herbalife product from the inventory catalog —
+          cost is rounded(VP × this rate). Set to 0 to turn this off.
         </p>
       </div>
 
@@ -1060,41 +1096,70 @@ function AwardPointsDialog({
 function RedeemDialog({
   customer,
   rewards,
+  products,
+  pointsPerVp,
   open,
   onOpenChange,
   onDone,
 }: {
   customer: LoyaltyCustomerRow;
   rewards: LoyaltyReward[];
+  products: Product[];
+  pointsPerVp: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
+  const productRedeemEnabled = pointsPerVp > 0 && products.length > 0;
+  const [mode, setMode] = useState<"catalog" | "product">(
+    rewards.length === 0 && productRedeemEnabled ? "product" : "catalog"
+  );
   const [rewardId, setRewardId] = useState<string>(rewards[0]?.id ?? "");
+  const [productId, setProductId] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
-  const selected = rewards.find((r) => r.id === rewardId);
-  const canAfford = selected ? customer.loyalty_points_balance >= selected.points_cost : false;
+  const selectedReward = rewards.find((r) => r.id === rewardId);
+  const selectedProduct = products.find((p) => p.id === productId);
+  const productCost = selectedProduct ? Math.round(selectedProduct.vp * pointsPerVp) : null;
+
+  const selectedName = mode === "catalog" ? selectedReward?.name : selectedProduct?.name;
+  const selectedCost = mode === "catalog" ? selectedReward?.points_cost : productCost ?? undefined;
+  const canAfford =
+    selectedCost !== undefined ? customer.loyalty_points_balance >= selectedCost : false;
+
+  const productOptions: ComboboxOption[] = products.map((p) => ({
+    value: p.id,
+    label: p.name,
+    description: `${p.vp} VP — ${Math.round(p.vp * pointsPerVp)} pts`,
+  }));
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!selected) {
-      toast.error("Choose a reward.");
+    if (mode === "catalog") {
+      if (!selectedReward) {
+        toast.error("Choose a reward.");
+        return;
+      }
+    } else if (!selectedProduct) {
+      toast.error("Choose a product.");
       return;
     }
     if (!canAfford) {
-      toast.error("Not enough points for this reward.");
+      toast.error("Not enough points for this redemption.");
       return;
     }
     setIsPending(true);
-    const result = await redeemLoyaltyReward(customer.id, rewardId);
+    const result =
+      mode === "catalog"
+        ? await redeemLoyaltyReward(customer.id, rewardId)
+        : await redeemLoyaltyProduct(customer.id, productId!);
     setIsPending(false);
 
     if (result?.error) {
       toast.error(result.error);
       return;
     }
-    toast.success(`Redeemed ${selected.name} for ${customer.name}.`);
+    toast.success(`Redeemed ${selectedName} for ${customer.name}.`);
     onDone();
   }
 
@@ -1109,41 +1174,85 @@ function RedeemDialog({
             Current balance: <span className="font-medium text-foreground">{customer.loyalty_points_balance}</span>
           </p>
 
-          {rewards.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No active rewards in the catalog yet.</p>
+          {productRedeemEnabled && (
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === "catalog" ? "default" : "outline"}
+                onClick={() => setMode("catalog")}
+              >
+                Catalog reward
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === "product" ? "default" : "outline"}
+                onClick={() => setMode("product")}
+              >
+                Herbalife product
+              </Button>
+            </div>
+          )}
+
+          {mode === "catalog" ? (
+            rewards.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active rewards in the catalog yet.</p>
+            ) : (
+              <div className="space-y-1">
+                <Label>Reward</Label>
+                <Select value={rewardId} onValueChange={(v) => v && setRewardId(v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select">
+                      {(value: string | null) => {
+                        const reward = rewards.find((r) => r.id === value);
+                        return reward ? `${reward.name} — ${reward.points_cost} pts` : "Select";
+                      }}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rewards.map((r) => (
+                      <SelectItem
+                        key={r.id}
+                        value={r.id}
+                        disabled={customer.loyalty_points_balance < r.points_cost}
+                      >
+                        {r.name} — {r.points_cost} pts
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )
           ) : (
             <div className="space-y-1">
-              <Label>Reward</Label>
-              <Select value={rewardId} onValueChange={(v) => v && setRewardId(v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select">
-                    {(value: string | null) => {
-                      const reward = rewards.find((r) => r.id === value);
-                      return reward ? `${reward.name} — ${reward.points_cost} pts` : "Select";
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {rewards.map((r) => (
-                    <SelectItem
-                      key={r.id}
-                      value={r.id}
-                      disabled={customer.loyalty_points_balance < r.points_cost}
-                    >
-                      {r.name} — {r.points_cost} pts
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selected && !canAfford && (
-                <p className="text-xs text-destructive">
-                  {customer.name} only has {customer.loyalty_points_balance} points — needs {selected.points_cost}.
+              <Label>Product</Label>
+              <Combobox
+                options={productOptions}
+                value={productId}
+                onChange={setProductId}
+                placeholder="Select product..."
+                searchPlaceholder="Search products..."
+              />
+              {selectedProduct && productCost !== null && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedProduct.vp} VP × {pointsPerVp} = {productCost} pts
                 </p>
               )}
             </div>
           )}
 
-          <Button type="submit" disabled={isPending || !selected || !canAfford} className="w-full">
+          {selectedCost !== undefined && !canAfford && (
+            <p className="text-xs text-destructive">
+              {customer.name} only has {customer.loyalty_points_balance} points — needs {selectedCost}.
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            disabled={isPending || selectedCost === undefined || !canAfford}
+            className="w-full"
+          >
             {isPending ? "Redeeming..." : "Redeem"}
           </Button>
         </form>
