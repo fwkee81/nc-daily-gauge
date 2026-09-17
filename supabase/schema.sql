@@ -1689,7 +1689,10 @@ begin
     raise exception 'Product not found';
   end if;
 
-  v_cost := round(v_product.vp * v_points_per_vp);
+  -- VP rounds UP to the next whole VP first (24.95 -> 25), then multiplies
+  -- by the rate — never rounds the club's asking price down in the
+  -- customer's favor.
+  v_cost := ceil(v_product.vp) * v_points_per_vp;
 
   if v_customer.loyalty_points_balance < v_cost then
     raise exception 'Not enough points to redeem this product';
