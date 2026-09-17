@@ -3,6 +3,26 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentCoach } from "@/lib/auth";
+import type { LoyaltyPointsLedgerEntry } from "@/lib/types/database";
+
+// Full LP history for one customer (unlike the club-wide "Recent activity"
+// list on the page, which is capped at 150 rows) — backs the click-through
+// detail popup on the customer table. Includes voided rows so the popup can
+// show them struck through, same transparency as Recent activity.
+export async function getLoyaltyCustomerHistory(customerId: string) {
+  const coach = await getCurrentCoach();
+  if (!coach) return { error: "Not authorized." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("loyalty_points_ledger")
+    .select("*")
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false });
+
+  if (error) return { error: error.message };
+  return { data: (data ?? []) as LoyaltyPointsLedgerEntry[] };
+}
 
 export async function upsertLoyaltySettings(
   enabled: boolean,
