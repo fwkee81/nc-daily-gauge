@@ -363,6 +363,8 @@ export type LoyaltySettings = {
   nc_club_id: string;
   enabled: boolean;
   points_per_cup: number;
+  monthly_checkin_bonus_threshold: number;
+  monthly_checkin_bonus_points: number;
   created_at: string;
   updated_at: string;
 };
@@ -394,10 +396,11 @@ export type LoyaltyPointsLedgerEntry = {
   customer_id: string;
   nc_club_id: string;
   points: number;
-  kind: "checkin" | "adjustment" | "manual" | "redeem";
+  kind: "checkin" | "adjustment" | "manual" | "redeem" | "monthly_bonus";
   checkin_id: string | null;
   earn_rule_id: string | null;
   reward_id: string | null;
+  bonus_period: string | null;
   reason: string | null;
   recorded_by: string;
   created_at: string;
@@ -914,7 +917,12 @@ export type Database = {
         Returns: undefined;
       };
       upsert_loyalty_settings: {
-        Args: { p_enabled: boolean; p_points_per_cup: number };
+        Args: {
+          p_enabled: boolean;
+          p_points_per_cup: number;
+          p_monthly_bonus_threshold?: number;
+          p_monthly_bonus_points?: number;
+        };
         Returns: LoyaltySettings;
       };
       weekly_totals: {

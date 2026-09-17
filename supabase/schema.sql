@@ -858,6 +858,14 @@ create table loyalty_settings (
   nc_club_id uuid not null unique references nc_clubs (id),
   enabled boolean not null default false,
   points_per_cup integer not null default 0,
+  -- Automatic bonus for a heavy-attendance month: a 10/20/30-Day customer
+  -- who racks up at least this many non-voided check-ins in a calendar
+  -- month gets monthly_checkin_bonus_points, once per month, awarded by
+  -- record_checkin() the moment the count is reached. Threshold 0 (the
+  -- default) disables the feature entirely — same "0 means off" shape as
+  -- points_per_cup.
+  monthly_checkin_bonus_threshold integer not null default 0,
+  monthly_checkin_bonus_points integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -907,10 +915,15 @@ create table loyalty_points_ledger (
   customer_id uuid not null references customers (id),
   nc_club_id uuid not null references nc_clubs (id),
   points integer not null check (points <> 0),
-  kind text not null check (kind in ('checkin', 'adjustment', 'manual', 'redeem')),
+  kind text not null check (kind in ('checkin', 'adjustment', 'manual', 'redeem', 'monthly_bonus')),
   checkin_id uuid references checkins (id),
   earn_rule_id uuid references loyalty_earn_rules (id),
   reward_id uuid references loyalty_rewards (id),
+  -- First day of the calendar month a 'monthly_bonus' row is for — lets
+  -- record_checkin()/void_checkin() look up "was this month's bonus
+  -- already awarded/does it need clawing back" without parsing reason
+  -- text. Null for every other kind.
+  bonus_period date,
   reason text,
   recorded_by uuid not null references coaches (id),
   created_at timestamptz not null default now(),
@@ -1056,6 +1069,10 @@ declare
   v_result checkins;
   v_nc_level customer_nc_level;
   v_points_per_cup integer;
+  v_bonus_threshold integer;
+  v_bonus_points integer;
+  v_month_start date;
+  v_month_checkin_count integer;
 begin
   if v_coach_id is null then
     raise exception 'Not a registered coach';
@@ -1099,7 +1116,8 @@ begin
   -- was actually checked in — see correct_checkin()/void_checkin() for how
   -- this stays in sync with later edits/voids. Never blocks the check-in.
   if v_nc_level in ('10-day', '20-day', '30-day') then
-    select points_per_cup into v_points_per_cup
+    select points_per_cup, monthly_checkin_bonus_threshold, monthly_checkin_bonus_points
+    into v_points_per_cup, v_bonus_threshold, v_bonus_points
     from loyalty_settings where nc_club_id = v_club_id and enabled;
 
     if found then
@@ -1108,6 +1126,39 @@ begin
 
       update customers set loyalty_points_balance = loyalty_points_balance + p_cups * v_points_per_cup
       where id = p_customer_id;
+
+      -- Monthly check-in bonus: awarded once per calendar month, the first
+      -- time this customer's non-voided check-in count for that month
+      -- (checkin_date-based, so a backfilled date counts toward its own
+      -- month) reaches the configured threshold. bonus_period pins down
+      -- "already awarded this month" so it never double-fires on later
+      -- check-ins; void_checkin() claws it back if a later void drops the
+      -- month's count back under the threshold.
+      if v_bonus_threshold > 0 and v_bonus_points > 0 then
+        v_month_start := date_trunc('month', p_checkin_date)::date;
+
+        select count(*) into v_month_checkin_count
+        from checkins
+        where customer_id = p_customer_id and not voided
+          and checkin_date >= v_month_start and checkin_date < v_month_start + interval '1 month';
+
+        if v_month_checkin_count >= v_bonus_threshold and not exists (
+          select 1 from loyalty_points_ledger
+          where customer_id = p_customer_id and kind = 'monthly_bonus'
+            and bonus_period = v_month_start and not voided
+        ) then
+          insert into loyalty_points_ledger
+            (customer_id, nc_club_id, points, kind, bonus_period, reason, recorded_by)
+          values (
+            p_customer_id, v_club_id, v_bonus_points, 'monthly_bonus', v_month_start,
+            format('%s+ check-ins in %s', v_bonus_threshold, to_char(v_month_start, 'Mon YYYY')),
+            v_coach_id
+          );
+
+          update customers set loyalty_points_balance = loyalty_points_balance + v_bonus_points
+          where id = p_customer_id;
+        end if;
+      end if;
     end if;
   end if;
 
@@ -1375,6 +1426,10 @@ declare
   v_checkin checkins%rowtype;
   v_balance_customer_id uuid;
   v_loyalty_total integer;
+  v_bonus_threshold integer;
+  v_month_start date;
+  v_month_checkin_count integer;
+  v_monthly_bonus loyalty_points_ledger%rowtype;
 begin
   if v_editor_id is null or not is_current_coach_admin() then
     raise exception 'Only admins can void check-ins';
@@ -1417,6 +1472,41 @@ begin
 
     update customers set loyalty_points_balance = loyalty_points_balance - v_loyalty_total
     where id = v_checkin.customer_id;
+  end if;
+
+  -- Monthly check-in bonus: if voiding this check-in drops the customer's
+  -- non-voided count for that calendar month back under the club's
+  -- threshold, claw back a bonus already awarded for that same month —
+  -- mirrors the per-checkin reversal above, just for the aggregate bonus
+  -- instead of a single checkin_id.
+  select monthly_checkin_bonus_threshold into v_bonus_threshold
+  from loyalty_settings where nc_club_id = v_checkin.nc_club_id and enabled;
+
+  if v_bonus_threshold > 0 then
+    v_month_start := date_trunc('month', v_checkin.checkin_date)::date;
+
+    select count(*) into v_month_checkin_count
+    from checkins
+    where customer_id = v_checkin.customer_id and not voided
+      and checkin_date >= v_month_start and checkin_date < v_month_start + interval '1 month';
+
+    if v_month_checkin_count < v_bonus_threshold then
+      select * into v_monthly_bonus
+      from loyalty_points_ledger
+      where customer_id = v_checkin.customer_id and kind = 'monthly_bonus'
+        and bonus_period = v_month_start and not voided
+      for update;
+
+      if found then
+        update loyalty_points_ledger
+        set voided = true, voided_by = v_editor_id, voided_at = now(),
+            void_reason = 'Automatically reversed — a voided check-in dropped this month''s count back under the bonus threshold'
+        where id = v_monthly_bonus.id;
+
+        update customers set loyalty_points_balance = loyalty_points_balance - v_monthly_bonus.points
+        where id = v_checkin.customer_id;
+      end if;
+    end if;
   end if;
 end;
 $$;
@@ -1587,7 +1677,16 @@ end;
 $$;
 
 -- Admin-only, own club — creates or updates the club's single settings row.
-create or replace function upsert_loyalty_settings(p_enabled boolean, p_points_per_cup integer)
+-- Adding the monthly-bonus params changes the argument list — drop the old
+-- 2-arg signature first, same reasoning as record_checkin() above.
+drop function if exists upsert_loyalty_settings(boolean, integer);
+
+create or replace function upsert_loyalty_settings(
+  p_enabled boolean,
+  p_points_per_cup integer,
+  p_monthly_bonus_threshold integer default 0,
+  p_monthly_bonus_points integer default 0
+)
 returns loyalty_settings
 language plpgsql
 security definer
@@ -1604,23 +1703,35 @@ begin
   if p_points_per_cup < 0 then
     raise exception 'Points per cup cannot be negative';
   end if;
+  if p_monthly_bonus_threshold < 0 then
+    raise exception 'Monthly check-in bonus threshold cannot be negative';
+  end if;
+  if p_monthly_bonus_points < 0 then
+    raise exception 'Monthly check-in bonus points cannot be negative';
+  end if;
 
   select nc_club_id into v_club_id from coaches where id = v_coach_id;
 
-  insert into loyalty_settings (nc_club_id, enabled, points_per_cup)
-  values (v_club_id, p_enabled, p_points_per_cup)
+  insert into loyalty_settings (
+    nc_club_id, enabled, points_per_cup, monthly_checkin_bonus_threshold, monthly_checkin_bonus_points
+  )
+  values (v_club_id, p_enabled, p_points_per_cup, p_monthly_bonus_threshold, p_monthly_bonus_points)
   on conflict (nc_club_id) do update
-    set enabled = excluded.enabled, points_per_cup = excluded.points_per_cup
+    set enabled = excluded.enabled,
+        points_per_cup = excluded.points_per_cup,
+        monthly_checkin_bonus_threshold = excluded.monthly_checkin_bonus_threshold,
+        monthly_checkin_bonus_points = excluded.monthly_checkin_bonus_points
   returning * into v_settings;
 
   return v_settings;
 end;
 $$;
 
+grant execute on function upsert_loyalty_settings(boolean, integer, integer, integer) to authenticated;
+
 grant execute on function award_loyalty_points(uuid, uuid, integer, text) to authenticated;
 grant execute on function redeem_loyalty_reward(uuid, uuid) to authenticated;
 grant execute on function void_loyalty_redemption(uuid, text) to authenticated;
-grant execute on function upsert_loyalty_settings(boolean, integer) to authenticated;
 
 -- Adds cups to a customer's consumption balance when they renew their NC
 -- card, and records the renewal for audit purposes. Admin-only, own club.
