@@ -1005,7 +1005,13 @@ function AwardPointsDialog({
             <Label>Reason</Label>
             <Select value={ruleId} onValueChange={(v) => v && setRuleId(v)}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select" />
+                <SelectValue placeholder="Select">
+                  {(value: string | null) => {
+                    if (value === CUSTOM_RULE_VALUE) return "Custom amount...";
+                    const rule = earnRules.find((r) => r.id === value);
+                    return rule ? `${rule.label} — ${rule.points} pts` : "Select";
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {earnRules.map((r) => (
@@ -1110,7 +1116,12 @@ function RedeemDialog({
               <Label>Reward</Label>
               <Select value={rewardId} onValueChange={(v) => v && setRewardId(v)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select" />
+                  <SelectValue placeholder="Select">
+                    {(value: string | null) => {
+                      const reward = rewards.find((r) => r.id === value);
+                      return reward ? `${reward.name} — ${reward.points_cost} pts` : "Select";
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {rewards.map((r) => (
