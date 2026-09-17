@@ -621,7 +621,8 @@ function SettingsPanel({
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Lets a customer redeem LP for any active Herbalife product from the inventory catalog —
-          cost is rounded(VP × this rate). Set to 0 to turn this off.
+          VP rounds up to the next whole number, then × this rate (e.g. 24.95 VP → 25 × 500 =
+          12,500 pts). Set to 0 to turn this off.
         </p>
       </div>
 
@@ -1120,7 +1121,10 @@ function RedeemDialog({
 
   const selectedReward = rewards.find((r) => r.id === rewardId);
   const selectedProduct = products.find((p) => p.id === productId);
-  const productCost = selectedProduct ? Math.round(selectedProduct.vp * pointsPerVp) : null;
+  // VP rounds UP to the next whole VP before multiplying — mirrors
+  // redeem_loyalty_product() in schema.sql exactly, so the price shown
+  // here is always what actually gets charged, never an underestimate.
+  const productCost = selectedProduct ? Math.ceil(selectedProduct.vp) * pointsPerVp : null;
 
   const selectedName = mode === "catalog" ? selectedReward?.name : selectedProduct?.name;
   const selectedCost = mode === "catalog" ? selectedReward?.points_cost : productCost ?? undefined;
@@ -1130,7 +1134,7 @@ function RedeemDialog({
   const productOptions: ComboboxOption[] = products.map((p) => ({
     value: p.id,
     label: p.name,
-    description: `${p.vp} VP — ${Math.round(p.vp * pointsPerVp)} pts`,
+    description: `${p.vp} VP — ${Math.ceil(p.vp) * pointsPerVp} pts`,
   }));
 
   async function handleSubmit(e: FormEvent) {
@@ -1236,7 +1240,8 @@ function RedeemDialog({
               />
               {selectedProduct && productCost !== null && (
                 <p className="text-xs text-muted-foreground">
-                  {selectedProduct.vp} VP × {pointsPerVp} = {productCost} pts
+                  {selectedProduct.vp} VP → {Math.ceil(selectedProduct.vp)} × {pointsPerVp} ={" "}
+                  {productCost} pts
                 </p>
               )}
             </div>
