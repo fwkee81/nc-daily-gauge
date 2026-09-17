@@ -555,12 +555,12 @@ function SettingsPanel({
   return (
     <div className="space-y-4 rounded-md border p-4">
       <div className="rounded-lg border bg-muted/20 p-4">
-        <p className="text-sm font-semibold">Program status</p>
+        <label className="flex items-center gap-2">
+          <p className="text-sm font-semibold">Program status</p>
+          <Switch checked={enabled} onCheckedChange={setEnabled} />
+          <span className="text-sm text-muted-foreground">{enabled ? "On" : "Off"}</span>
+        </label>
         <div className="mt-2 flex flex-wrap items-end gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={enabled} onCheckedChange={setEnabled} />
-            {enabled ? "On" : "Off"}
-          </label>
           <div className="space-y-1">
             <Label>Points per cup</Label>
             <Input
