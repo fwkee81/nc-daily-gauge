@@ -1,7 +1,13 @@
 import { redirect } from "next/navigation";
 import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { LoyaltyEarnRule, LoyaltyPointsLedgerEntry, LoyaltyReward, LoyaltySettings } from "@/lib/types/database";
+import type {
+  LoyaltyEarnRule,
+  LoyaltyPointsLedgerEntry,
+  LoyaltyReward,
+  LoyaltySettings,
+  Product,
+} from "@/lib/types/database";
 import { LoyaltyClient, type LoyaltyCustomerRow } from "./loyalty-client";
 
 export default async function LoyaltyPage() {
@@ -17,8 +23,14 @@ export default async function LoyaltyPage() {
 
   const supabase = await createClient();
 
-  const [{ data: settings }, { data: earnRules }, { data: rewards }, { data: customers }, { data: recentActivity }] =
-    await Promise.all([
+  const [
+    { data: settings },
+    { data: earnRules },
+    { data: rewards },
+    { data: customers },
+    { data: recentActivity },
+    { data: products },
+  ] = await Promise.all([
       supabase.from("loyalty_settings").select("*").eq("nc_club_id", coach.nc_club_id).maybeSingle(),
       supabase
         .from("loyalty_earn_rules")
@@ -49,6 +61,9 @@ export default async function LoyaltyPage() {
         .eq("nc_club_id", coach.nc_club_id)
         .order("created_at", { ascending: false })
         .limit(150),
+      // Global catalog (not club-scoped) — same source as Inventory, powers
+      // the "redeem for any product" option priced off products.vp.
+      supabase.from("products").select("id, name, vp, active").eq("active", true).order("name"),
     ]);
 
   return (
@@ -61,6 +76,7 @@ export default async function LoyaltyPage() {
       recentActivity={
         (recentActivity ?? []) as unknown as (LoyaltyPointsLedgerEntry & { customer: { name: string } | null })[]
       }
+      products={(products ?? []) as Product[]}
     />
   );
 }

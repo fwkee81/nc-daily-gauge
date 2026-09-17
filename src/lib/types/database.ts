@@ -365,6 +365,7 @@ export type LoyaltySettings = {
   points_per_cup: number;
   monthly_checkin_bonus_threshold: number;
   monthly_checkin_bonus_points: number;
+  points_per_vp: number;
   created_at: string;
   updated_at: string;
 };
@@ -400,6 +401,7 @@ export type LoyaltyPointsLedgerEntry = {
   checkin_id: string | null;
   earn_rule_id: string | null;
   reward_id: string | null;
+  product_id: string | null;
   bonus_period: string | null;
   reason: string | null;
   recorded_by: string;
@@ -912,6 +914,10 @@ export type Database = {
         Args: { p_customer_id: string; p_reward_id: string };
         Returns: Customer;
       };
+      redeem_loyalty_product: {
+        Args: { p_customer_id: string; p_product_id: string };
+        Returns: Customer;
+      };
       void_loyalty_redemption: {
         Args: { p_entry_id: string; p_reason: string };
         Returns: undefined;
@@ -922,6 +928,7 @@ export type Database = {
           p_points_per_cup: number;
           p_monthly_bonus_threshold?: number;
           p_monthly_bonus_points?: number;
+          p_points_per_vp?: number;
         };
         Returns: LoyaltySettings;
       };

@@ -8,7 +8,8 @@ export async function upsertLoyaltySettings(
   enabled: boolean,
   pointsPerCup: number,
   monthlyBonusThreshold: number,
-  monthlyBonusPoints: number
+  monthlyBonusPoints: number,
+  pointsPerVp: number
 ) {
   const coach = await getCurrentCoach();
   if (!coach || !coach.is_admin) return { error: "Not authorized." };
@@ -19,6 +20,7 @@ export async function upsertLoyaltySettings(
     p_points_per_cup: pointsPerCup,
     p_monthly_bonus_threshold: monthlyBonusThreshold,
     p_monthly_bonus_points: monthlyBonusPoints,
+    p_points_per_vp: pointsPerVp,
   });
 
   if (error) return { error: error.message };
@@ -56,6 +58,21 @@ export async function redeemLoyaltyReward(customerId: string, rewardId: string) 
   const { error } = await supabase.rpc("redeem_loyalty_reward", {
     p_customer_id: customerId,
     p_reward_id: rewardId,
+  });
+
+  if (error) return { error: error.message };
+  revalidatePath("/loyalty");
+  return { success: true };
+}
+
+export async function redeemLoyaltyProduct(customerId: string, productId: string) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) return { error: "Not authorized." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("redeem_loyalty_product", {
+    p_customer_id: customerId,
+    p_product_id: productId,
   });
 
   if (error) return { error: error.message };
