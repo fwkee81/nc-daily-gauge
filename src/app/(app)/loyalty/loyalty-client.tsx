@@ -76,6 +76,7 @@ const KIND_LABEL: Record<string, string> = {
   adjustment: "Adjustment",
   manual: "Bonus",
   redeem: "Redeemed",
+  monthly_bonus: "Monthly Bonus",
 };
 
 const CUSTOMERS_PAGE_SIZE = 20;
@@ -425,6 +426,12 @@ function SettingsPanel({
 }) {
   const [enabled, setEnabled] = useState(settings?.enabled ?? false);
   const [pointsPerCup, setPointsPerCup] = useState(String(settings?.points_per_cup ?? 0));
+  const [monthlyBonusThreshold, setMonthlyBonusThreshold] = useState(
+    String(settings?.monthly_checkin_bonus_threshold ?? 0)
+  );
+  const [monthlyBonusPoints, setMonthlyBonusPoints] = useState(
+    String(settings?.monthly_checkin_bonus_points ?? 0)
+  );
   const [savingSettings, setSavingSettings] = useState(false);
 
   const [newRuleLabel, setNewRuleLabel] = useState("");
@@ -441,8 +448,18 @@ function SettingsPanel({
       toast.error("Points per cup must be a whole number, 0 or more.");
       return;
     }
+    const bonusThreshold = Number(monthlyBonusThreshold);
+    if (!Number.isInteger(bonusThreshold) || bonusThreshold < 0) {
+      toast.error("Monthly bonus check-in count must be a whole number, 0 or more.");
+      return;
+    }
+    const bonusPoints = Number(monthlyBonusPoints);
+    if (!Number.isInteger(bonusPoints) || bonusPoints < 0) {
+      toast.error("Monthly bonus points must be a whole number, 0 or more.");
+      return;
+    }
     setSavingSettings(true);
-    const result = await upsertLoyaltySettings(enabled, value);
+    const result = await upsertLoyaltySettings(enabled, value, bonusThreshold, bonusPoints);
     setSavingSettings(false);
     if (result?.error) {
       toast.error(result.error);
@@ -535,13 +552,40 @@ function SettingsPanel({
               onChange={(e) => setPointsPerCup(e.target.value)}
             />
           </div>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Only 10-Day/20-Day/30-Day customers earn points, and only when this is on. Points always
+          equal cups checked in × the rate above.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-end gap-4">
+          <div className="space-y-1">
+            <Label>Monthly bonus at (check-ins)</Label>
+            <Input
+              type="number"
+              min={0}
+              className="w-32"
+              value={monthlyBonusThreshold}
+              onChange={(e) => setMonthlyBonusThreshold(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Bonus points</Label>
+            <Input
+              type="number"
+              min={0}
+              className="w-32"
+              value={monthlyBonusPoints}
+              onChange={(e) => setMonthlyBonusPoints(e.target.value)}
+            />
+          </div>
           <Button size="sm" disabled={savingSettings} onClick={handleSaveSettings}>
             {savingSettings ? "Saving..." : "Save"}
           </Button>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Only 10-Day/20-Day/30-Day customers earn points, and only when this is on. Points always
-          equal cups checked in × the rate above.
+          Automatically awards the bonus points once a customer hits this many check-ins in a
+          calendar month — set check-ins to 0 to turn this off.
         </p>
       </div>
 

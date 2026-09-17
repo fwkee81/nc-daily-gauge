@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentCoach } from "@/lib/auth";
 
-export async function upsertLoyaltySettings(enabled: boolean, pointsPerCup: number) {
+export async function upsertLoyaltySettings(
+  enabled: boolean,
+  pointsPerCup: number,
+  monthlyBonusThreshold: number,
+  monthlyBonusPoints: number
+) {
   const coach = await getCurrentCoach();
   if (!coach || !coach.is_admin) return { error: "Not authorized." };
 
@@ -12,6 +17,8 @@ export async function upsertLoyaltySettings(enabled: boolean, pointsPerCup: numb
   const { error } = await supabase.rpc("upsert_loyalty_settings", {
     p_enabled: enabled,
     p_points_per_cup: pointsPerCup,
+    p_monthly_bonus_threshold: monthlyBonusThreshold,
+    p_monthly_bonus_points: monthlyBonusPoints,
   });
 
   if (error) return { error: error.message };
