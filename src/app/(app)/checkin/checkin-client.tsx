@@ -249,23 +249,30 @@ export function CheckinClient({
       )}
     >
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">
-            {clubName ?? "Check-in"} — {format(new Date(), "EEEE, d MMM yyyy")}
-          </h1>
-          {isAdmin && (
-            <Button
-              variant="secondary"
-              className="gap-2 rounded-full px-5 text-base font-semibold shadow-sm"
-              onClick={() => setWalkinOpen(true)}
-            >
-              <UserPlus className="size-5" />
-              Walk-in (Ala Carte)
-            </Button>
-          )}
-        </div>
+        {/* Hidden once a search is active — on a tablet the on-screen
+            keyboard already eats half the viewport, so this row (and the
+            birthday banner below) would otherwise push the tappable results
+            grid out from under the visible area, forcing a scroll just to
+            see who matched. */}
+        {!hasQuery && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-2xl font-semibold">
+              {clubName ?? "Check-in"} — {format(new Date(), "EEEE, d MMM yyyy")}
+            </h1>
+            {isAdmin && (
+              <Button
+                variant="secondary"
+                className="gap-2 rounded-full px-5 text-base font-semibold shadow-sm"
+                onClick={() => setWalkinOpen(true)}
+              >
+                <UserPlus className="size-5" />
+                Walk-in (Ala Carte)
+              </Button>
+            )}
+          </div>
+        )}
 
-        {todaysBirthdays.length > 0 && (
+        {!hasQuery && todaysBirthdays.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-secondary/50 bg-secondary/15 px-3 py-1.5 text-sm">
             <span aria-hidden>🎂</span>
             <span className="font-medium">Happy Birthday today:</span>
@@ -278,7 +285,7 @@ export function CheckinClient({
           </div>
         )}
 
-        <div className="relative mt-4">
+        <div className={cn("relative", hasQuery ? "mt-0" : "mt-4")}>
           <Search className="pointer-events-none absolute top-1/2 left-4 size-6 -translate-y-1/2 text-primary" />
           <Input
             autoFocus
