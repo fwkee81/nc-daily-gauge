@@ -1357,6 +1357,7 @@ function CustomerLoyaltyHistoryDialog({
 }) {
   const [entries, setEntries] = useState<LoyaltyPointsLedgerEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedBucket, setExpandedBucket] = useState<string | null>(null);
 
   useEffect(() => {
     // The parent only ever mounts this dialog when it's open (see
@@ -1372,22 +1373,28 @@ function CustomerLoyaltyHistoryDialog({
   }, [customer.id]);
 
   const active = (entries ?? []).filter((e) => !e.voided);
-  const visitEntries = active.filter((e) => e.kind === "checkin");
-  const visitPoints = active
+  const visitEntries = active
     .filter((e) => e.kind === "checkin" || e.kind === "adjustment")
-    .reduce((sum, e) => sum + e.points, 0);
-  const manualEntries = active.filter((e) => e.kind === "manual");
-  const monthlyBonusEntries = active.filter((e) => e.kind === "monthly_bonus");
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const visitCount = active.filter((e) => e.kind === "checkin").length;
+  const visitPoints = visitEntries.reduce((sum, e) => sum + e.points, 0);
+  const manualEntries = active
+    .filter((e) => e.kind === "manual")
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const monthlyBonusEntries = active
+    .filter((e) => e.kind === "monthly_bonus")
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
   const redemptions = (entries ?? []).filter((e) => e.kind === "redeem");
 
   const earnBuckets = [
-    { label: "NC Visit check-ins", count: visitEntries.length, points: visitPoints },
+    { label: "NC Visit check-ins", count: visitCount, points: visitPoints, entries: visitEntries },
     ...(manualEntries.length > 0
       ? [
           {
             label: "Bonus awards",
             count: manualEntries.length,
             points: manualEntries.reduce((sum, e) => sum + e.points, 0),
+            entries: manualEntries,
           },
         ]
       : []),
@@ -1397,6 +1404,7 @@ function CustomerLoyaltyHistoryDialog({
             label: "Monthly bonus",
             count: monthlyBonusEntries.length,
             points: monthlyBonusEntries.reduce((sum, e) => sum + e.points, 0),
+            entries: monthlyBonusEntries,
           },
         ]
       : []),
@@ -1425,14 +1433,46 @@ function CustomerLoyaltyHistoryDialog({
             <div>
               <h3 className="text-sm font-semibold">Points earned, by source</h3>
               <ul className="mt-2 divide-y rounded-md border">
-                {earnBuckets.map((b) => (
-                  <li key={b.label} className="flex items-center justify-between px-3 py-2 text-sm">
-                    <span>
-                      {b.label} <span className="text-muted-foreground">({b.count})</span>
-                    </span>
-                    <span className="font-medium">+{b.points}</span>
-                  </li>
-                ))}
+                {earnBuckets.map((b) => {
+                  const isOpen = expandedBucket === b.label;
+                  return (
+                    <li key={b.label}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedBucket(isOpen ? null : b.label)}
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          {isOpen ? (
+                            <ChevronUp className="size-3.5 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="size-3.5 text-muted-foreground" />
+                          )}
+                          {b.label} <span className="text-muted-foreground">({b.count})</span>
+                        </span>
+                        <span className="font-medium">+{b.points}</span>
+                      </button>
+                      {isOpen && (
+                        <ul className="divide-y border-t bg-muted/20">
+                          {b.entries.map((e) => (
+                            <li
+                              key={e.id}
+                              className="flex items-center justify-between px-3 py-1.5 pl-8 text-xs"
+                            >
+                              <span className="text-muted-foreground">
+                                {fmt(e.created_at)}
+                                {e.reason ? ` — ${e.reason}` : ""}
+                              </span>
+                              <span className="font-medium">
+                                {e.points > 0 ? `+${e.points}` : e.points}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 
