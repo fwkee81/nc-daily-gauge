@@ -85,6 +85,24 @@ const CONFETTI_COLORS = [
   "#4dabf7",
 ];
 
+// Distinct tint per stat (green vs amber, same pairing as the dashboard
+// tiles) so Loyalty Points and Friendship Pass read as two different things
+// at a glance, instead of two identical green lines.
+function StatChip({ tone, children }: { tone: "primary" | "secondary"; children: React.ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border px-3 py-2 text-base font-medium",
+        tone === "primary"
+          ? "border-primary/30 bg-primary/10 text-primary"
+          : "border-secondary/50 bg-secondary/20 text-[#8a5a00]"
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 // Visual stand-in for the customer's physical punch card — balance is an
 // open-ended top-up counter (see NC_LEVEL_CUPS), so a renewed card can show
 // more remaining than the card size; the bar just clamps at full in that case.
@@ -497,17 +515,15 @@ export function CheckinClient({
                   Enjoy your free birthday breakfast — balance not deducted!
                 </p>
                 {result.loyaltyPoints != null && (
-                  <p className="text-base font-medium text-primary">
-                    Loyalty Points: {result.loyaltyPoints}
-                  </p>
+                  <StatChip tone="primary">Loyalty Points: {result.loyaltyPoints}</StatChip>
                 )}
                 {result.friendshipPasses && (
-                  <p className="text-base font-medium text-primary">
+                  <StatChip tone="secondary">
                     🎟️ {result.friendshipPasses.count} Friendship Pass
                     {result.friendshipPasses.count > 1 ? "es" : ""} — nearest expires{" "}
                     {format(new Date(result.friendshipPasses.earliestExpiresAt), "d MMM yyyy")}.
                     Bring a friend before it&apos;s gone!
-                  </p>
+                  </StatChip>
                 )}
               </div>
               <Button className="w-full py-6 text-lg" onClick={() => setResult(null)}>
@@ -530,17 +546,15 @@ export function CheckinClient({
                     </p>
                   )}
                   {result.loyaltyPoints != null && (
-                    <p className="text-base font-medium text-primary">
-                      Loyalty Points: {result.loyaltyPoints}
-                    </p>
+                    <StatChip tone="primary">Loyalty Points: {result.loyaltyPoints}</StatChip>
                   )}
                   {result.friendshipPasses && (
-                    <p className="text-base font-medium text-primary">
+                    <StatChip tone="secondary">
                       🎟️ {result.friendshipPasses.count} Friendship Pass
                       {result.friendshipPasses.count > 1 ? "es" : ""} — nearest expires{" "}
                       {format(new Date(result.friendshipPasses.earliestExpiresAt), "d MMM yyyy")}.
                       Bring a friend before it&apos;s gone!
-                    </p>
+                    </StatChip>
                   )}
                   {result.balance < RENEWAL_REMINDER_THRESHOLD && (
                     <p className="text-base font-medium text-destructive">
