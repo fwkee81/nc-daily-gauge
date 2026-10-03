@@ -35,6 +35,7 @@ export type FriendshipPassRow = FriendshipPass & {
   customer: { name: string } | null;
   issued_by_coach: { name: string } | null;
   voided_by_coach: { name: string } | null;
+  used_checkin: { customer: { name: string } | null } | null;
 };
 
 const SOURCE_LABEL: Record<FriendshipPassSource, string> = {
@@ -193,6 +194,7 @@ export function FriendshipPassClient({
                 <TableHead>Issued</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Used by</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -216,6 +218,7 @@ export function FriendshipPassClient({
                         <span className="ml-1 text-xs text-muted-foreground">— {p.void_reason}</span>
                       )}
                     </TableCell>
+                    <TableCell>{status === "used" ? p.used_checkin?.customer?.name ?? "—" : "—"}</TableCell>
                     <TableCell>
                       {status === "active" && (
                         <Button size="sm" variant="outline" onClick={() => setVoiding(p)}>
@@ -228,7 +231,7 @@ export function FriendshipPassClient({
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     No Friendship Passes found.
                   </TableCell>
                 </TableRow>
