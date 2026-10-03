@@ -1370,13 +1370,21 @@ $$;
 -- Issues p_count brand-new Friendship Passes to one customer in a single
 -- call (PJS = 3 at sign-up, a first 30-Day upgrade = 2, a special occasion =
 -- however many the admin types in) — each pass is its own row so it can be
--- tracked and expire independently, all sharing the same issued_at and
--- therefore the same 90-day expires_at. Admin-only, own club.
+-- tracked and expire independently, all sharing the same issued_at and, by
+-- default, the same 90-day expires_at. p_expires_at lets an admin override
+-- that default (e.g. backfilling an award that should've been given
+-- earlier, or extending one as a goodwill gesture) — admin-only, own club.
+--
+-- Adding p_expires_at changes the argument list — drop the old 4-arg
+-- signature first, same reasoning as record_checkin() elsewhere.
+drop function if exists award_friendship_passes(uuid, text, integer, text);
+
 create or replace function award_friendship_passes(
   p_customer_id uuid,
   p_source text,
   p_count integer,
-  p_reason text
+  p_reason text,
+  p_expires_at date default null
 )
 returns setof friendship_passes
 language plpgsql
@@ -1387,6 +1395,7 @@ declare
   v_coach_id uuid := current_coach_id();
   v_club_id uuid;
   v_issued_at timestamptz := now();
+  v_expires_at date := coalesce(p_expires_at, (now() + interval '90 days')::date);
 begin
   if v_coach_id is null or not is_current_coach_admin() then
     raise exception 'Only admins can award Friendship Passes';
@@ -1400,6 +1409,9 @@ begin
   if p_reason is null or btrim(p_reason) = '' then
     raise exception 'A reason is required';
   end if;
+  if v_expires_at < current_date then
+    raise exception 'Expiry date must be today or later';
+  end if;
 
   select nc_club_id into v_club_id from coaches where id = v_coach_id;
 
@@ -1411,8 +1423,7 @@ begin
 
   return query
     insert into friendship_passes (customer_id, nc_club_id, source, reason, issued_by, issued_at, expires_at)
-    select p_customer_id, v_club_id, p_source, btrim(p_reason), v_coach_id, v_issued_at,
-      (v_issued_at + interval '90 days')::date
+    select p_customer_id, v_club_id, p_source, btrim(p_reason), v_coach_id, v_issued_at, v_expires_at
     from generate_series(1, p_count)
     returning *;
 end;
@@ -1456,7 +1467,7 @@ begin
 end;
 $$;
 
-grant execute on function award_friendship_passes(uuid, text, integer, text) to authenticated;
+grant execute on function award_friendship_passes(uuid, text, integer, text, date) to authenticated;
 grant execute on function void_friendship_pass(uuid, text) to authenticated;
 
 
