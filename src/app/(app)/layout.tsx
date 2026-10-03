@@ -21,13 +21,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen flex-col">
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-4">
-            <Link href="/dashboard">
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <Link href="/dashboard" className="shrink-0">
               <Logo />
             </Link>
             <NavLinks isAdmin={coach.is_admin} showFriendshipPass={canSeeFriendshipPass(user.email)} />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <Link
               href="/profile"
               className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"

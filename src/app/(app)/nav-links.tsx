@@ -49,9 +49,17 @@ export function NavLinks({
   ];
 
   return (
-    <nav className="flex flex-wrap items-center gap-1">
+    // Scrolls horizontally instead of wrapping to multiple lines — on a
+    // phone this keeps the header to one compact row no matter how many
+    // links get added, instead of pills wrapping down and pushing page
+    // content lower each time a new feature lands.
+    <nav className="scrollbar-hide flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
       {primaryLinks.map((link) => (
-        <Link key={link.href} href={link.href} className={pillClass(pathname === link.href)}>
+        <Link
+          key={link.href}
+          href={link.href}
+          className={cn(pillClass(pathname === link.href), "shrink-0")}
+        >
           {link.label}
         </Link>
       ))}
@@ -60,7 +68,10 @@ export function NavLinks({
         <Popover>
           <PopoverTrigger
             render={
-              <button type="button" className={cn(pillClass(inAdminGroup), "flex items-center gap-1")} />
+              <button
+                type="button"
+                className={cn(pillClass(inAdminGroup), "flex shrink-0 items-center gap-1")}
+              />
             }
           >
             Admin <ChevronDown className="size-3.5" />

@@ -156,6 +156,18 @@
   --sidebar-ring: var(--brand-green);
 }
 
+@layer utilities {
+  /* Horizontally scrollable nav on mobile — scrolls normally, just without
+     a visible scrollbar cluttering the header. */
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
