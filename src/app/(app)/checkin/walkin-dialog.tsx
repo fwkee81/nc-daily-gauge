@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Combobox, type ComboboxOption } from "@/components/combobox";
@@ -30,6 +31,8 @@ interface CoachOption {
 interface CustomerOption {
   id: string;
   name: string;
+  availableFriendshipPassCount?: number;
+  nextFriendshipPassId?: string | null;
 }
 
 export function WalkinDialog({
@@ -63,8 +66,17 @@ export function WalkinDialog({
   const [contact, setContact] = useState("");
   const [invitedBy, setInvitedBy] = useState<string>(PLUGIN_VALUE);
   const [consumptionType, setConsumptionType] = useState<ConsumptionType>(CONSUMPTION_TYPES[0]);
+  const [useFriendshipPass, setUseFriendshipPass] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const invitedCustomer = invitedBy.startsWith("customer:")
+    ? customers.find((c) => c.id === invitedBy.slice("customer:".length))
+    : null;
+  const availablePass =
+    invitedCustomer && (invitedCustomer.availableFriendshipPassCount ?? 0) > 0
+      ? invitedCustomer
+      : null;
 
   const searchOptions: ComboboxOption[] = useMemo(
     () =>
@@ -94,6 +106,7 @@ export function WalkinDialog({
     setContact("");
     setInvitedBy(PLUGIN_VALUE);
     setConsumptionType(CONSUMPTION_TYPES[0]);
+    setUseFriendshipPass(false);
     setError(null);
     setCheckinDate(todayStr);
     setShowBackfill(false);
@@ -137,6 +150,7 @@ export function WalkinDialog({
       invitedByCustomerId: invitedBy.startsWith("customer:") ? invitedBy.slice("customer:".length) : null,
       consumptionType,
       checkinDate,
+      friendshipPassId: useFriendshipPass ? availablePass?.nextFriendshipPassId ?? null : null,
     });
     setIsPending(false);
 
@@ -285,11 +299,28 @@ export function WalkinDialog({
               <Combobox
                 options={invitedByOptions}
                 value={invitedBy}
-                onChange={setInvitedBy}
+                onChange={(value) => {
+                  setInvitedBy(value);
+                  setUseFriendshipPass(false);
+                }}
                 placeholder="Choose coach, customer, or Plug-in"
                 searchPlaceholder="Search coaches or customers..."
               />
             </div>
+
+            {availablePass && (
+              <div className="flex items-center gap-2 rounded-md border bg-secondary/15 p-3">
+                <Checkbox
+                  id="use-friendship-pass"
+                  checked={useFriendshipPass}
+                  onCheckedChange={(checked) => setUseFriendshipPass(checked === true)}
+                />
+                <Label htmlFor="use-friendship-pass" className="font-normal">
+                  Use {availablePass.name}&apos;s Friendship Pass ({availablePass.availableFriendshipPassCount}{" "}
+                  available) — this visit is free
+                </Label>
+              </div>
+            )}
 
             <div>
               <Label className="mb-2 block">Consumption type</Label>

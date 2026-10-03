@@ -392,6 +392,25 @@ export type LoyaltyReward = {
   created_at: string;
 };
 
+export type FriendshipPassSource = "pjs" | "30day_upgrade" | "special";
+
+export type FriendshipPass = {
+  id: string;
+  customer_id: string;
+  nc_club_id: string;
+  source: FriendshipPassSource;
+  reason: string;
+  issued_by: string;
+  issued_at: string;
+  expires_at: string;
+  used_at: string | null;
+  used_for_checkin_id: string | null;
+  voided: boolean;
+  voided_by: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+};
+
 export type LoyaltyPointsLedgerEntry = {
   id: string;
   customer_id: string;
@@ -754,6 +773,11 @@ export type Database = {
         Insert: Partial<ShakeRecipe>;
         Update: Partial<ShakeRecipe>;
       } & NoRelationships;
+      friendship_passes: {
+        Row: FriendshipPass;
+        Insert: Partial<FriendshipPass>;
+        Update: Partial<FriendshipPass>;
+      } & NoRelationships;
     };
     Views: Record<string, never>;
     Enums: Record<string, never>;
@@ -818,6 +842,7 @@ export type Database = {
           p_invited_by_customer_id: string | null;
           p_consumption_type: ConsumptionType;
           p_checkin_date: string;
+          p_friendship_pass_id?: string | null;
         };
         Returns: Checkin;
       };
@@ -1019,6 +1044,19 @@ export type Database = {
       };
       void_finance_transaction: {
         Args: { p_transaction_id: string; p_reason: string };
+        Returns: void;
+      };
+      award_friendship_passes: {
+        Args: {
+          p_customer_id: string;
+          p_source: FriendshipPassSource;
+          p_count: number;
+          p_reason: string;
+        };
+        Returns: FriendshipPass[];
+      };
+      void_friendship_pass: {
+        Args: { p_pass_id: string; p_reason: string };
         Returns: void;
       };
     };
