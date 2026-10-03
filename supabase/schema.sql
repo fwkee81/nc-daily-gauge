@@ -1692,6 +1692,14 @@ begin
       end if;
     end if;
   end if;
+
+  -- Friendship Pass: if this check-in was free because it redeemed
+  -- someone's pass (e.g. the wrong sponsoring customer was picked), voiding
+  -- it must give that pass back — otherwise correcting the mistake
+  -- permanently and silently burns a pass that was never actually used.
+  update friendship_passes
+  set used_at = null, used_for_checkin_id = null
+  where used_for_checkin_id = p_checkin_id;
 end;
 $$;
 
