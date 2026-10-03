@@ -7,6 +7,7 @@ import {
   Building2,
   Calculator,
   HeartPulse,
+  HeartHandshake,
   Activity,
   Package,
   Wallet,
@@ -16,11 +17,11 @@ import {
 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { getCurrentCoach } from "@/lib/auth";
+import { canSeeFriendshipPass, getCurrentCoach, getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
-  const coach = await getCurrentCoach();
+  const [user, coach] = await Promise.all([getCurrentUser(), getCurrentCoach()]);
 
   let clubName: string | null = null;
   if (coach?.nc_club_id) {
@@ -107,6 +108,19 @@ export default async function DashboardPage() {
       icon: Award,
       tint: "bg-primary/15 text-primary",
     },
+    // Soft launch — only shown to the beta coach, see canSeeFriendshipPass()
+    // in src/lib/auth.ts.
+    ...(canSeeFriendshipPass(user?.email)
+      ? [
+          {
+            href: "/friendship-pass",
+            title: "Friendship Pass",
+            description: "Award passes, see who holds one, and track expiry.",
+            icon: HeartHandshake,
+            tint: "bg-secondary/25 text-[#8a5a00]",
+          },
+        ]
+      : []),
   ];
 
   const toolTiles: typeof tiles = [

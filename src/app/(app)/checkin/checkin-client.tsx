@@ -61,6 +61,8 @@ function isBirthdayToday(dob: string | null, today: Date): boolean {
 interface CustomerOption {
   id: string;
   name: string;
+  availableFriendshipPassCount?: number;
+  nextFriendshipPassId?: string | null;
 }
 
 interface CoachOption {
@@ -141,6 +143,7 @@ export function CheckinClient({
     ncLevel?: CustomerNcLevel;
     isBirthdayShake?: boolean;
     loyaltyPoints?: number | null;
+    friendshipPasses?: { count: number; earliestExpiresAt: string } | null;
   } | null>(null);
   const [walkinOpen, setWalkinOpen] = useState(false);
 
@@ -219,6 +222,7 @@ export function CheckinClient({
       ncLevel: res.ncLevel ?? undefined,
       isBirthdayShake: res.isBirthdayShake,
       loyaltyPoints: res.loyaltyPoints ?? null,
+      friendshipPasses: res.friendshipPasses ?? null,
     });
     setSelectedKey(null);
     setCups(1);
@@ -497,6 +501,14 @@ export function CheckinClient({
                     Loyalty Points: {result.loyaltyPoints}
                   </p>
                 )}
+                {result.friendshipPasses && (
+                  <p className="text-base font-medium text-primary">
+                    🎟️ {result.friendshipPasses.count} Friendship Pass
+                    {result.friendshipPasses.count > 1 ? "es" : ""} — nearest expires{" "}
+                    {format(new Date(result.friendshipPasses.earliestExpiresAt), "d MMM yyyy")}.
+                    Bring a friend before it&apos;s gone!
+                  </p>
+                )}
               </div>
               <Button className="w-full py-6 text-lg" onClick={() => setResult(null)}>
                 OK
@@ -520,6 +532,14 @@ export function CheckinClient({
                   {result.loyaltyPoints != null && (
                     <p className="text-base font-medium text-primary">
                       Loyalty Points: {result.loyaltyPoints}
+                    </p>
+                  )}
+                  {result.friendshipPasses && (
+                    <p className="text-base font-medium text-primary">
+                      🎟️ {result.friendshipPasses.count} Friendship Pass
+                      {result.friendshipPasses.count > 1 ? "es" : ""} — nearest expires{" "}
+                      {format(new Date(result.friendshipPasses.earliestExpiresAt), "d MMM yyyy")}.
+                      Bring a friend before it&apos;s gone!
                     </p>
                   )}
                   {result.balance < RENEWAL_REMINDER_THRESHOLD && (

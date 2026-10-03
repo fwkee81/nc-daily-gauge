@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
+import { canSeeFriendshipPass, getCurrentCoach, getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { NavLinks } from "./nav-links";
@@ -25,7 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/dashboard">
               <Logo />
             </Link>
-            <NavLinks isAdmin={coach.is_admin} />
+            <NavLinks isAdmin={coach.is_admin} showFriendshipPass={canSeeFriendshipPass(user.email)} />
           </div>
           <div className="flex items-center gap-3">
             <Link

@@ -79,6 +79,22 @@ export async function submitCheckin(
     }
   }
 
+  // Friendship Pass reminder — nudges the customer to bring a friend before
+  // their passes go to waste. Own passes only (not shared across a linked
+  // account, unlike consumption balance), so this looks up customerId, not
+  // balanceCustomerId.
+  const { data: activePasses } = await supabase
+    .from("friendship_passes")
+    .select("expires_at")
+    .eq("customer_id", customerId)
+    .is("used_at", null)
+    .eq("voided", false)
+    .gte("expires_at", new Date().toISOString().slice(0, 10))
+    .order("expires_at");
+  const friendshipPasses = activePasses?.length
+    ? { count: activePasses.length, earliestExpiresAt: activePasses[0].expires_at }
+    : null;
+
   return {
     success: true,
     checkin: data,
@@ -87,6 +103,7 @@ export async function submitCheckin(
     ncLevel: customer.nc_level,
     isBirthdayShake,
     loyaltyPoints,
+    friendshipPasses,
   };
 }
 
@@ -98,6 +115,7 @@ export async function submitWalkinCheckin(input: {
   invitedByCustomerId: string | null;
   consumptionType: ConsumptionType;
   checkinDate: string;
+  friendshipPassId?: string | null;
 }) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("record_walkin_checkin", {
@@ -108,6 +126,7 @@ export async function submitWalkinCheckin(input: {
     p_invited_by_customer_id: input.invitedByCustomerId,
     p_consumption_type: input.consumptionType,
     p_checkin_date: input.checkinDate,
+    p_friendship_pass_id: input.friendshipPassId ?? null,
   });
 
   if (error) {

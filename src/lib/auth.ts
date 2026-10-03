@@ -9,6 +9,15 @@ export async function getCurrentUser() {
   return user;
 }
 
+// Friendship Pass is being soft-launched to one person before other coaches
+// get it — gated here by email (not a per-club setting, not RLS) so lifting
+// the restriction later is just deleting this check, no migration needed.
+const FRIENDSHIP_PASS_BETA_EMAILS = ["fwkee81@gmail.com"];
+
+export function canSeeFriendshipPass(email: string | null | undefined): boolean {
+  return !!email && FRIENDSHIP_PASS_BETA_EMAILS.includes(email);
+}
+
 export async function getCurrentCoach(): Promise<Coach | null> {
   const supabase = await createClient();
   const {

@@ -24,7 +24,13 @@ function pillClass(active: boolean) {
   );
 }
 
-export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
+export function NavLinks({
+  isAdmin,
+  showFriendshipPass,
+}: {
+  isAdmin: boolean;
+  showFriendshipPass?: boolean;
+}) {
   const pathname = usePathname();
   const inAdminGroup = ADMIN_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
 
@@ -37,6 +43,9 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
       : [{ href: "/reports/metrics", label: "NC Metrics" }]),
     { href: "/finance", label: "Finance" },
     { href: "/loyalty", label: "Loyalty" },
+    // Soft launch — only shown to the beta coach, see canSeeFriendshipPass()
+    // in src/lib/auth.ts.
+    ...(showFriendshipPass ? [{ href: "/friendship-pass", label: "Friendship Pass" }] : []),
   ];
 
   return (

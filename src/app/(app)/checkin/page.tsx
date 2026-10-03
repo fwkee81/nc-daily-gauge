@@ -8,7 +8,7 @@ export default async function CheckinPage() {
   if (!coach) redirect("/onboarding");
 
   const supabase = await createClient();
-  const [{ data: customers }, { data: coaches }, { data: club }, { data: recentWalkins }] =
+  const [{ data: customers }, { data: coaches }, { data: club }, { data: recentWalkins }, { data: activePasses }] =
     await Promise.all([
       supabase
         .from("customers")
@@ -24,7 +24,29 @@ export default async function CheckinPage() {
         .order("name"),
       supabase.from("nc_clubs").select("name").eq("id", coach.nc_club_id ?? "").maybeSingle(),
       supabase.rpc("recent_walkin_customers", { p_club_id: coach.nc_club_id ?? null }),
+      // Feeds the "Use [customer]'s Friendship Pass" option in the Walk-in
+      // dialog — soonest-expiring pass per customer is the one offered up.
+      supabase
+        .from("friendship_passes")
+        .select("id, customer_id, expires_at")
+        .eq("nc_club_id", coach.nc_club_id ?? "")
+        .is("used_at", null)
+        .eq("voided", false)
+        .gte("expires_at", new Date().toISOString().slice(0, 10))
+        .order("expires_at"),
     ]);
+
+  const passCountByCustomer = new Map<string, number>();
+  const nextPassIdByCustomer = new Map<string, string>();
+  for (const p of activePasses ?? []) {
+    passCountByCustomer.set(p.customer_id, (passCountByCustomer.get(p.customer_id) ?? 0) + 1);
+    if (!nextPassIdByCustomer.has(p.customer_id)) nextPassIdByCustomer.set(p.customer_id, p.id);
+  }
+  const customersWithPasses = (customers ?? []).map((c) => ({
+    ...c,
+    availableFriendshipPassCount: passCountByCustomer.get(c.id) ?? 0,
+    nextFriendshipPassId: nextPassIdByCustomer.get(c.id) ?? null,
+  }));
 
   const customerIds = (customers ?? []).map((c) => c.id);
   const { data: members } = await supabase
@@ -73,7 +95,7 @@ export default async function CheckinPage() {
   return (
     <CheckinClient
       checkinOptions={checkinOptions}
-      customers={customers ?? []}
+      customers={customersWithPasses}
       coaches={coaches ?? []}
       recentWalkins={recentWalkins ?? []}
       isAdmin={coach.is_admin}
