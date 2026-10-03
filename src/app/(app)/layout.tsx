@@ -20,13 +20,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex min-w-0 flex-1 items-center gap-4">
-            <Link href="/dashboard" className="shrink-0">
-              <Logo />
-            </Link>
-            <NavLinks isAdmin={coach.is_admin} showFriendshipPass={canSeeFriendshipPass(user.email)} />
-          </div>
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 pt-3">
+          <Link href="/dashboard" className="shrink-0">
+            <Logo />
+          </Link>
           <div className="flex shrink-0 items-center gap-3">
             <Link
               href="/profile"
@@ -40,6 +37,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </Button>
             </form>
           </div>
+        </div>
+        {/* Its own full-width row, separate from the logo/sign-out row above
+            — lets the nav scroll horizontally within a predictable width
+            instead of fighting that row's flex-wrap for space. */}
+        <div className="mx-auto max-w-5xl px-4 pt-2 pb-3">
+          <NavLinks isAdmin={coach.is_admin} showFriendshipPass={canSeeFriendshipPass(user.email)} />
         </div>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>

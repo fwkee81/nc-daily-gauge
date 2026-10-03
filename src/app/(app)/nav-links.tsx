@@ -50,10 +50,11 @@ export function NavLinks({
 
   return (
     // Scrolls horizontally instead of wrapping to multiple lines — on a
-    // phone this keeps the header to one compact row no matter how many
-    // links get added, instead of pills wrapping down and pushing page
-    // content lower each time a new feature lands.
-    <nav className="scrollbar-hide flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+    // phone this keeps the nav to one compact row no matter how many links
+    // get added, instead of pills wrapping down and pushing page content
+    // lower each time a new feature lands. Lives in its own full-width row
+    // (see layout.tsx) so it has a stable width to scroll within.
+    <nav className="scrollbar-hide flex items-center gap-1 overflow-x-auto">
       {primaryLinks.map((link) => (
         <Link
           key={link.href}
