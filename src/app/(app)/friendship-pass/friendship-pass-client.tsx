@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { differenceInCalendarDays, format } from "date-fns";
+import { addDays, differenceInCalendarDays, format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -283,10 +283,15 @@ function AwardDialog({
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
+  const defaultExpiresAt = format(addDays(new Date(), 90), "yyyy-MM-dd");
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [source, setSource] = useState<FriendshipPassSource>("pjs");
   const [customCount, setCustomCount] = useState("");
   const [reason, setReason] = useState("");
+  const [showExpiryOverride, setShowExpiryOverride] = useState(false);
+  const [expiresAt, setExpiresAt] = useState(defaultExpiresAt);
   const [isPending, setIsPending] = useState(false);
 
   const defaultCount = SOURCE_DEFAULT_COUNT[source];
@@ -307,8 +312,18 @@ function AwardDialog({
       toast.error("Enter a reason.");
       return;
     }
+    if (showExpiryOverride && expiresAt < todayStr) {
+      toast.error("Expiry date must be today or later.");
+      return;
+    }
     setIsPending(true);
-    const result = await awardFriendshipPasses(customerId, source, count!, reason.trim());
+    const result = await awardFriendshipPasses(
+      customerId,
+      source,
+      count!,
+      reason.trim(),
+      showExpiryOverride ? expiresAt : null
+    );
     setIsPending(false);
 
     if (result?.error) {
@@ -364,10 +379,31 @@ function AwardDialog({
               />
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Issues {defaultCount} passes, each expiring 90 days from today.
-            </p>
+            <p className="text-sm text-muted-foreground">Issues {defaultCount} passes.</p>
           )}
+
+          <div>
+            {!showExpiryOverride ? (
+              <button
+                type="button"
+                className="text-sm text-muted-foreground underline underline-offset-4"
+                onClick={() => setShowExpiryOverride(true)}
+              >
+                Expires {format(new Date(`${defaultExpiresAt}T00:00:00`), "d MMM yyyy")} (90 days) —
+                change expiry date
+              </button>
+            ) : (
+              <div className="space-y-1">
+                <Label>Expiry date</Label>
+                <Input
+                  type="date"
+                  min={todayStr}
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
 
           <div className="space-y-1">
             <Label>Reason *</Label>

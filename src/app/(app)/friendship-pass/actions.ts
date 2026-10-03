@@ -19,7 +19,8 @@ export async function awardFriendshipPasses(
   customerId: string,
   source: FriendshipPassSource,
   count: number,
-  reason: string
+  reason: string,
+  expiresAt?: string | null
 ) {
   const coach = await requireFriendshipPassAdmin();
   if (!coach) return { error: "Not authorized." };
@@ -30,6 +31,7 @@ export async function awardFriendshipPasses(
     p_source: source,
     p_count: count,
     p_reason: reason,
+    p_expires_at: expiresAt ?? null,
   });
 
   if (error) return { error: error.message };

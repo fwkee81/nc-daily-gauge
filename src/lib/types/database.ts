@@ -1052,6 +1052,7 @@ export type Database = {
           p_source: FriendshipPassSource;
           p_count: number;
           p_reason: string;
+          p_expires_at?: string | null;
         };
         Returns: FriendshipPass[];
       };
