@@ -210,7 +210,7 @@ export function WalkinDialog({
         {!selectedExisting && !creatingNew && (
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label>Search recent walk-ins (last 30 days)</Label>
+              <Label>Search Ala Carte walk-ins</Label>
               <Combobox
                 options={searchOptions}
                 value={null}
@@ -220,7 +220,7 @@ export function WalkinDialog({
                 }}
                 placeholder="Search by name..."
                 searchPlaceholder="Type a name..."
-                emptyText="No recent walk-ins found."
+                emptyText="No matching walk-ins found."
                 allowCreate
                 onCreate={(label) => {
                   setName(label);
@@ -229,8 +229,8 @@ export function WalkinDialog({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Found them? Select their name to check in instantly. Not listed? Search, then choose
-              &quot;Create&quot; to add them as new.
+              Covers every past Ala Carte walk-in, however long ago — search by name to reuse their
+              record. Not listed? Search, then choose &quot;Create&quot; to add them as new.
             </p>
           </div>
         )}
