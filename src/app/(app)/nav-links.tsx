@@ -6,15 +6,12 @@ import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-// Customers is admin-only, so it's a primary pill for admins (who also get
-// the Admin dropdown for everything else) but NC Metrics — open to every
-// coach — has to stay in the primary row for non-admins, since they never
-// see the dropdown at all.
-const ADMIN_DROPDOWN_LINKS = [
-  { href: "/reports/metrics", label: "NC Metrics" },
-  { href: "/admin/coaches", label: "Coaches" },
+// Everything else that used to live in this dropdown (NC Metrics, Wellness
+// Report) moved up into the primary row — this is just the two
+// team-across-branches views now, hence the "Team" label below.
+const TEAM_DROPDOWN_LINKS = [
   { href: "/branches", label: "Branches" },
-  { href: "/wellness-report", label: "Wellness Report" },
+  { href: "/admin/coaches", label: "Coaches" },
 ];
 
 function pillClass(active: boolean) {
@@ -34,20 +31,20 @@ export function NavLinks({
   showFriendshipPass?: boolean;
 }) {
   const pathname = usePathname();
-  const inAdminGroup = ADMIN_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
+  const inTeamGroup = TEAM_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
 
   const primaryLinks = [
     { href: "/checkin", label: "Check-in" },
     { href: "/reports/daily", label: "Daily Report" },
+    ...(isAdmin ? [{ href: "/admin/customers", label: "Customers" }] : []),
     { href: "/inventory", label: "Inventory" },
-    ...(isAdmin
-      ? [{ href: "/admin/customers", label: "Customers" }]
-      : [{ href: "/reports/metrics", label: "NC Metrics" }]),
     { href: "/finance", label: "Finance" },
+    { href: "/reports/metrics", label: "NC Metrics" },
     { href: "/loyalty", label: "Loyalty" },
     // Soft launch — only shown to the beta coach, see canSeeFriendshipPass()
     // in src/lib/auth.ts.
     ...(showFriendshipPass ? [{ href: "/friendship-pass", label: "Friendship Pass" }] : []),
+    ...(isAdmin ? [{ href: "/wellness-report", label: "Wellness Report" }] : []),
   ];
 
   return (
@@ -78,14 +75,14 @@ export function NavLinks({
               render={
                 <button
                   type="button"
-                  className={cn(pillClass(inAdminGroup), "flex shrink-0 items-center gap-1")}
+                  className={cn(pillClass(inTeamGroup), "flex shrink-0 items-center gap-1")}
                 />
               }
             >
-              Admin <ChevronDown className="size-3.5" />
+              Team <ChevronDown className="size-3.5" />
             </PopoverTrigger>
             <PopoverContent className="w-48 p-1.5" align="start">
-              {ADMIN_DROPDOWN_LINKS.map((link) => (
+              {TEAM_DROPDOWN_LINKS.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
