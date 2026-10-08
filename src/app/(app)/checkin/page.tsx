@@ -12,7 +12,7 @@ export default async function CheckinPage() {
     await Promise.all([
       supabase
         .from("customers")
-        .select("id, name, contact, dob, consumption_balance, linked_to_customer_id")
+        .select("id, name, contact, dob, consumption_balance, linked_to_customer_id, nc_level")
         .eq("nc_club_id", coach.nc_club_id ?? "")
         .eq("active", true)
         .order("name"),
@@ -70,15 +70,23 @@ export default async function CheckinPage() {
   }
 
   const checkinOptions = [
-    ...(customers ?? []).map((c) => ({
-      key: c.id,
-      customerId: c.id,
-      memberId: null as string | null,
-      name: c.name,
-      contact: c.contact,
-      dob: c.dob,
-      consumptionBalance: resolveBalance(c.id),
-    })),
+    // Ala Carte customers don't show up in this search — they're one-time
+    // walk-ins checked in through the dedicated "Walk-in (Ala Carte)" dialog
+    // (which resets their balance to 0 each visit); finding them here too,
+    // mixed in with real package customers and all showing "0 left", was
+    // both confusing and a trap — checking one in through this regular path
+    // just subtracts a cup instead of resetting the balance.
+    ...(customers ?? [])
+      .filter((c) => c.nc_level !== "Ala Carte")
+      .map((c) => ({
+        key: c.id,
+        customerId: c.id,
+        memberId: null as string | null,
+        name: c.name,
+        contact: c.contact,
+        dob: c.dob,
+        consumptionBalance: resolveBalance(c.id),
+      })),
     ...(members ?? []).map((m) => ({
       key: m.id,
       customerId: m.customer_id,
