@@ -16,10 +16,17 @@ interface CheckinEntry {
 
 // Quick "has this person been coming?" visual for a coach glancing at a
 // customer's profile — a 30-day activity strip (like a mini contribution
-// graph) plus the underlying visit list. Fetched on demand when the tab
-// opens rather than preloaded for the whole customer list.
+// graph) plus a visit list. Fetched on demand when the tab opens rather
+// than preloaded for the whole customer list.
 export function RecentCheckins({ customerId }: { customerId: string }) {
+  // Drives the strip + "X visits" count — strictly the last 30 days, same
+  // as before.
   const [checkins, setCheckins] = useState<CheckinEntry[] | null>(null);
+  // Drives the list below — the customer's most recent visits regardless
+  // of date, so someone who only comes every couple of months still shows
+  // their last few visits instead of an empty "no visits" list whenever
+  // they haven't been in during the last 30 days.
+  const [recentVisits, setRecentVisits] = useState<CheckinEntry[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,6 +41,16 @@ export function RecentCheckins({ customerId }: { customerId: string }) {
       .order("checkin_date", { ascending: false })
       .then(({ data }) => {
         if (!cancelled) setCheckins(data ?? []);
+      });
+    supabase
+      .from("checkins")
+      .select("checkin_date, consumption_type, cups, is_birthday_shake")
+      .eq("customer_id", customerId)
+      .eq("voided", false)
+      .order("checkin_date", { ascending: false })
+      .limit(30)
+      .then(({ data }) => {
+        if (!cancelled) setRecentVisits(data ?? []);
       });
     return () => {
       cancelled = true;
@@ -77,14 +94,17 @@ export function RecentCheckins({ customerId }: { customerId: string }) {
             })}
           </div>
 
-          {checkins.length > 0 ? (
+          <p className="pt-1 text-xs text-muted-foreground">Recent visits</p>
+          {recentVisits === null ? (
+            <div className="h-9 animate-pulse rounded-md bg-muted" />
+          ) : recentVisits.length > 0 ? (
             <ul className="max-h-36 space-y-1 overflow-y-auto pr-1">
-              {checkins.map((c, i) => (
+              {recentVisits.map((c, i) => (
                 <li
                   key={`${c.checkin_date}-${i}`}
                   className="flex items-center justify-between rounded-md border-l-2 border-primary bg-muted/40 px-2 py-1 text-xs"
                 >
-                  <span>{format(parseISO(c.checkin_date), "EEE, d MMM")}</span>
+                  <span>{format(parseISO(c.checkin_date), "EEE, d MMM yyyy")}</span>
                   <span className="flex items-center gap-1.5">
                     {c.is_birthday_shake && <span title="Birthday shake">🎂</span>}
                     <Badge variant="secondary">{c.consumption_type}</Badge>
@@ -96,7 +116,7 @@ export function RecentCheckins({ customerId }: { customerId: string }) {
               ))}
             </ul>
           ) : (
-            <p className="py-1 text-xs text-muted-foreground">No visits in the last 30 days.</p>
+            <p className="py-1 text-xs text-muted-foreground">No visits yet.</p>
           )}
         </>
       )}
