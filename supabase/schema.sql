@@ -1471,11 +1471,14 @@ grant execute on function award_friendship_passes(uuid, text, integer, text, dat
 grant execute on function void_friendship_pass(uuid, text) to authenticated;
 
 
--- pool for the Walk-in dialog's "have they been in recently?" lookup.
--- Someone who hasn't been back in over a month drops out of this list (a
--- fresh walk-in for them creates a new record again via
--- record_walkin_checkin() — treating a month-plus gap as "basically new" is
--- a deliberate simplification, not a bug).
+-- Search pool for the Walk-in dialog's "have they been in before?" lookup.
+-- Originally scoped to the last 30 days ("a month-plus gap is basically
+-- new") but that caused real duplicates: a walk-in who comes back after a
+-- longer gap doesn't show up in the search, so a coach has no way to find
+-- and reuse their existing record, and ends up creating a second one by
+-- mistake. Every active Ala Carte customer is searchable now, however long
+-- it's been — the Combobox's own search keeps this usable even with a long
+-- history of one-time walk-ins.
 create or replace function recent_walkin_customers(p_club_id uuid default null)
 returns table (id uuid, name text, contact text)
 language sql
@@ -1487,12 +1490,7 @@ as $$
   from customers c
   where c.nc_club_id = coalesce(p_club_id, (select nc_club_id from coaches where auth_user_id = auth.uid()))
     and c.nc_level = 'Ala Carte'
-    and exists (
-      select 1 from checkins ci
-      where ci.customer_id = c.id
-        and ci.checkin_date >= current_date - interval '30 days'
-        and not ci.voided
-    )
+    and c.active
   order by c.name;
 $$;
 

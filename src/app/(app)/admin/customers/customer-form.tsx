@@ -15,6 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Combobox, type ComboboxOption } from "@/components/combobox";
 import { CUSTOMER_GENDERS, CUSTOMER_NC_LEVELS, MEMBER_TYPES } from "@/lib/constants";
 import type { CustomerGender, CustomerNcLevel, MemberType } from "@/lib/types/database";
@@ -38,10 +49,13 @@ interface CoachOption {
 const PLUGIN_VALUE = "plugin";
 const PLUGIN_COACH_VALUE = "plugin-coach";
 
-// Temporarily hidden — a coach clicked this instead of Link (the two
-// sections sit right next to each other) and merged/deactivated a customer
-// by mistake. Flip back on once the two are visually harder to confuse.
-const MERGE_DUPLICATE_ENABLED = false;
+// Was temporarily hidden after a coach clicked this instead of Link (the
+// two sections sat right next to each other, styled identically) and
+// merged/deactivated a customer by mistake. Re-enabled with destructive
+// styling to set it apart from Link, plus a confirmation step before it
+// actually runs — see the AlertDialog around the "Merge into selected"
+// button below.
+const MERGE_DUPLICATE_ENABLED = true;
 
 function invitedByValue(customer?: CustomerRow | null) {
   if (!customer) return PLUGIN_VALUE;
@@ -575,8 +589,8 @@ export function CustomerForm({
       </div>
 
       {editing && MERGE_DUPLICATE_ENABLED && (
-        <div className="space-y-2 rounded-md border p-3">
-          <Label>Merge duplicate</Label>
+        <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+          <Label className="text-destructive">⚠ Merge duplicate (not Link)</Label>
           <p className="text-xs text-muted-foreground">
             If this is the same real person as another profile (most often an Ala Carte walk-in
             re-created instead of reused), pick that other profile below — this one&apos;s
@@ -592,15 +606,36 @@ export function CustomerForm({
             searchPlaceholder="Search customers..."
             emptyText="No eligible customers found."
           />
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={!mergeTargetId || mergePending}
-            onClick={handleMerge}
-          >
-            {mergePending ? "Merging..." : "Merge into selected"}
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger
+              render={
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  disabled={!mergeTargetId || mergePending}
+                />
+              }
+            >
+              {mergePending ? "Merging..." : "Merge into selected"}
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Merge &quot;{editing?.name}&quot; into &quot;
+                  {mergeOptions.find((o) => o.value === mergeTargetId)?.label}&quot;?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  &quot;{editing?.name}&quot;&apos;s check-in history and balance move over, then
+                  this profile is deactivated. This can&apos;t be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleMerge}>Merge</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
 
