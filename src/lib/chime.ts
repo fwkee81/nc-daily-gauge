@@ -26,32 +26,20 @@ export function playBirthdaySound() {
   void audio.play();
 }
 
-// Recorded "uh-oh" alert clip (~3.2s), played before the spoken reminder
-// below — grabs attention first so the name that follows doesn't get
-// missed in a busy, noisy counter. The reminder itself still uses the
-// browser's built-in text-to-speech voice — swap in a real recorded clip
-// later by playing an <audio> element here instead.
+// Uses the browser's built-in text-to-speech voice for now, same as
+// sayHappyBirthday — swap in a real recorded clip later by playing an
+// <audio> element here instead.
 //
-// Handed off on a fixed timer rather than the clip's own "ended" event —
-// chaining speak() off an audio event turned out unreliable on at least
-// one real device (the clip played, the reminder never did), most likely
-// because that delay puts the speak() call too far outside the tap that
-// triggered it for the browser to allow. A flat timer keeps the call
-// pattern simpler and has worked reliably where the event-based handoff
-// didn't.
+// Previously preceded by a recorded "uh-oh" alert clip, dropped after it
+// turned out the clip played but the spoken reminder after it didn't, on
+// at least one real device — back to just the reminder on its own.
 export function sayInsufficientCredit(name: string) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-
-  const audio = new Audio("/sounds/uh-oh.mp3");
-  void audio.play();
-
-  window.setTimeout(() => {
-    const utterance = new SpeechSynthesisUtterance(
-      `${name}, your nutrition card balance is not enough for this visit. Kindly renew. Thank you.`
-    );
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  }, 3500);
+  const utterance = new SpeechSynthesisUtterance(
+    `${name}, your nutrition card balance is not enough for this visit. Kindly renew. Thank you.`
+  );
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
 }
 
 // Recorded "win" clip — played alongside the full-screen confetti burst
