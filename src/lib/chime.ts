@@ -26,38 +26,32 @@ export function playBirthdaySound() {
   void audio.play();
 }
 
-// Recorded "uh-oh" alert clip, played before the spoken reminder below —
-// grabs attention first so the name that follows doesn't get missed in a
-// busy, noisy counter.
-function playUhOhSound() {
-  if (typeof window === "undefined") return null;
-  const audio = new Audio("/sounds/uh-oh.mp3");
-  void audio.play();
-  return audio;
-}
-
-// The reminder itself still uses the browser's built-in text-to-speech
-// voice — swap in a real recorded clip later by playing an <audio> element
-// here instead. Starts right after the uh-oh clip ends (falls back to
-// speaking immediately if the clip fails to load/play).
+// Recorded "uh-oh" alert clip (~3.2s), played before the spoken reminder
+// below — grabs attention first so the name that follows doesn't get
+// missed in a busy, noisy counter. The reminder itself still uses the
+// browser's built-in text-to-speech voice — swap in a real recorded clip
+// later by playing an <audio> element here instead.
+//
+// Handed off on a fixed timer rather than the clip's own "ended" event —
+// chaining speak() off an audio event turned out unreliable on at least
+// one real device (the clip played, the reminder never did), most likely
+// because that delay puts the speak() call too far outside the tap that
+// triggered it for the browser to allow. A flat timer keeps the call
+// pattern simpler and has worked reliably where the event-based handoff
+// didn't.
 export function sayInsufficientCredit(name: string) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
-  function speak() {
+  const audio = new Audio("/sounds/uh-oh.mp3");
+  void audio.play();
+
+  window.setTimeout(() => {
     const utterance = new SpeechSynthesisUtterance(
       `${name}, your nutrition card balance is not enough for this visit. Kindly renew. Thank you.`
     );
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
-  }
-
-  const audio = playUhOhSound();
-  if (!audio) {
-    speak();
-    return;
-  }
-  audio.addEventListener("ended", speak, { once: true });
-  audio.addEventListener("error", speak, { once: true });
+  }, 3500);
 }
 
 // Recorded "win" clip — played alongside the full-screen confetti burst
