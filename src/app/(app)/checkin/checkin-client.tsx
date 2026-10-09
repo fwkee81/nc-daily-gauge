@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { playBirthdaySound, playChime, sayHappyBirthday } from "@/lib/chime";
+import { playBirthdaySound, playChime, sayHappyBirthday, sayInsufficientCredit } from "@/lib/chime";
 import { CONSUMPTION_TYPES, NC_LEVEL_CUPS, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
 import type { ConsumptionType, CustomerNcLevel, RecentWalkinCustomer } from "@/lib/types/database";
 import { submitCheckin } from "./actions";
@@ -175,6 +175,7 @@ export function CheckinClient({
   } | null>(null);
   const [walkinOpen, setWalkinOpen] = useState(false);
   const [duplicateConfirm, setDuplicateConfirm] = useState<{ existingCups: number } | null>(null);
+  const [showInsufficientCredit, setShowInsufficientCredit] = useState(false);
 
   const selected = checkinOptions.find((c) => c.key === selectedKey) ?? null;
   const todaysBirthdays = useMemo(() => {
@@ -219,6 +220,19 @@ export function CheckinClient({
       setCheckinDate(todayStr);
       setShowBackfill(false);
     }
+  }
+
+  // Gate in front of the real submit — a customer whose balance is already
+  // exhausted (0 or less) gets a loud reminder first, since it's easy to
+  // check someone in on autopilot during a busy rush without noticing
+  // they're out of credit. Doesn't block it, just makes sure it's noticed.
+  function handleSubmitClick() {
+    if (selected && selected.consumptionBalance <= 0) {
+      sayInsufficientCredit(selected.name);
+      setShowInsufficientCredit(true);
+      return;
+    }
+    handleSubmit();
   }
 
   async function handleSubmit(confirmDuplicate = false) {
@@ -487,7 +501,7 @@ export function CheckinClient({
 
             <Button
               className="w-full py-6 text-lg"
-              onClick={() => handleSubmit()}
+              onClick={() => handleSubmitClick()}
               disabled={submitting}
             >
               {submitting ? "Submitting..." : "Submit check-in"}
@@ -624,6 +638,38 @@ export function CheckinClient({
               }}
             >
               Check in again
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={showInsufficientCredit}
+        onOpenChange={(open) => !open && setShowInsufficientCredit(false)}
+      >
+        <AlertDialogContent className="max-w-md sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl">Insufficient credit</AlertDialogTitle>
+            <AlertDialogDescription className="text-lg text-foreground">
+              {selected?.name} has no credit left (balance: {selected?.consumptionBalance}). Proceed
+              with check-in anyway?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="flex-1 py-6 text-lg"
+              onClick={() => setShowInsufficientCredit(false)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="flex-1 py-6 text-lg"
+              onClick={() => {
+                setShowInsufficientCredit(false);
+                handleSubmit();
+              }}
+            >
+              Proceed to check in
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
