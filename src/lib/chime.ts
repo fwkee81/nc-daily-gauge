@@ -26,16 +26,38 @@ export function playBirthdaySound() {
   void audio.play();
 }
 
-// Uses the browser's built-in text-to-speech voice for now, same as
-// sayHappyBirthday — swap in a real recorded clip later by playing an
-// <audio> element here instead.
+// Recorded "uh-oh" alert clip, played before the spoken reminder below —
+// grabs attention first so the name that follows doesn't get missed in a
+// busy, noisy counter.
+function playUhOhSound() {
+  if (typeof window === "undefined") return null;
+  const audio = new Audio("/sounds/uh-oh.mp3");
+  void audio.play();
+  return audio;
+}
+
+// The reminder itself still uses the browser's built-in text-to-speech
+// voice — swap in a real recorded clip later by playing an <audio> element
+// here instead. Starts right after the uh-oh clip ends (falls back to
+// speaking immediately if the clip fails to load/play).
 export function sayInsufficientCredit(name: string) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(
-    `${name}, your nutrition card balance is empty. Kindly renew. Thank you.`
-  );
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
+
+  function speak() {
+    const utterance = new SpeechSynthesisUtterance(
+      `${name}, your nutrition card balance is empty. Kindly renew. Thank you.`
+    );
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }
+
+  const audio = playUhOhSound();
+  if (!audio) {
+    speak();
+    return;
+  }
+  audio.addEventListener("ended", speak, { once: true });
+  audio.addEventListener("error", speak, { once: true });
 }
 
 // Recorded "win" clip — played alongside the full-screen confetti burst
