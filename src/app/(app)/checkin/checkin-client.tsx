@@ -222,12 +222,14 @@ export function CheckinClient({
     }
   }
 
-  // Gate in front of the real submit — a customer whose balance is already
-  // exhausted (0 or less) gets a loud reminder first, since it's easy to
-  // check someone in on autopilot during a busy rush without noticing
-  // they're out of credit. Doesn't block it, just makes sure it's noticed.
+  // Gate in front of the real submit — not just "already at 0", but
+  // whether the balance actually covers the cups about to be deducted (1
+  // left but checking in 2 cups is just as much an overdraft as 0 left).
+  // Landing exactly on 0 is a normal last-visit-on-this-card case, so that
+  // alone doesn't trigger it. Doesn't block the check-in, just makes sure
+  // it's noticed instead of sliding into autopilot during a busy rush.
   function handleSubmitClick() {
-    if (selected && selected.consumptionBalance <= 0) {
+    if (selected && selected.consumptionBalance - cups < 0) {
       sayInsufficientCredit(selected.name);
       setShowInsufficientCredit(true);
       return;
@@ -651,8 +653,9 @@ export function CheckinClient({
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl">Insufficient credit</AlertDialogTitle>
             <AlertDialogDescription className="text-lg text-foreground">
-              {selected?.name} has no credit left (balance: {selected?.consumptionBalance}). Proceed
-              with check-in anyway?
+              {selected?.name} only has {selected?.consumptionBalance} credit
+              {selected?.consumptionBalance === 1 ? "" : "s"} left — not enough for {cups} cup
+              {cups === 1 ? "" : "s"}. Proceed with check-in anyway?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
