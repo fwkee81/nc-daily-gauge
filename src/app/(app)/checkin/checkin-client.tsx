@@ -11,6 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { playBirthdaySound, playChime, sayHappyBirthday } from "@/lib/chime";
 import { CONSUMPTION_TYPES, NC_LEVEL_CUPS, RENEWAL_REMINDER_THRESHOLD } from "@/lib/constants";
@@ -164,6 +174,7 @@ export function CheckinClient({
     friendshipPasses?: { count: number; earliestExpiresAt: string } | null;
   } | null>(null);
   const [walkinOpen, setWalkinOpen] = useState(false);
+  const [duplicateConfirm, setDuplicateConfirm] = useState<{ existingCups: number } | null>(null);
 
   const selected = checkinOptions.find((c) => c.key === selectedKey) ?? null;
   const todaysBirthdays = useMemo(() => {
@@ -210,7 +221,7 @@ export function CheckinClient({
     }
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(confirmDuplicate = false) {
     if (!selected) return;
     setSubmitting(true);
     const res = await submitCheckin(
@@ -219,9 +230,15 @@ export function CheckinClient({
       consumptionType,
       checkinDate,
       selected.memberId,
-      isBirthdayShake
+      isBirthdayShake,
+      confirmDuplicate
     );
     setSubmitting(false);
+
+    if (res.needsConfirmation) {
+      setDuplicateConfirm({ existingCups: res.existingCups! });
+      return;
+    }
 
     if (res.error) {
       toast.error(res.error);
@@ -470,7 +487,7 @@ export function CheckinClient({
 
             <Button
               className="w-full py-6 text-lg"
-              onClick={handleSubmit}
+              onClick={() => handleSubmit()}
               disabled={submitting}
             >
               {submitting ? "Submitting..." : "Submit check-in"}
@@ -581,6 +598,30 @@ export function CheckinClient({
           onDone={handleWalkinDone}
         />
       )}
+
+      <AlertDialog open={!!duplicateConfirm} onOpenChange={(open) => !open && setDuplicateConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Already checked in</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selected?.name} already has {duplicateConfirm?.existingCups} cup
+              {duplicateConfirm?.existingCups === 1 ? "" : "s"} checked in on{" "}
+              {format(new Date(`${checkinDate}T00:00:00`), "d MMM yyyy")}. Check in again?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDuplicateConfirm(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setDuplicateConfirm(null);
+                handleSubmit(true);
+              }}
+            >
+              Check in again
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

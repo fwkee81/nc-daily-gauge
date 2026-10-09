@@ -9,9 +9,35 @@ export async function submitCheckin(
   consumptionType: ConsumptionType,
   checkinDate: string,
   memberId: string | null = null,
-  isBirthdayShake: boolean = false
+  isBirthdayShake: boolean = false,
+  confirmDuplicate: boolean = false
 ) {
   const supabase = await createClient();
+
+  // Same-day duplicate guard — scoped to this exact person (customer +
+  // member, not just the shared account, so a spouse checking in on the
+  // same account the same day never trips this), and to whichever date is
+  // actually being submitted so a backfill gets the same protection. Skips
+  // the check once the coach has explicitly confirmed they want to go
+  // ahead anyway.
+  if (!confirmDuplicate) {
+    let existingQuery = supabase
+      .from("checkins")
+      .select("cups")
+      .eq("customer_id", customerId)
+      .eq("checkin_date", checkinDate)
+      .eq("voided", false);
+    existingQuery = memberId ? existingQuery.eq("member_id", memberId) : existingQuery.is("member_id", null);
+    const { data: existing } = await existingQuery;
+
+    if (existing && existing.length > 0) {
+      return {
+        needsConfirmation: true,
+        existingCups: existing.reduce((sum, c) => sum + c.cups, 0),
+      };
+    }
+  }
+
   const { data, error } = await supabase.rpc("record_checkin", {
     p_customer_id: customerId,
     p_cups: cups,
