@@ -45,7 +45,7 @@ export function sayInsufficientCredit(name: string) {
 
   function speak() {
     const utterance = new SpeechSynthesisUtterance(
-      `${name}, your nutrition card balance is empty. Kindly renew. Thank you.`
+      `${name}, your nutrition card balance is not enough for this visit. Kindly renew. Thank you.`
     );
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
