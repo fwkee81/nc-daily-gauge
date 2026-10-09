@@ -26,6 +26,16 @@ export function playBirthdaySound() {
   void audio.play();
 }
 
+// Uses the browser's built-in text-to-speech voice for now, same as
+// sayHappyBirthday — swap in a real recorded clip later by playing an
+// <audio> element here instead.
+export function sayInsufficientCredit(name: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const utterance = new SpeechSynthesisUtterance(`Insufficient credit for ${name}. Please renew.`);
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
+
 // Recorded "win" clip — played alongside the full-screen confetti burst
 // when a cup-count milestone is reached on the Daily Report.
 export function playWinSound() {
