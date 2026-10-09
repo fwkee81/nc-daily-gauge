@@ -31,7 +31,7 @@ export function playBirthdaySound() {
 // <audio> element here instead.
 export function sayInsufficientCredit(name: string) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(`Insufficient credit for ${name}. Please renew.`);
+  const utterance = new SpeechSynthesisUtterance(`${name}, your nutrition card balance is empty. Kindly renew.`);
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
