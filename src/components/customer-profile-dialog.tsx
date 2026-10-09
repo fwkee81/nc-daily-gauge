@@ -25,6 +25,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCustomerProfile } from "@/lib/actions/customer-profile";
 import { deactivateCustomer, reactivateCustomer } from "@/app/(app)/admin/customers/actions";
 import { RecentCheckins } from "@/components/recent-checkins";
+import { RecentRenewals } from "@/components/recent-renewals";
 import { RecentWellnessLogs } from "@/components/recent-wellness-logs";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 
@@ -88,7 +89,7 @@ export function CustomerProfileDialog({
   const router = useRouter();
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"visits" | "wellness">("visits");
+  const [tab, setTab] = useState<"visits" | "renewals" | "wellness">("visits");
   const [statusPending, setStatusPending] = useState(false);
 
   function loadProfile() {
@@ -298,9 +299,10 @@ export function CustomerProfileDialog({
             {/* Content is rendered manually below rather than via TabsContent —
                 Base UI's Tabs.Panel doesn't hide the inactive panel here, so
                 both would show at once. */}
-            <Tabs value={tab} onValueChange={(v) => setTab(v as "visits" | "wellness")}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "visits" | "renewals" | "wellness")}>
               <TabsList className="w-full">
                 <TabsTrigger value="visits">Visit Trend</TabsTrigger>
+                <TabsTrigger value="renewals">Renewals</TabsTrigger>
                 <TabsTrigger value="wellness">Wellness Report</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -308,6 +310,12 @@ export function CustomerProfileDialog({
             {tab === "visits" && (
               <div className="pt-1">
                 <RecentCheckins customerId={profile.id} />
+              </div>
+            )}
+
+            {tab === "renewals" && (
+              <div className="pt-1">
+                <RecentRenewals customerId={profile.id} />
               </div>
             )}
 
