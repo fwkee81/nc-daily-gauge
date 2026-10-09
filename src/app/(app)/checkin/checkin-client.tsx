@@ -600,18 +600,24 @@ export function CheckinClient({
       )}
 
       <AlertDialog open={!!duplicateConfirm} onOpenChange={(open) => !open && setDuplicateConfirm(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Already checked in</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-2xl">Already checked in</AlertDialogTitle>
+            <AlertDialogDescription className="text-lg text-foreground">
               {selected?.name} already has {duplicateConfirm?.existingCups} cup
               {duplicateConfirm?.existingCups === 1 ? "" : "s"} checked in on{" "}
               {format(new Date(`${checkinDate}T00:00:00`), "d MMM yyyy")}. Check in again?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDuplicateConfirm(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel
+              className="flex-1 py-6 text-lg"
+              onClick={() => setDuplicateConfirm(null)}
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
+              className="flex-1 py-6 text-lg"
               onClick={() => {
                 setDuplicateConfirm(null);
                 handleSubmit(true);
