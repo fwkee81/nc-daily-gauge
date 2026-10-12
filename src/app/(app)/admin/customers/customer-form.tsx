@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { differenceInYears } from "date-fns";
+import { differenceInYears, format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -498,6 +498,9 @@ export function CustomerForm({
                   <span>
                     {m.name}
                     {m.contact && <span className="text-muted-foreground"> · {m.contact}</span>}
+                    {m.dob && (
+                      <span className="text-muted-foreground"> · {format(parseISO(m.dob), "d MMM yyyy")}</span>
+                    )}
                   </span>
                   <Button
                     type="button"
