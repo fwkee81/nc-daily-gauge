@@ -14,37 +14,29 @@ import {
 } from "@/components/ui/select";
 import { Combobox, type ComboboxOption } from "@/components/combobox";
 import { COACH_LEVELS, NC_POSITIONS } from "@/lib/constants";
-import { completeOnboarding } from "./actions";
+import { completeOnboarding, verifySponsor } from "./actions";
 import type { CoachLevel, NcPosition } from "@/lib/types/database";
-
-interface CoachOption {
-  id: string;
-  name: string;
-  nc_position: string;
-}
 
 interface ClubOption {
   id: string;
   name: string;
 }
 
-export function OnboardingForm({
-  coaches,
-  clubs,
-  isFirstCoach,
-}: {
-  coaches: CoachOption[];
-  clubs: ClubOption[];
-  isFirstCoach: boolean;
-}) {
+// Step 1: verify + confirm the sponsor before anything else is even asked —
+// this is the actual gate (anyone who doesn't know a real, active coach's
+// Herbalife Member ID can't get past this screen at all). Step 2 is the
+// rest of the profile, with the sponsor already locked in.
+export function OnboardingForm({ clubs }: { clubs: ClubOption[] }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const [sponsorMemberId, setSponsorMemberId] = useState("");
+  const [sponsor, setSponsor] = useState<{ id: string; name: string } | null>(null);
+  const [sponsorConfirmed, setSponsorConfirmed] = useState(false);
 
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [dob, setDob] = useState("");
-  const [noSponsor, setNoSponsor] = useState(isFirstCoach);
-  const [sponsorId, setSponsorId] = useState<string | null>(null);
   const [memberId, setMemberId] = useState("");
   const [level, setLevel] = useState<CoachLevel | "">("");
   const [clubName, setClubName] = useState("");
@@ -53,27 +45,38 @@ export function OnboardingForm({
   );
   const [ncPosition, setNcPosition] = useState<NcPosition | "">("");
 
-  const sponsorOptions: ComboboxOption[] = coaches.map((c) => ({
-    value: c.id,
-    label: c.name,
-    description: c.nc_position,
-  }));
-
   function handleCreateClub(name: string) {
     setClubOptions((prev) => (prev.some((o) => o.value === name) ? prev : [...prev, { value: name, label: name }]));
     setClubName(name);
+  }
+
+  function handleVerifySponsor(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      const result = await verifySponsor(sponsorMemberId);
+      if ("error" in result) {
+        setError(result.error ?? "Could not verify that sponsor.");
+        return;
+      }
+      setSponsor(result.data ?? null);
+    });
+  }
+
+  function handleChangeSponsor() {
+    setSponsor(null);
+    setSponsorConfirmed(false);
+    setSponsorMemberId("");
+    setError(null);
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
+    if (!sponsor) return;
     if (!name || !contact || !dob || !memberId || !level || !ncPosition) {
       setError("Please fill in all required fields.");
-      return;
-    }
-    if (!noSponsor && !sponsorId) {
-      setError("Please choose a sponsor, or mark yourself as the founding coach.");
       return;
     }
     if (!clubName) {
@@ -86,7 +89,7 @@ export function OnboardingForm({
         name,
         contact,
         dob,
-        sponsorId: noSponsor ? null : sponsorId,
+        sponsorId: sponsor.id,
         memberId,
         level: level as CoachLevel,
         clubName: clubName.trim(),
@@ -99,11 +102,65 @@ export function OnboardingForm({
     });
   }
 
+  if (!sponsorConfirmed) {
+    return (
+      <div className="mt-6 space-y-4">
+        {error && (
+          <p className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">{error}</p>
+        )}
+
+        {!sponsor ? (
+          <form onSubmit={handleVerifySponsor} className="space-y-4">
+            <div className="space-y-1">
+              <Label>Your sponsor&apos;s Herbalife Member ID *</Label>
+              <Input
+                value={sponsorMemberId}
+                onChange={(e) => setSponsorMemberId(e.target.value)}
+                placeholder="e.g. 1234567"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                We check this against our existing coaches before you can continue — ask your
+                sponsor if you&apos;re not sure of their ID.
+              </p>
+            </div>
+            <Button type="submit" disabled={isPending} className="w-full">
+              {isPending ? "Checking..." : "Verify sponsor"}
+            </Button>
+          </form>
+        ) : (
+          <div className="space-y-3 rounded-md border p-4">
+            <p className="text-sm">
+              Is <span className="font-medium">{sponsor.name}</span> your sponsor?
+            </p>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={handleChangeSponsor}>
+                No, try again
+              </Button>
+              <Button type="button" className="flex-1" onClick={() => setSponsorConfirmed(true)}>
+                Yes, that&apos;s my sponsor
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
       {error && (
         <p className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">{error}</p>
       )}
+
+      <div className="flex items-center justify-between rounded-md border bg-muted/30 p-2 text-sm">
+        <span>
+          Sponsor: <span className="font-medium">{sponsor!.name}</span>
+        </span>
+        <Button type="button" variant="link" className="h-auto p-0" onClick={handleChangeSponsor}>
+          Change
+        </Button>
+      </div>
 
       <div className="space-y-1">
         <Label>Name *</Label>
@@ -125,33 +182,8 @@ export function OnboardingForm({
         <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} required />
       </div>
 
-      <div className="space-y-2">
-        <Label>Sponsor *</Label>
-        {!noSponsor && (
-          <Combobox
-            options={sponsorOptions}
-            value={sponsorId}
-            onChange={setSponsorId}
-            placeholder="Choose your sponsor coach"
-            searchPlaceholder="Search coaches..."
-            emptyText="No coaches yet."
-          />
-        )}
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={noSponsor}
-            onChange={(e) => {
-              setNoSponsor(e.target.checked);
-              setSponsorId(null);
-            }}
-          />
-          I&apos;m the founding coach — no sponsor
-        </label>
-      </div>
-
       <div className="space-y-1">
-        <Label>Member ID *</Label>
+        <Label>Your Herbalife Member ID *</Label>
         <Input value={memberId} onChange={(e) => setMemberId(e.target.value)} required />
       </div>
 
@@ -206,6 +238,11 @@ export function OnboardingForm({
           Owner and Internship positions get admin access to manage customers.
         </p>
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        Your account won&apos;t be active until an admin above {sponsor!.name} in your sponsor line
+        approves it.
+      </p>
 
       <Button type="submit" disabled={isPending} className="w-full">
         {isPending ? "Saving..." : "Complete profile"}

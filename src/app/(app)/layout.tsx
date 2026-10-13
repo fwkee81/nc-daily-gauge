@@ -16,6 +16,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!coach) {
     redirect("/onboarding");
   }
+  // Covers both still-pending (approved=false, active=true) and
+  // rejected/deactivated (active=false) — /pending-approval itself tells
+  // the two apart and shows the right message for each.
+  if (!coach.approved || !coach.active) {
+    redirect("/pending-approval");
+  }
 
   return (
     <div className="flex min-h-screen flex-col">

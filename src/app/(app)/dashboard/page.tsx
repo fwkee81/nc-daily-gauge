@@ -23,9 +23,10 @@ import { createClient } from "@/lib/supabase/server";
 export default async function DashboardPage() {
   const [user, coach] = await Promise.all([getCurrentUser(), getCurrentCoach()]);
 
+  const supabase = await createClient();
+
   let clubName: string | null = null;
   if (coach?.nc_club_id) {
-    const supabase = await createClient();
     const { data: club } = await supabase
       .from("nc_clubs")
       .select("name")
@@ -33,6 +34,11 @@ export default async function DashboardPage() {
       .maybeSingle();
     clubName = club?.name ?? null;
   }
+
+  // Shown to whoever's an admin anywhere in a pending registrant's sponsor
+  // line, not just that club's admins — see pending_coaches_for_approval().
+  const { data: pendingApprovals } = await supabase.rpc("pending_coaches_for_approval");
+  const pendingCount = pendingApprovals?.length ?? 0;
 
   const tiles: {
     href: string;
@@ -154,6 +160,19 @@ export default async function DashboardPage() {
         {coach?.nc_position} · {coach?.level}
         {clubName && <> · {clubName}</>}
       </p>
+
+      {pendingCount > 0 && (
+        <Link
+          href="/approvals"
+          className="mt-4 flex items-center justify-between rounded-md border border-secondary/50 bg-secondary/15 px-4 py-3 text-sm transition-colors hover:bg-secondary/25"
+        >
+          <span>
+            <span className="font-medium">{pendingCount}</span> new registration
+            {pendingCount === 1 ? "" : "s"} waiting on your approval
+          </span>
+          <span className="text-muted-foreground">Review →</span>
+        </Link>
+      )}
 
       <TileGrid tiles={tiles} />
 

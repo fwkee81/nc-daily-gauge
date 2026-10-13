@@ -53,6 +53,9 @@ export type Coach = {
   nc_position: NcPosition;
   is_admin: boolean;
   active: boolean;
+  // Gates real app access, not just existence — see coaches.approved in
+  // supabase/schema.sql and approve_coach()/reject_coach().
+  approved: boolean;
   created_at: string;
 };
 
@@ -90,6 +93,19 @@ export type Customer = {
   active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type PendingCoachApproval = {
+  id: string;
+  name: string;
+  contact: string;
+  member_id: string;
+  nc_club_id: string | null;
+  nc_club_name: string | null;
+  nc_position: NcPosition;
+  sponsor_id: string | null;
+  sponsor_name: string | null;
+  created_at: string;
 };
 
 export type CustomerMember = {
@@ -832,6 +848,22 @@ export type Database = {
       merge_customers: {
         Args: { p_duplicate_customer_id: string; p_keep_customer_id: string };
         Returns: Customer;
+      };
+      upline_admin_ids: {
+        Args: { p_coach_id: string };
+        Returns: { upline_admin_ids: string }[];
+      };
+      approve_coach: {
+        Args: { p_coach_id: string };
+        Returns: Coach;
+      };
+      reject_coach: {
+        Args: { p_coach_id: string };
+        Returns: void;
+      };
+      pending_coaches_for_approval: {
+        Args: Record<string, never>;
+        Returns: PendingCoachApproval[];
       };
       record_walkin_checkin: {
         Args: {
