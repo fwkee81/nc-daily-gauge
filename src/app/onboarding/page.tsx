@@ -15,14 +15,8 @@ export default async function OnboardingPage() {
 
   const existingCoach = await getCurrentCoach();
   if (existingCoach) {
-    redirect("/dashboard");
+    redirect(existingCoach.approved ? "/dashboard" : "/pending-approval");
   }
-
-  const { data: coaches } = await supabase
-    .from("coaches")
-    .select("id, name, nc_position")
-    .eq("active", true)
-    .order("name");
 
   const { data: clubs } = await supabase.from("nc_clubs").select("id, name").order("name");
 
@@ -33,11 +27,7 @@ export default async function OnboardingPage() {
         This is a one-time setup so we can attach your check-ins, customers, and reports to the
         right nutrition club.
       </p>
-      <OnboardingForm
-        coaches={coaches ?? []}
-        clubs={clubs ?? []}
-        isFirstCoach={(coaches ?? []).length === 0}
-      />
+      <OnboardingForm clubs={clubs ?? []} />
     </div>
   );
 }

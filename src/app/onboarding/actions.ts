@@ -4,11 +4,38 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { CoachLevel, NcPosition } from "@/lib/types/database";
 
+// Step 1 of onboarding — looks up the sponsor's own Herbalife Member ID
+// before anything else is filled in. Anyone can read coaches (RLS is
+// `using (true)`), so this works even before the caller has a coaches row
+// of their own. Must be an active, already-approved coach — a pending
+// registration can't sponsor another one.
+export async function verifySponsor(sponsorMemberId: string) {
+  const trimmed = sponsorMemberId.trim();
+  if (!trimmed) {
+    return { error: "Enter your sponsor's Herbalife Member ID." };
+  }
+
+  const supabase = await createClient();
+  const { data: sponsor } = await supabase
+    .from("coaches")
+    .select("id, name")
+    .eq("member_id", trimmed)
+    .eq("active", true)
+    .eq("approved", true)
+    .maybeSingle();
+
+  if (!sponsor) {
+    return { error: "No coach found with that Herbalife Member ID. Please check with your sponsor." };
+  }
+
+  return { data: sponsor as { id: string; name: string } };
+}
+
 export interface CompleteOnboardingInput {
   name: string;
   contact: string;
   dob: string;
-  sponsorId: string | null;
+  sponsorId: string;
   memberId: string;
   level: CoachLevel;
   clubName: string;
@@ -23,6 +50,10 @@ export async function completeOnboarding(input: CompleteOnboardingInput) {
 
   if (!user) {
     redirect("/login");
+  }
+
+  if (!input.sponsorId) {
+    return { error: "Sponsor verification is required." };
   }
 
   const trimmedClubName = input.clubName.trim();
@@ -51,6 +82,11 @@ export async function completeOnboarding(input: CompleteOnboardingInput) {
     clubId = newClub.id as string;
   }
 
+  // Always starts unapproved — RLS (coaches_insert_self) rejects this insert
+  // outright if approved isn't explicitly false, so this isn't just a
+  // default, it's enforced. An admin in the sponsor's upline chain (or the
+  // super admin) has to call approve_coach() before this account can do
+  // anything — see (app)/layout.tsx and /pending-approval.
   const { error } = await supabase.from("coaches").insert({
     auth_user_id: user.id,
     name: input.name,
@@ -61,11 +97,12 @@ export async function completeOnboarding(input: CompleteOnboardingInput) {
     level: input.level,
     nc_club_id: clubId,
     nc_position: input.ncPosition,
+    approved: false,
   });
 
   if (error) {
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  redirect("/pending-approval");
 }
