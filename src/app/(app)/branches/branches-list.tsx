@@ -182,6 +182,7 @@ export function BranchesList({
           "20-day": { value: branch.total_20day, previous: branch.prev_total_20day },
           "30-day": { value: branch.total_30day, previous: branch.prev_total_30day },
           "Ala Carte": undefined,
+          "Take Home": undefined,
         };
 
         return (

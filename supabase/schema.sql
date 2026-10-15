@@ -15,7 +15,7 @@ create type nc_position as enum ('Owner', 'Internship', 'NC Partner', 'Junior Co
 
 create type customer_gender as enum ('Male', 'Female', 'Couple', 'Family', 'Others');
 
-create type customer_nc_level as enum ('5-day', '10-day', '20-day', '30-day', 'Ala Carte');
+create type customer_nc_level as enum ('5-day', '10-day', '20-day', '30-day', 'Ala Carte', 'Take Home');
 
 create type member_type as enum ('MB', 'SC', 'SB', 'SP', 'WT', 'AWT', 'TAB', 'Non member');
 

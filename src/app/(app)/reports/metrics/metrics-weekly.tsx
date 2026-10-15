@@ -125,6 +125,7 @@ export function MetricsWeekly({
     "20-day": totals.total_20day,
     "30-day": totals.total_30day,
     "Ala Carte": undefined,
+    "Take Home": undefined,
   };
 
   return (
