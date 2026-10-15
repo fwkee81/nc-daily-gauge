@@ -43,6 +43,7 @@ export const CUSTOMER_NC_LEVELS: CustomerNcLevel[] = [
   "20-day",
   "30-day",
   "Ala Carte",
+  "Take Home",
 ];
 
 export const MEMBER_TYPES: MemberType[] = [
@@ -78,6 +79,10 @@ export const NC_LEVEL_CUPS: Record<CustomerNcLevel, number> = {
   "20-day": 20,
   "30-day": 30,
   "Ala Carte": 1,
+  // No in-club consumption to renew — this entry exists only so the type
+  // checks out; never offered as a renewable level (see RENEWABLE_NC_LEVELS
+  // in renew-dialog.tsx).
+  "Take Home": 0,
 };
 
 export const FINANCE_INCOME_CATEGORIES: FinanceCategory[] = [

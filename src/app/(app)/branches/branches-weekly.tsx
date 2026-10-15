@@ -158,6 +158,7 @@ export function BranchesWeekly({
           "20-day": branch.total_20day,
           "30-day": branch.total_30day,
           "Ala Carte": undefined,
+          "Take Home": undefined,
         };
 
         return (
