@@ -16,10 +16,13 @@ const TEAM_DROPDOWN_LINKS = [
 
 function pillClass(active: boolean) {
   return cn(
-    "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+    // active: (not :hover) is what actually fires on a touch tap, so this is
+    // what gives an instant "yes, that registered" press effect on mobile —
+    // hover alone either doesn't fire on touch or lingers oddly after.
+    "rounded-full px-3 py-1.5 text-sm font-medium transition active:scale-95",
     active
-      ? "bg-primary text-primary-foreground"
-      : "text-foreground/70 hover:bg-card hover:text-foreground"
+      ? "bg-primary text-primary-foreground active:bg-primary/80"
+      : "text-foreground/70 hover:bg-card hover:text-foreground active:bg-card active:text-foreground"
   );
 }
 
