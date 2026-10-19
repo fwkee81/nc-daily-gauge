@@ -28,7 +28,7 @@ export interface ReportInputs {
   metaAge: number | null;
   bone: number | null;
   visceral: number | null;
-  rating: number;
+  rating: number | null;
 }
 
 export interface ReportResult {
@@ -47,9 +47,9 @@ export interface ReportResult {
 }
 
 export const GOAL_LABELS: Record<Goal, string> = {
-  loss: "建议：减重 Recommended: Weight Loss",
-  maintain: "体重维持良好 Weight Well Maintained",
-  gain: "建议：增重 Recommended: Weight Gain",
+  loss: "Recommended: lose weight",
+  maintain: "Weight on track",
+  gain: "Recommended: gain weight",
 };
 
 function gradeRange(value: number, lo: number, hi: number, tol = 5): Grade {
@@ -97,9 +97,8 @@ function dirPoint(value: number, ref: number): Dir {
 }
 
 export function verdictText(grade: Grade, dir: Dir): string {
-  if (grade === "good") return "✓ 标准 Normal";
-  const word =
-    dir === "high" ? "偏高 High" : dir === "low" ? "偏低 Low" : "需改善 Needs Improvement";
+  if (grade === "good") return "✓ Normal";
+  const word = dir === "high" ? "High" : dir === "low" ? "Low" : "Improve";
   return (grade === "warn" ? "⚠ " : "✕ ") + word;
 }
 
@@ -148,65 +147,65 @@ export function computeReport(input: ReportInputs): ReportResult {
   const cards: StatusCard[] = [
     {
       key: "weight",
-      nm: "体重 Weight",
+      nm: "Weight",
       val: `${weight.toFixed(1)} kg`,
-      ref: `理想 Ideal ${targetWeight.toFixed(1)} kg`,
+      ref: `Ideal ${targetWeight.toFixed(1)} kg`,
       grade: gradePoint(weight, targetWeight, false),
       dir: dirPoint(weight, targetWeight),
     },
     {
       key: "bodyfat",
-      nm: "体脂% Body Fat",
+      nm: "Body Fat %",
       val: bodyFat == null ? "—" : `${bodyFat.toFixed(1)}%`,
-      ref: `标准 Normal ${fatRange[0]}-${fatRange[1]}%`,
+      ref: `Normal ${fatRange[0]}-${fatRange[1]}%`,
       grade: bodyFat == null ? "warn" : gradeRange(bodyFat, fatRange[0], fatRange[1]),
       dir: bodyFat == null ? null : dirRange(bodyFat, fatRange[0], fatRange[1]),
     },
     {
       key: "visceral",
-      nm: "内脏脂肪 Visceral Fat",
+      nm: "Visceral Fat",
       val: visceral == null ? "—" : String(visceral),
-      ref: "数值越低越好 Lower is Better",
+      ref: "Lower is better",
       grade: visceral == null ? "warn" : gradeVisceral(visceral, gender),
       dir: "high",
     },
     {
       key: "metaage",
-      nm: "代谢年龄 Metabolic Age",
+      nm: "Metabolic Age",
       val: metaAge == null ? "—" : String(metaAge),
-      ref: `实际年龄 Actual Age ${age}`,
+      ref: `Actual age ${age}`,
       grade: metaAge == null ? "warn" : gradeMetaAge(metaAge, age),
       dir: "high",
     },
     {
       key: "muscle",
-      nm: "肌肉量 Muscle Mass",
+      nm: "Muscle Mass",
       val: muscle == null ? "—" : `${muscle.toFixed(1)} kg`,
-      ref: `理想 Ideal ${idealMuscle.toFixed(1)} kg`,
+      ref: `Ideal ${idealMuscle.toFixed(1)} kg`,
       grade: muscle == null ? "warn" : gradePoint(muscle, idealMuscle, true),
       dir: "low",
     },
     {
       key: "rating",
-      nm: "身体体格 Physical Rating",
-      val: String(rating),
-      ref: "1-9 等级 Scale",
-      grade: gradePhysical(rating),
-      dir: [1, 2, 3].includes(rating) ? "high" : [4, 7].includes(rating) ? "low" : null,
+      nm: "Physical Rating",
+      val: rating == null ? "—" : String(rating),
+      ref: "Scale 1-9",
+      grade: rating == null ? "warn" : gradePhysical(rating),
+      dir: rating == null ? null : [1, 2, 3].includes(rating) ? "high" : [4, 7].includes(rating) ? "low" : null,
     },
     {
       key: "water",
-      nm: "水分% Body Water",
+      nm: "Body Water %",
       val: water == null ? "—" : `${water.toFixed(1)}%`,
-      ref: `标准 Normal ${waterRange[0]}-${waterRange[1]}%`,
+      ref: `Normal ${waterRange[0]}-${waterRange[1]}%`,
       grade: water == null ? "warn" : gradeRange(water, waterRange[0], waterRange[1]),
       dir: water == null ? null : dirRange(water, waterRange[0], waterRange[1]),
     },
     {
       key: "bone",
-      nm: "骨量 Bone Mass",
+      nm: "Bone Mass",
       val: bone == null ? "—" : `${bone.toFixed(2)} kg`,
-      ref: `参考 Reference ${boneReference.toFixed(2)} kg`,
+      ref: `Reference ${boneReference.toFixed(2)} kg`,
       grade: bone == null ? "warn" : gradePoint(bone, boneReference, false),
       dir: bone == null ? null : dirPoint(bone, boneReference),
     },
@@ -214,23 +213,15 @@ export function computeReport(input: ReportInputs): ReportResult {
 
   const bads = cards.filter((c) => c.grade === "bad");
   const warns = cards.filter((c) => c.grade === "warn");
-  const zhNames = (list: StatusCard[]) => list.slice(0, 2).map((c) => c.nm.split(" ")[0]).join("、");
-  const enNames = (list: StatusCard[]) =>
-    list.slice(0, 2).map((c) => c.nm.split(" ").slice(1).join(" ")).join(", ");
+  const names = (list: StatusCard[]) => list.slice(0, 2).map((c) => c.nm).join(" and ");
 
   let summary: string;
   if (bads.length) {
-    summary =
-      `今天的重点：${zhNames(bads)} 偏离标准较多，建议优先调整。\n` +
-      `Today's focus: ${enNames(bads)} deviate most from standard — adjust these first.`;
+    summary = `Focus for today: ${names(bads)} ${bads.length > 1 ? "are" : "is"} furthest from normal — work on these first.`;
   } else if (warns.length) {
-    summary =
-      `整体状况不错，${zhNames(warns)} 还有提升空间。\n` +
-      `Overall in good shape — ${enNames(warns)} still has room to improve.`;
+    summary = `Overall looking good — ${names(warns)} can still improve.`;
   } else {
-    summary =
-      "各项指标都在标准范围内，状况非常理想，保持现有习惯即可！\n" +
-      "All metrics are within the normal range — great shape, just keep up the good habits!";
+    summary = "All readings are within the normal range. Excellent — keep up your current habits!";
   }
 
   return {
@@ -247,4 +238,16 @@ export function computeReport(input: ReportInputs): ReportResult {
     cards,
     summary,
   };
+}
+
+/* ===================== Share helpers ===================== */
+
+/** Malaysian numbers: 012-345 6789 / +6012… / 6012… → 60123456789, or null if not a valid mobile. */
+export function toWhatsAppNumber(contact: string): string | null {
+  let d = contact.replace(/\D/g, "");
+  if (d.startsWith("60")) {
+    // already international
+  } else if (d.startsWith("0")) d = "6" + d;
+  else if (d.startsWith("1")) d = "60" + d;
+  return /^601\d{8,9}$/.test(d) ? d : null;
 }
