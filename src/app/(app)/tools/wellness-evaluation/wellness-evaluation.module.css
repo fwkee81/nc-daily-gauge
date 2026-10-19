@@ -167,22 +167,141 @@
   color: #fff;
 }
 
-.ratingGrid {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 6px;
-}
-.ratingGrid .opt {
-  padding: 9px 0;
-  font-size: 14.5px;
-  min-width: 0;
-}
-
 .hint {
   font-size: 13px;
   color: var(--muted-foreground);
   margin-top: 5px;
   line-height: 1.4;
+}
+.ratingHint {
+  margin: -6px 0 14px;
+}
+
+/* ---- Scan form (photo → AI → fields) ---- */
+.uploadDrop {
+  display: block;
+  text-align: center;
+  border: 2px dashed var(--line);
+  border-radius: 14px;
+  padding: 22px 14px;
+  cursor: pointer;
+  background: var(--muted);
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.uploadDrop:hover,
+.uploadDrop.drag {
+  border-color: var(--primary);
+}
+.uploadDrop input {
+  display: none;
+}
+.uIcon {
+  font-size: 30px;
+  line-height: 1;
+}
+.uTitle {
+  font-family: var(--font-heading), sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+.uSub {
+  font-size: 13.5px;
+  color: var(--muted-foreground);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.uploadPreview {
+  margin-top: 12px;
+  text-align: center;
+}
+.uploadPreview img {
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+.uploadStatus {
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  padding: 11px 12px;
+  border-radius: 10px;
+}
+.uploadStatus.busy {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.uploadStatus.ok {
+  background: var(--good-bg);
+  color: var(--good);
+}
+.uploadStatus.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.uploadStatus.err {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 7px;
+  vertical-align: -2px;
+  border: 2px solid color-mix(in oklch, var(--foreground), transparent 80%);
+  border-top-color: var(--foreground);
+  border-radius: 50%;
+  animation: we-spin 0.8s linear infinite;
+}
+@keyframes we-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.orDivider {
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 13.5px;
+  font-weight: 600;
+  margin: 16px 0 0;
+  letter-spacing: 0.04em;
+}
+.field input.aiFilled {
+  border-color: var(--good);
+  background: var(--good-soft);
+}
+.field input.aiUncertain {
+  border-color: var(--warn);
+  background: var(--warn-bg);
+}
+.aiUncertainGroup {
+  border: 1.5px solid var(--warn);
+  border-radius: 12px;
+  padding: 4px;
+  background: var(--warn-bg);
+}
+
+.btnClear {
+  display: block;
+  width: 100%;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  color: var(--muted-foreground);
+  border-radius: var(--radius-lg);
+  padding: 12px 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 10px;
+  font-family: inherit;
+}
+.btnClear:active {
+  transform: scale(0.99);
 }
 
 .btnGenerate {
@@ -245,6 +364,59 @@
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+}
+.btnEdit.btnNew {
+  background: var(--good-bg);
+  border-color: var(--good);
+  color: var(--good);
+}
+
+/* ---- Share: WhatsApp + PDF ---- */
+.shareBtns {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.btnShare {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  border-radius: 999px;
+  padding: 11px 12px;
+  font-size: 15.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  color: #fff;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.btnShare:active {
+  transform: scale(0.98);
+}
+.btnWa {
+  background: #1fa855;
+}
+.btnPdf {
+  background: var(--dark);
+}
+.btnPdf:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.btnDisabled {
+  background: var(--muted-foreground);
+  opacity: 0.5;
+  cursor: default;
+}
+.shareNote {
+  font-size: 13.5px;
+  color: var(--muted-foreground);
+  margin-top: 7px;
+  line-height: 1.5;
 }
 
 .hero {
@@ -516,7 +688,10 @@
     padding-bottom: 0;
     border-radius: 0;
   }
-  .topbarBtns {
+  .topbarBtns,
+  .shareBtns,
+  .shareNote,
+  .goalToggleRow {
     display: none !important;
   }
   .panel,
