@@ -9,6 +9,13 @@ import type { CoachLevel, NcPosition } from "@/lib/types/database";
 // `using (true)`), so this works even before the caller has a coaches row
 // of their own. Must be an active, already-approved coach — a pending
 // registration can't sponsor another one.
+//
+// Excludes a paired "secondary" coach (primary_coach_id is set) — a couple
+// sharing one real Herbalife member ID would otherwise match TWO rows here
+// and .maybeSingle() throws on that. Only the primary (or a solo,
+// unpaired coach) is ever matchable as a sponsor; see effective_coach_id()
+// in supabase/schema.sql for how a secondary's own actions still count
+// toward their primary everywhere else.
 export async function verifySponsor(sponsorMemberId: string) {
   const trimmed = sponsorMemberId.trim();
   if (!trimmed) {
@@ -22,6 +29,7 @@ export async function verifySponsor(sponsorMemberId: string) {
     .eq("member_id", trimmed)
     .eq("active", true)
     .eq("approved", true)
+    .is("primary_coach_id", null)
     .maybeSingle();
 
   if (!sponsor) {
