@@ -56,6 +56,9 @@ export type Coach = {
   // Gates real app access, not just existence — see coaches.approved in
   // supabase/schema.sql and approve_coach()/reject_coach().
   approved: boolean;
+  // Set only on a paired "secondary" coach — see effective_coach_id() in
+  // supabase/schema.sql. Null means this coach isn't a secondary.
+  primary_coach_id: string | null;
   created_at: string;
 };
 

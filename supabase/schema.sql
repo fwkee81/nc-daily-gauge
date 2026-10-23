@@ -88,7 +88,14 @@ create table coaches (
   -- was added stays unaffected; only new self-registrations are inserted
   -- with it explicitly false.
   approved boolean not null default true,
-  created_at timestamptz not null default now()
+  -- Lets this coach log in under their own email while every
+  -- customer/Coach's Cup/finance/etc. attribution they produce shows up
+  -- under the primary instead (a married couple sharing one real Herbalife
+  -- member ID, each wanting their own login) — see effective_coach_id().
+  -- Null means "not a secondary" (a solo coach, or a primary themselves).
+  primary_coach_id uuid references coaches (id),
+  created_at timestamptz not null default now(),
+  constraint coaches_primary_not_self check (primary_coach_id is distinct from id)
 );
 
 create table customers (
@@ -520,6 +527,46 @@ as $$
   select id from coaches where auth_user_id = auth.uid();
 $$;
 
+-- Keeps coach pairing a flat 2-level structure (no secondary-of-a-secondary
+-- chains) — without this, effective_coach_id() below could need to walk an
+-- arbitrary chain instead of a single hop, and "who is the primary" could
+-- become ambiguous.
+create or replace function coaches_validate_primary_pairing()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.primary_coach_id is not null and exists (
+    select 1 from coaches where id = new.primary_coach_id and primary_coach_id is not null
+  ) then
+    raise exception 'Cannot pair to a coach who is themselves a secondary — pair to their primary instead';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger coaches_validate_primary_pairing
+before insert or update of primary_coach_id on coaches
+for each row execute function coaches_validate_primary_pairing();
+
+-- Resolves a secondary coach to their primary's id; returns the input
+-- unchanged for a primary, a solo (unpaired) coach, or null. This is the
+-- single place "who does this count toward" is decided — every RPC that
+-- attributes a customer/checkin/sale/etc. to a coach routes the acting
+-- coach's id through this first, and a trigger does the same for the few
+-- tables written by a direct client insert instead of an RPC.
+create or replace function effective_coach_id(p_coach_id uuid)
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select primary_coach_id from coaches where id = p_coach_id), p_coach_id);
+$$;
+
+grant execute on function effective_coach_id(uuid) to authenticated;
+
 create or replace function is_current_coach_admin()
 returns boolean
 language sql
@@ -725,6 +772,34 @@ create policy "customers_update_admin" on customers
 -- No hard-delete policy for customers: checkins reference them, so "removing"
 -- a customer is a soft delete (active = false) via the update policy above.
 
+-- customers is written by a direct client insert/update (not an RPC), so
+-- normalize its coach-attribution columns the same way the RPCs above do —
+-- regardless of what the client sends, a secondary's id in any of these
+-- never sticks; it's rewritten to their primary's before the row lands.
+create or replace function customers_normalize_coach_attribution()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.coach_id is not null then
+    new.coach_id := effective_coach_id(new.coach_id);
+  end if;
+  if new.invited_by_coach_id is not null then
+    new.invited_by_coach_id := effective_coach_id(new.invited_by_coach_id);
+  end if;
+  if new.created_by is not null then
+    new.created_by := effective_coach_id(new.created_by);
+  end if;
+  return new;
+end;
+$$;
+
+create trigger customers_normalize_coach_attribution
+before insert or update on customers
+for each row execute function customers_normalize_coach_attribution();
+
+grant execute on function customers_normalize_coach_attribution() to authenticated;
+
 -- customer_members: same visibility as the parent customer; only admins may
 -- write, and only for a customer within their own club.
 create policy "customer_members_select" on customer_members
@@ -816,29 +891,52 @@ create policy "daily_report_logs_select" on daily_report_logs
   for select to authenticated
   using (nc_club_id in (select visible_club_ids(current_coach_id())));
 
+-- Written by a direct client insert — same normalize-then-check shape as
+-- customers/inventory_transactions/finance_transactions above.
+create or replace function daily_report_logs_normalize_coach_attribution()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.created_by_coach_id is not null then
+    new.created_by_coach_id := effective_coach_id(new.created_by_coach_id);
+  end if;
+  return new;
+end;
+$$;
+
+create trigger daily_report_logs_normalize_coach_attribution
+before insert on daily_report_logs
+for each row execute function daily_report_logs_normalize_coach_attribution();
+
+grant execute on function daily_report_logs_normalize_coach_attribution() to authenticated;
+
 create policy "daily_report_logs_insert" on daily_report_logs
   for insert to authenticated
   with check (
-    created_by_coach_id = current_coach_id()
+    created_by_coach_id = effective_coach_id(current_coach_id())
     and nc_club_id in (select visible_club_ids(current_coach_id()))
   );
 
+-- created_by_coach_id is always the primary's id (the trigger above), so a
+-- secondary editing/deleting their own note has to be checked against their
+-- resolved id too, not their literal one.
 create policy "daily_report_logs_update" on daily_report_logs
   for update to authenticated
   using (
     nc_club_id in (select visible_club_ids(current_coach_id()))
-    and (created_by_coach_id = current_coach_id() or is_current_coach_admin())
+    and (created_by_coach_id = effective_coach_id(current_coach_id()) or is_current_coach_admin())
   )
   with check (
     nc_club_id in (select visible_club_ids(current_coach_id()))
-    and (created_by_coach_id = current_coach_id() or is_current_coach_admin())
+    and (created_by_coach_id = effective_coach_id(current_coach_id()) or is_current_coach_admin())
   );
 
 create policy "daily_report_logs_delete" on daily_report_logs
   for delete to authenticated
   using (
     nc_club_id in (select visible_club_ids(current_coach_id()))
-    and (created_by_coach_id = current_coach_id() or is_current_coach_admin())
+    and (created_by_coach_id = effective_coach_id(current_coach_id()) or is_current_coach_admin())
   );
 
 -- products: readable by any signed-in coach (needed to populate the picker
@@ -857,11 +955,31 @@ create policy "products_insert_admin" on products
 create policy "inventory_transactions_select" on inventory_transactions
   for select to authenticated
   using (nc_club_id in (select visible_club_ids(current_coach_id())));
+-- Written by a direct client insert — a trigger normalizes recorded_by
+-- through effective_coach_id() the same way the customers trigger does, so
+-- the check below has to accept that resolved value, not just the literal
+-- caller.
+create or replace function inventory_transactions_normalize_coach_attribution()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.recorded_by := effective_coach_id(new.recorded_by);
+  return new;
+end;
+$$;
+
+create trigger inventory_transactions_normalize_coach_attribution
+before insert on inventory_transactions
+for each row execute function inventory_transactions_normalize_coach_attribution();
+
+grant execute on function inventory_transactions_normalize_coach_attribution() to authenticated;
+
 create policy "inventory_transactions_insert" on inventory_transactions
   for insert to authenticated
   with check (
     nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
-    and recorded_by = current_coach_id()
+    and recorded_by = effective_coach_id(current_coach_id())
   );
 
 -- finance_transactions: same visibility + write shape as inventory_transactions
@@ -873,11 +991,33 @@ create policy "inventory_transactions_insert" on inventory_transactions
 create policy "finance_transactions_select" on finance_transactions
   for select to authenticated
   using (nc_club_id in (select visible_club_ids(current_coach_id())));
+-- Written by a direct client insert — same normalize-then-check shape as
+-- inventory_transactions above, plus responsible_coach_id (who's credited
+-- with the sale/expense, pickable from a dropdown, not necessarily "self").
+create or replace function finance_transactions_normalize_coach_attribution()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.recorded_by := effective_coach_id(new.recorded_by);
+  if new.responsible_coach_id is not null then
+    new.responsible_coach_id := effective_coach_id(new.responsible_coach_id);
+  end if;
+  return new;
+end;
+$$;
+
+create trigger finance_transactions_normalize_coach_attribution
+before insert on finance_transactions
+for each row execute function finance_transactions_normalize_coach_attribution();
+
+grant execute on function finance_transactions_normalize_coach_attribution() to authenticated;
+
 create policy "finance_transactions_insert" on finance_transactions
   for insert to authenticated
   with check (
     nc_club_id = (select nc_club_id from coaches where auth_user_id = auth.uid())
-    and recorded_by = current_coach_id()
+    and recorded_by = effective_coach_id(current_coach_id())
   );
 
 -- shake_recipes: any coach may read a public recipe or one from their own
@@ -1154,7 +1294,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_club_id uuid;
   v_balance_customer_id uuid;
   v_result checkins;
@@ -1283,7 +1423,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_club_id uuid;
   v_customer_id uuid;
   v_result checkins;
@@ -1379,7 +1519,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_club_id uuid;
   v_customer customers%rowtype;
   v_result checkins;
@@ -1436,7 +1576,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_club_id uuid;
   v_issued_at timestamptz := now();
   v_expires_at date := coalesce(p_expires_at, (now() + interval '90 days')::date);
@@ -1484,7 +1624,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_pass friendship_passes%rowtype;
 begin
   if v_coach_id is null or not is_current_coach_admin() then
@@ -1556,7 +1696,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_editor_id uuid := current_coach_id();
+  v_editor_id uuid := effective_coach_id(current_coach_id());
   v_checkin checkins%rowtype;
   v_old_deduction integer;
   v_new_deduction integer;
@@ -1648,7 +1788,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_editor_id uuid := current_coach_id();
+  v_editor_id uuid := effective_coach_id(current_coach_id());
   v_checkin checkins%rowtype;
   v_balance_customer_id uuid;
   v_loyalty_total integer;
@@ -1759,7 +1899,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_customer customers%rowtype;
   v_club_id uuid;
   v_points integer;
@@ -1823,7 +1963,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_customer customers%rowtype;
   v_club_id uuid;
   v_reward loyalty_rewards%rowtype;
@@ -1878,7 +2018,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_customer customers%rowtype;
   v_club_id uuid;
   v_points_per_vp integer;
@@ -1944,7 +2084,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_entry loyalty_points_ledger%rowtype;
 begin
   if v_coach_id is null or not is_current_coach_admin() then
@@ -1997,7 +2137,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_club_id uuid;
   v_settings loyalty_settings%rowtype;
 begin
@@ -2058,7 +2198,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_customer customers%rowtype;
   v_new_balance integer;
 begin
@@ -2109,7 +2249,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_customer customers%rowtype;
 begin
   if v_coach_id is null or not is_current_coach_admin() then
@@ -2159,7 +2299,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_customer customers%rowtype;
   v_target customers%rowtype;
 begin
@@ -2243,7 +2383,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_customer customers%rowtype;
 begin
   if v_coach_id is null or not is_current_coach_admin() then
@@ -2290,7 +2430,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_coach_id uuid := current_coach_id();
+  v_coach_id uuid := effective_coach_id(current_coach_id());
   v_duplicate customers%rowtype;
   v_keep customers%rowtype;
 begin
@@ -2383,7 +2523,7 @@ begin
   end if;
 
   if not is_super_admin() and not exists (
-    select 1 from upline_admin_ids(v_target.sponsor_id) u where u = v_caller_id
+    select 1 from upline_admin_ids(v_target.sponsor_id) u where u = effective_coach_id(v_caller_id)
   ) then
     raise exception 'You are not authorized to approve this coach';
   end if;
@@ -2420,7 +2560,7 @@ begin
   end if;
 
   if not is_super_admin() and not exists (
-    select 1 from upline_admin_ids(v_target.sponsor_id) u where u = v_caller_id
+    select 1 from upline_admin_ids(v_target.sponsor_id) u where u = effective_coach_id(v_caller_id)
   ) then
     raise exception 'You are not authorized to reject this coach';
   end if;
@@ -2459,7 +2599,7 @@ as $$
   where c.active and not c.approved
     and (
       is_super_admin()
-      or exists (select 1 from upline_admin_ids(c.sponsor_id) u where u = current_coach_id())
+      or exists (select 1 from upline_admin_ids(c.sponsor_id) u where u = effective_coach_id(current_coach_id()))
     )
   order by c.created_at;
 $$;
@@ -4700,7 +4840,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_editor_id uuid := current_coach_id();
+  v_editor_id uuid := effective_coach_id(current_coach_id());
   v_txn inventory_transactions%rowtype;
 begin
   if v_editor_id is null or not is_current_coach_admin() then
@@ -4740,7 +4880,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_editor_id uuid := current_coach_id();
+  v_editor_id uuid := effective_coach_id(current_coach_id());
   v_txn finance_transactions%rowtype;
 begin
   if v_editor_id is null or not is_current_coach_admin() then
