@@ -13,6 +13,7 @@ import {
   Wallet,
   Blender,
   Award,
+  Download,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -151,6 +152,13 @@ export default async function DashboardPage() {
       icon: Blender,
       tint: "bg-secondary/25 text-[#8a5a00]",
     },
+    {
+      href: "https://drive.google.com/drive/folders/1ORGb6hHV92pGk_V2CSg27wOpbAfcggwl?usp=sharing",
+      title: "Download",
+      description: "Shared files and resources in Google Drive.",
+      icon: Download,
+      tint: "bg-primary/15 text-primary",
+    },
   ];
 
   return (
@@ -189,21 +197,30 @@ function TileGrid({
 }) {
   return (
     <div className="mt-4 grid gap-4 sm:grid-cols-3">
-      {tiles.map((tile) => (
-        <Link key={tile.href} href={tile.href}>
-          <Card className="h-full transition-colors hover:bg-accent/50">
-            <CardHeader>
-              <span
-                className={cn("mb-2 flex size-10 items-center justify-center rounded-xl", tile.tint)}
-              >
-                <tile.icon className="size-5" strokeWidth={2.25} />
-              </span>
-              <CardTitle>{tile.title}</CardTitle>
-              <CardDescription>{tile.description}</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-      ))}
+      {tiles.map((tile) => {
+        // An external tile (e.g. a shared Google Drive folder) opens in its
+        // own tab instead of navigating the PWA away from itself.
+        const isExternal = tile.href.startsWith("http");
+        return (
+          <Link
+            key={tile.href}
+            href={tile.href}
+            {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+          >
+            <Card className="h-full transition-colors hover:bg-accent/50">
+              <CardHeader>
+                <span
+                  className={cn("mb-2 flex size-10 items-center justify-center rounded-xl", tile.tint)}
+                >
+                  <tile.icon className="size-5" strokeWidth={2.25} />
+                </span>
+                <CardTitle>{tile.title}</CardTitle>
+                <CardDescription>{tile.description}</CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+        );
+      })}
     </div>
   );
 }
