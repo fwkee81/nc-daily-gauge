@@ -57,7 +57,7 @@ export function Combobox({
             role="combobox"
             aria-expanded={open}
             disabled={disabled}
-            className="w-full justify-between font-normal"
+            className="h-11 w-full justify-between text-base font-normal"
           />
         }
       >
@@ -76,7 +76,7 @@ export function Combobox({
               {allowCreate && search.trim() ? (
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent"
+                  className="flex w-full items-center gap-2 rounded-sm px-3 py-2.5 text-base hover:bg-accent"
                   onClick={() => {
                     onCreate?.(search.trim());
                     setOpen(false);
