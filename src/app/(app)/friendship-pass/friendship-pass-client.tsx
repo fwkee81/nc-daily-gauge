@@ -163,7 +163,7 @@ export function FriendshipPassClient({
                     <TableCell className="font-medium">
                       <button
                         type="button"
-                        className="underline-offset-4 hover:underline"
+                        className="text-primary underline-offset-4 hover:underline"
                         onClick={() => setViewingCustomer({ id: s.customerId, name: s.name })}
                       >
                         {s.name}
@@ -226,7 +226,7 @@ export function FriendshipPassClient({
                       {p.customer?.name ? (
                         <button
                           type="button"
-                          className="underline-offset-4 hover:underline"
+                          className="text-primary underline-offset-4 hover:underline"
                           onClick={() => setViewingCustomer({ id: p.customer_id, name: p.customer!.name })}
                         >
                           {p.customer.name}
