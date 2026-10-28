@@ -106,13 +106,21 @@ export function FriendshipPassClient({
   }, [sorted, search]);
 
   const summary = useMemo(() => {
-    const byCustomer = new Map<string, { name: string; count: number; soonestExpiresAt: string }>();
+    const byCustomer = new Map<
+      string,
+      { customerId: string; name: string; count: number; soonestExpiresAt: string }
+    >();
     for (const p of passes) {
       if (statusOf(p) !== "active") continue;
       const name = p.customer?.name ?? "Unknown";
       const existing = byCustomer.get(p.customer_id);
       if (!existing) {
-        byCustomer.set(p.customer_id, { name, count: 1, soonestExpiresAt: p.expires_at });
+        byCustomer.set(p.customer_id, {
+          customerId: p.customer_id,
+          name,
+          count: 1,
+          soonestExpiresAt: p.expires_at,
+        });
       } else {
         existing.count += 1;
         if (p.expires_at < existing.soonestExpiresAt) existing.soonestExpiresAt = p.expires_at;
@@ -120,6 +128,8 @@ export function FriendshipPassClient({
     }
     return [...byCustomer.values()].sort((a, b) => a.soonestExpiresAt.localeCompare(b.soonestExpiresAt));
   }, [passes]);
+
+  const [viewingCustomer, setViewingCustomer] = useState<{ id: string; name: string } | null>(null);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PASSES_PAGE_SIZE));
   const pageSafe = Math.min(page, pageCount);
@@ -150,7 +160,15 @@ export function FriendshipPassClient({
                 const daysLeft = differenceInCalendarDays(new Date(s.soonestExpiresAt), new Date());
                 return (
                   <TableRow key={s.name}>
-                    <TableCell className="font-medium">{s.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <button
+                        type="button"
+                        className="underline-offset-4 hover:underline"
+                        onClick={() => setViewingCustomer({ id: s.customerId, name: s.name })}
+                      >
+                        {s.name}
+                      </button>
+                    </TableCell>
                     <TableCell className="text-right">
                       <Badge variant="secondary">{s.count}</Badge>
                     </TableCell>
@@ -204,7 +222,19 @@ export function FriendshipPassClient({
                 const badge = STATUS_BADGE[status];
                 return (
                   <TableRow key={p.id} className={status === "voided" ? "opacity-50" : undefined}>
-                    <TableCell className="font-medium">{p.customer?.name ?? "—"}</TableCell>
+                    <TableCell className="font-medium">
+                      {p.customer?.name ? (
+                        <button
+                          type="button"
+                          className="underline-offset-4 hover:underline"
+                          onClick={() => setViewingCustomer({ id: p.customer_id, name: p.customer!.name })}
+                        >
+                          {p.customer.name}
+                        </button>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell>{SOURCE_LABEL[p.source]}</TableCell>
                     <TableCell className="max-w-[200px] truncate" title={p.reason}>
                       {p.reason}
@@ -271,7 +301,81 @@ export function FriendshipPassClient({
           }}
         />
       )}
+
+      {viewingCustomer && (
+        <CustomerPassesDialog
+          customerName={viewingCustomer.name}
+          passes={passes.filter((p) => p.customer_id === viewingCustomer.id)}
+          open={!!viewingCustomer}
+          onOpenChange={(open) => !open && setViewingCustomer(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// Everything about one customer's Friendship Passes in one place — issued,
+// used (and for whom), voided, expired — instead of making a coach dig
+// through "All passes" and search by name to piece that together.
+function CustomerPassesDialog({
+  customerName,
+  passes,
+  open,
+  onOpenChange,
+}: {
+  customerName: string;
+  passes: FriendshipPassRow[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const sorted = useMemo(
+    () => [...passes].sort((a, b) => b.issued_at.localeCompare(a.issued_at)),
+    [passes]
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{customerName}&apos;s Friendship Passes</DialogTitle>
+        </DialogHeader>
+        <div className="max-h-[70vh] space-y-3 overflow-y-auto">
+          {sorted.map((p) => {
+            const status = statusOf(p);
+            const badge = STATUS_BADGE[status];
+            return (
+              <div key={p.id} className="space-y-1 rounded-md border p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">
+                    {SOURCE_LABEL[p.source]} — {p.reason}
+                  </span>
+                  <Badge variant={badge.variant}>{badge.label}</Badge>
+                </div>
+                <p className="text-muted-foreground">
+                  Issued by {p.issued_by_coach?.name ?? "—"} on {fmtDate(p.issued_at)} · Expires{" "}
+                  {fmtDate(p.expires_at)}
+                </p>
+                {status === "used" && (
+                  <p className="text-muted-foreground">
+                    Used for {p.used_checkin?.customer?.name ?? "—"}&apos;s check-in
+                  </p>
+                )}
+                {status === "voided" && (
+                  <p className="text-muted-foreground">
+                    Voided by {p.voided_by_coach?.name ?? "—"}
+                    {p.voided_at && ` on ${fmtDate(p.voided_at)}`}
+                    {p.void_reason && ` — ${p.void_reason}`}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+          {sorted.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground">No Friendship Passes found.</p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
