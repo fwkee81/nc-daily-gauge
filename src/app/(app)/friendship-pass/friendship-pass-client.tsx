@@ -10,6 +10,7 @@ import { PaginationBar } from "@/components/ui/pagination-bar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -32,7 +33,7 @@ import type { FriendshipPass, FriendshipPassSource } from "@/lib/types/database"
 import { awardFriendshipPasses, voidFriendshipPass } from "./actions";
 
 export type FriendshipPassRow = FriendshipPass & {
-  customer: { name: string } | null;
+  customer: { name: string; coach_id: string | null } | null;
   issued_by_coach: { name: string } | null;
   voided_by_coach: { name: string } | null;
   used_checkin: { customer: { name: string } | null } | null;
@@ -75,29 +76,40 @@ const STATUS_BADGE: Record<PassStatus, { label: string; variant: "default" | "se
 export function FriendshipPassClient({
   passes,
   customers,
+  currentCoachId,
 }: {
   passes: FriendshipPassRow[];
   customers: { id: string; name: string }[];
+  currentCoachId: string;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [awarding, setAwarding] = useState(false);
   const [voiding, setVoiding] = useState<FriendshipPassRow | null>(null);
   const [page, setPage] = useState(1);
+  // Same "whose customer is this" field Coach's Cup attribution uses
+  // (customers.coach_id) — lets a coach narrow both tables below to just
+  // the customers counted under her, instead of the whole club.
+  const [onlyMine, setOnlyMine] = useState(false);
 
   const customerOptions: ComboboxOption[] = customers.map((c) => ({ value: c.id, label: c.name }));
+
+  const scoped = useMemo(
+    () => (onlyMine ? passes.filter((p) => p.customer?.coach_id === currentCoachId) : passes),
+    [passes, onlyMine, currentCoachId]
+  );
 
   // Active-and-soonest-expiring first — the whole point of this page is to
   // see who needs a nudge before their pass goes to waste.
   const sorted = useMemo(() => {
     const statusRank: Record<PassStatus, number> = { active: 0, expired: 1, used: 2, voided: 3 };
-    return [...passes].sort((a, b) => {
+    return [...scoped].sort((a, b) => {
       const ra = statusRank[statusOf(a)];
       const rb = statusRank[statusOf(b)];
       if (ra !== rb) return ra - rb;
       return a.expires_at.localeCompare(b.expires_at);
     });
-  }, [passes]);
+  }, [scoped]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -110,7 +122,7 @@ export function FriendshipPassClient({
       string,
       { customerId: string; name: string; count: number; soonestExpiresAt: string }
     >();
-    for (const p of passes) {
+    for (const p of scoped) {
       if (statusOf(p) !== "active") continue;
       const name = p.customer?.name ?? "Unknown";
       const existing = byCustomer.get(p.customer_id);
@@ -127,7 +139,7 @@ export function FriendshipPassClient({
       }
     }
     return [...byCustomer.values()].sort((a, b) => a.soonestExpiresAt.localeCompare(b.soonestExpiresAt));
-  }, [passes]);
+  }, [scoped]);
 
   const [viewingCustomer, setViewingCustomer] = useState<{ id: string; name: string } | null>(null);
 
@@ -142,6 +154,13 @@ export function FriendshipPassClient({
         <Button size="sm" onClick={() => setAwarding(true)}>
           Award Friendship Pass
         </Button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} />
+        <Label htmlFor="only-mine" className="font-normal">
+          Just my customers
+        </Label>
       </div>
 
       <div>
