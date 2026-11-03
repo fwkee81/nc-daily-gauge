@@ -1,15 +1,11 @@
 import { notFound, redirect } from "next/navigation";
-import { canSeeFriendshipPass, getCurrentCoach, getCurrentUser } from "@/lib/auth";
+import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { FriendshipPassClient, type FriendshipPassRow } from "./friendship-pass-client";
 
 export default async function FriendshipPassPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  // Soft launch — see canSeeFriendshipPass() in src/lib/auth.ts. A coach who
-  // isn't on the beta list gets the same 404 as a route that doesn't exist,
-  // so there's no hint this page is coming.
-  if (!canSeeFriendshipPass(user.email)) notFound();
 
   const coach = await getCurrentCoach();
   if (!coach) redirect("/onboarding");
