@@ -17,7 +17,7 @@ export default async function FriendshipPassPage() {
     supabase
       .from("friendship_passes")
       .select(
-        "*, customer:customers(name), issued_by_coach:coaches!friendship_passes_issued_by_fkey(name), voided_by_coach:coaches!friendship_passes_voided_by_fkey(name), used_checkin:checkins(customer:customers(name))"
+        "*, customer:customers(name, coach_id), issued_by_coach:coaches!friendship_passes_issued_by_fkey(name), voided_by_coach:coaches!friendship_passes_voided_by_fkey(name), used_checkin:checkins(customer:customers(name))"
       )
       .eq("nc_club_id", coach.nc_club_id)
       .order("expires_at"),
@@ -33,6 +33,7 @@ export default async function FriendshipPassPage() {
     <FriendshipPassClient
       passes={(passes ?? []) as unknown as FriendshipPassRow[]}
       customers={customers ?? []}
+      currentCoachId={coach.id}
     />
   );
 }
