@@ -212,6 +212,15 @@ export type ShakeRecipe = {
   created_at: string;
 };
 
+export type HolidayTheme = {
+  id: string;
+  slug: string;
+  start_date: string;
+  end_date: string;
+  enabled: boolean;
+  updated_at: string;
+};
+
 export type InventoryTransaction = {
   id: string;
   nc_club_id: string;
@@ -791,6 +800,11 @@ export type Database = {
         Row: ShakeRecipe;
         Insert: Partial<ShakeRecipe>;
         Update: Partial<ShakeRecipe>;
+      } & NoRelationships;
+      holiday_themes: {
+        Row: HolidayTheme;
+        Insert: Partial<HolidayTheme>;
+        Update: Partial<HolidayTheme>;
       } & NoRelationships;
       friendship_passes: {
         Row: FriendshipPass;
