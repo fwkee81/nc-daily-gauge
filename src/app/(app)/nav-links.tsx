@@ -26,13 +26,7 @@ function pillClass(active: boolean) {
   );
 }
 
-export function NavLinks({
-  isAdmin,
-  showFriendshipPass,
-}: {
-  isAdmin: boolean;
-  showFriendshipPass?: boolean;
-}) {
+export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const inTeamGroup = TEAM_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
 
@@ -44,9 +38,9 @@ export function NavLinks({
     { href: "/finance", label: "Finance" },
     { href: "/reports/metrics", label: "NC Metrics" },
     { href: "/loyalty", label: "Loyalty" },
-    // Soft launch — only shown to the beta coach, see canSeeFriendshipPass()
-    // in src/lib/auth.ts.
-    ...(showFriendshipPass ? [{ href: "/friendship-pass", label: "Friendship Pass" }] : []),
+    // Awarding/voiding a pass is admin-only (see friendship-pass/actions.ts),
+    // so a non-admin coach tapping this would only ever hit a dead end.
+    ...(isAdmin ? [{ href: "/friendship-pass", label: "Friendship Pass" }] : []),
     ...(isAdmin ? [{ href: "/wellness-report", label: "Wellness Report" }] : []),
   ];
 

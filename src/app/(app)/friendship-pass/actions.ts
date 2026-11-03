@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { canSeeFriendshipPass, getCurrentCoach, getCurrentUser } from "@/lib/auth";
+import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
 import type { FriendshipPassSource } from "@/lib/types/database";
 
-// Same soft-launch gate as the page itself — belt-and-braces in case a
-// request ever reaches these actions directly.
+// Admin-only — belt-and-braces alongside the page's own check and the RLS
+// policies behind award_friendship_passes()/void_friendship_pass().
 async function requireFriendshipPassAdmin() {
   const user = await getCurrentUser();
-  if (!user || !canSeeFriendshipPass(user.email)) return null;
+  if (!user) return null;
   const coach = await getCurrentCoach();
   if (!coach || !coach.is_admin) return null;
   return coach;

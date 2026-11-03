@@ -18,11 +18,11 @@ import {
 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { canSeeFriendshipPass, getCurrentCoach, getCurrentUser } from "@/lib/auth";
+import { getCurrentCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
-  const [user, coach] = await Promise.all([getCurrentUser(), getCurrentCoach()]);
+  const coach = await getCurrentCoach();
 
   const supabase = await createClient();
 
@@ -106,19 +106,9 @@ export default async function DashboardPage() {
             icon: Activity,
             tint: "bg-secondary/25 text-[#8a5a00]",
           },
-        ]
-      : []),
-    {
-      href: "/loyalty",
-      title: "Loyalty Program",
-      description: "Track check-in points, award bonuses, and redeem rewards.",
-      icon: Award,
-      tint: "bg-primary/15 text-primary",
-    },
-    // Soft launch — only shown to the beta coach, see canSeeFriendshipPass()
-    // in src/lib/auth.ts.
-    ...(canSeeFriendshipPass(user?.email)
-      ? [
+          // Awarding/voiding a pass is admin-only (see
+          // friendship-pass/actions.ts), so this sits with the other
+          // admin-only tiles above.
           {
             href: "/friendship-pass",
             title: "Friendship Pass",
@@ -128,6 +118,13 @@ export default async function DashboardPage() {
           },
         ]
       : []),
+    {
+      href: "/loyalty",
+      title: "Loyalty Program",
+      description: "Track check-in points, award bonuses, and redeem rewards.",
+      icon: Award,
+      tint: "bg-primary/15 text-primary",
+    },
   ];
 
   const toolTiles: typeof tiles = [

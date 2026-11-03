@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { canSeeFriendshipPass, getCurrentCoach, getCurrentUser } from "@/lib/auth";
+import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { NavLinks } from "./nav-links";
@@ -48,7 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             — lets the nav scroll horizontally within a predictable width
             instead of fighting that row's flex-wrap for space. */}
         <div className="mx-auto max-w-5xl px-4 pt-2 pb-3">
-          <NavLinks isAdmin={coach.is_admin} showFriendshipPass={canSeeFriendshipPass(user.email)} />
+          <NavLinks isAdmin={coach.is_admin} />
         </div>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>
