@@ -37,6 +37,7 @@ import {
   removeCustomerMember,
   unlinkCustomer,
   updateCustomer,
+  updateCustomerHeight,
   type CustomerFormInput,
 } from "./actions";
 import type { CustomerRow } from "./customers-client";
@@ -102,6 +103,10 @@ export function CustomerForm({
   const [remark, setRemark] = useState(editing?.remark ?? "");
   const [isPjs, setIsPjs] = useState(editing?.is_pjs ?? false);
   const [isHealthAmbassador, setIsHealthAmbassador] = useState(editing?.is_health_ambassador ?? false);
+  // Lives in My Wellness's wellness_health_profiles, not customers — see
+  // the comment on WellnessHealthProfile in lib/types/database.ts. Only
+  // meaningful once editing (needs a customer_id to attach to).
+  const [heightCm, setHeightCm] = useState(editing?.height_cm != null ? String(editing.height_cm) : "");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -301,6 +306,15 @@ export function CustomerForm({
 
     setIsPending(true);
     const result = editing ? await updateCustomer(editing.id, input) : await createCustomer(input);
+    if (!result?.error && editing) {
+      const heightResult = await updateCustomerHeight(editing.id, heightCm.trim() ? Number(heightCm) : null);
+      if (heightResult?.error) {
+        setIsPending(false);
+        setError(heightResult.error);
+        toast.error(heightResult.error);
+        return;
+      }
+    }
     setIsPending(false);
 
     if (result?.error) {
@@ -377,6 +391,22 @@ export function CustomerForm({
           )}
         </div>
       </div>
+
+      {editing && (
+        <div className="space-y-1">
+          <Label>Height (cm)</Label>
+          <Input
+            type="number"
+            min={0}
+            value={heightCm}
+            onChange={(e) => setHeightCm(e.target.value)}
+            placeholder="Not set"
+          />
+          <p className="text-xs text-muted-foreground">
+            Shared with My Wellness — fills in there too if the customer has it in their own profile.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">

@@ -105,6 +105,29 @@ export async function updateCustomer(id: string, input: CustomerFormInput) {
   return { success: true };
 }
 
+// wellness_health_profiles is owned by the My Wellness app, not this repo
+// (see the comment on WellnessHealthProfile in lib/types/database.ts) — but
+// its existing RLS already lets any coach upsert a row for a customer in
+// their visible clubs, the same way My Wellness's own coach-edit path does,
+// so this needs no new policy. customer_id has a unique constraint there
+// (My Wellness upserts onConflict: "customer_id" the same way).
+export async function updateCustomerHeight(customerId: string, heightCm: number | null) {
+  const coach = await getCurrentCoach();
+  if (!coach || !coach.is_admin) {
+    return { error: "Not authorized." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("wellness_health_profiles")
+    .upsert({ customer_id: customerId, height_cm: heightCm }, { onConflict: "customer_id" });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/customers");
+  return { success: true };
+}
+
 export async function renewCustomer(
   id: string,
   ncLevel: CustomerNcLevel,
