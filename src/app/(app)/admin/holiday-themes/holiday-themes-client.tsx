@@ -9,7 +9,14 @@ import { Switch } from "@/components/ui/switch";
 import type { HolidayThemeSlug } from "@/lib/holiday-themes";
 import { updateHolidayTheme } from "./actions";
 
-interface ThemeRow {
+interface AutomaticThemeRow {
+  slug: HolidayThemeSlug;
+  name: string;
+  emoji: string;
+  dateDescription: string;
+}
+
+interface ManualThemeRow {
   slug: HolidayThemeSlug;
   name: string;
   emoji: string;
@@ -18,15 +25,21 @@ interface ThemeRow {
   enabled: boolean;
 }
 
-export function HolidayThemesClient({ themes }: { themes: ThemeRow[] }) {
-  const [rows, setRows] = useState(themes);
+export function HolidayThemesClient({
+  automaticThemes,
+  manualThemes,
+}: {
+  automaticThemes: AutomaticThemeRow[];
+  manualThemes: ManualThemeRow[];
+}) {
+  const [rows, setRows] = useState(manualThemes);
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
 
-  function patch(slug: string, changes: Partial<ThemeRow>) {
+  function patch(slug: string, changes: Partial<ManualThemeRow>) {
     setRows((prev) => prev.map((r) => (r.slug === slug ? { ...r, ...changes } : r)));
   }
 
-  async function save(row: ThemeRow) {
+  async function save(row: ManualThemeRow) {
     if (!row.startDate || !row.endDate) {
       toast.error("Set both a start and end date first.");
       return;
@@ -46,16 +59,22 @@ export function HolidayThemesClient({ themes }: { themes: ThemeRow[] }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Holiday Themes</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          The Check-in page switches to a theme automatically on the dates below. Several lunar/floating
-          holidays (Chinese New Year, Deepavali) move every year, so these need a yearly update.
+          The Check-in page switches to a theme automatically on the dates below.
         </p>
       </div>
 
       <div className="space-y-3">
+        <div>
+          <h2 className="text-lg font-medium">Needs a yearly date update</h2>
+          <p className="text-sm text-muted-foreground">
+            Lunar/Hijri/Tamil-calendar holidays — their real date depends on moon-sighting or an official
+            gazette, so there&apos;s no formula for it. Update these once the official date is announced.
+          </p>
+        </div>
         {rows.map((row) => (
           <div key={row.slug} className="rounded-lg border bg-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -106,6 +125,29 @@ export function HolidayThemesClient({ themes }: { themes: ThemeRow[] }) {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-lg font-medium">Automatic — nothing to do</h2>
+          <p className="text-sm text-muted-foreground">
+            Fixed calendar dates, computed every year. Listed here just so you can see the full picture.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {automaticThemes.map((theme) => (
+            <div
+              key={theme.slug}
+              className="flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <span aria-hidden>{theme.emoji}</span>
+                {theme.name}
+              </div>
+              <span className="text-xs text-muted-foreground">{theme.dateDescription}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
