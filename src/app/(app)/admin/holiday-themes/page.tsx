@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
-import { HOLIDAY_THEME_REGISTRY, isHolidayThemeSlug } from "@/lib/holiday-themes";
+import { HOLIDAY_THEME_REGISTRY, describeHolidayRule, isHolidayThemeSlug } from "@/lib/holiday-themes";
 import { HolidayThemesClient } from "./holiday-themes-client";
 
 export default async function HolidayThemesPage() {
@@ -23,11 +23,23 @@ export default async function HolidayThemesPage() {
   const { data: rows } = await supabase.from("holiday_themes").select("*").order("slug");
   const rowBySlug = new Map((rows ?? []).map((r) => [r.slug, r]));
 
-  // Every registry entry gets a row even if the DB one is somehow missing
-  // (e.g. a brand-new theme just added to the registry, before its dates
-  // have been set) — the page always shows one card per known theme.
-  const themes = Object.keys(HOLIDAY_THEME_REGISTRY)
+  const automaticThemes = Object.keys(HOLIDAY_THEME_REGISTRY)
     .filter(isHolidayThemeSlug)
+    .filter((slug) => HOLIDAY_THEME_REGISTRY[slug].rule.kind !== "manual")
+    .map((slug) => ({
+      slug,
+      name: HOLIDAY_THEME_REGISTRY[slug].name,
+      emoji: HOLIDAY_THEME_REGISTRY[slug].emoji,
+      dateDescription: describeHolidayRule(HOLIDAY_THEME_REGISTRY[slug].rule),
+    }));
+
+  // Every manual-rule registry entry gets a row even if the DB one is
+  // somehow missing (e.g. a brand-new theme just added to the registry,
+  // before its dates have been set) — the page always shows one card per
+  // known theme.
+  const manualThemes = Object.keys(HOLIDAY_THEME_REGISTRY)
+    .filter(isHolidayThemeSlug)
+    .filter((slug) => HOLIDAY_THEME_REGISTRY[slug].rule.kind === "manual")
     .map((slug) => {
       const row = rowBySlug.get(slug);
       return {
@@ -40,5 +52,5 @@ export default async function HolidayThemesPage() {
       };
     });
 
-  return <HolidayThemesClient themes={themes} />;
+  return <HolidayThemesClient automaticThemes={automaticThemes} manualThemes={manualThemes} />;
 }
