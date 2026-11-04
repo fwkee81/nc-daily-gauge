@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentCoach, getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
+import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { NavLinks } from "./nav-links";
 import { signOut } from "./actions";
 
@@ -48,7 +49,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             — lets the nav scroll horizontally within a predictable width
             instead of fighting that row's flex-wrap for space. */}
         <div className="mx-auto max-w-5xl px-4 pt-2 pb-3">
-          <NavLinks isAdmin={coach.is_admin} />
+          <NavLinks isAdmin={coach.is_admin} isSuperAdmin={user.email === SUPER_ADMIN_EMAIL} />
         </div>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>

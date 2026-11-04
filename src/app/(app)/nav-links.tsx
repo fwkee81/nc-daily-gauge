@@ -14,6 +14,12 @@ const TEAM_DROPDOWN_LINKS = [
   { href: "/admin/coaches", label: "Coaches" },
 ];
 
+// Super-admin-only, network-wide settings pages — separate from "Team"
+// since these aren't about cross-branch visibility, they're single global
+// settings only the one super admin account should touch. More admin-only
+// pages land here over time.
+const ADMIN_DROPDOWN_LINKS = [{ href: "/admin/holiday-themes", label: "Holiday Themes" }];
+
 function pillClass(active: boolean) {
   return cn(
     // active: (not :hover) is what actually fires on a touch tap, so this is
@@ -26,9 +32,10 @@ function pillClass(active: boolean) {
   );
 }
 
-export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
+export function NavLinks({ isAdmin, isSuperAdmin }: { isAdmin: boolean; isSuperAdmin: boolean }) {
   const pathname = usePathname();
   const inTeamGroup = TEAM_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
+  const inAdminGroup = ADMIN_DROPDOWN_LINKS.some((link) => pathname.startsWith(link.href));
 
   const primaryLinks = [
     { href: "/checkin", label: "Check-in" },
@@ -80,6 +87,35 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
             </PopoverTrigger>
             <PopoverContent className="w-48 p-1.5" align="start">
               {TEAM_DROPDOWN_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "block rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent",
+                    pathname === link.href ? "font-medium text-primary" : "text-foreground"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {isSuperAdmin && (
+          <Popover>
+            <PopoverTrigger
+              render={
+                <button
+                  type="button"
+                  className={cn(pillClass(inAdminGroup), "flex shrink-0 items-center gap-1")}
+                />
+              }
+            >
+              Admin <ChevronDown className="size-3.5" />
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-1.5" align="start">
+              {ADMIN_DROPDOWN_LINKS.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
