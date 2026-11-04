@@ -69,10 +69,11 @@ export function HolidayThemesClient({
 
       <div className="space-y-3">
         <div>
-          <h2 className="text-lg font-medium">Needs a yearly date update</h2>
+          <h2 className="text-lg font-medium">Set by hand</h2>
           <p className="text-sm text-muted-foreground">
-            Lunar/Hijri/Tamil-calendar holidays — their real date depends on moon-sighting or an official
-            gazette, so there&apos;s no formula for it. Update these once the official date is announced.
+            Lunar/Hijri/Tamil-calendar holidays, whose real date depends on moon-sighting or an official
+            gazette (no formula for those — update once the official date is announced), plus Christmas,
+            since the theme is meant to start a few days early rather than exactly on the 25th.
           </p>
         </div>
         {rows.map((row) => (
