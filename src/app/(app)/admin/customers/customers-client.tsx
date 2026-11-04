@@ -65,6 +65,9 @@ export interface CustomerRow {
   is_pjs: boolean;
   is_health_ambassador: boolean;
   active: boolean;
+  // From My Wellness's wellness_health_profiles, not the customers table —
+  // see the comment on WellnessHealthProfile in lib/types/database.ts.
+  height_cm: number | null;
   invited_by_coach?: { id: string; name: string } | null;
   invited_by_customer?: { id: string; name: string } | null;
   coach?: { id: string; name: string } | null;

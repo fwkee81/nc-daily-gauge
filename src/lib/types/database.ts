@@ -621,11 +621,17 @@ export type BranchCoachCupRecordRow = {
 // Owned by the separate "My Wellness" customer-facing app (own repo at
 // C:\Users\PC\Desktop\my-wellness), not by NC Daily Gauge — but it lives in
 // the same Supabase project and rows are linked back to this app's
-// `customers` table via customer_id. NC Daily Gauge only ever READS these
+// `customers` table via customer_id. NC Daily Gauge mostly only READS these
 // tables (to show a customer's self-logged wellness data on the Wellness
-// Report page); the tables, RLS, and all writes are managed entirely by the
-// My Wellness repo. Not declared in schema.sql for that reason — this is
-// just enough typing for typed .from("wellness_*") reads here.
+// Report page); the tables, RLS, and almost all writes are managed entirely
+// by the My Wellness repo. The one exception is wellness_health_profiles.height_cm,
+// writable here too (Edit Customer form) since a coach keying it in is often
+// faster than waiting for the customer to fill their My Wellness profile —
+// existing RLS (wellness_health_profiles_write) already allows any coach to
+// upsert a row for a customer in their visible clubs, same as My Wellness's
+// own coach-edits-customer path, so no RLS change was needed for this. Not
+// declared in schema.sql for that reason — this is just enough typing for
+// typed .from("wellness_*") reads/writes here.
 export type WellnessLog = {
   id: string;
   customer_id: string | null;

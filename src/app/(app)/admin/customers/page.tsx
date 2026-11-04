@@ -50,8 +50,20 @@ export default async function AdminCustomersPage({
   // (self-referential join, so PostgREST can't embed it) — from this same
   // result set, since every customer in the club is already in it.
   const nameById = new Map(rows.map((c) => [c.id, c.name]));
+
+  // height_cm lives in My Wellness's wellness_health_profiles, not on
+  // customers — see the comment on WellnessHealthProfile in
+  // lib/types/database.ts. Fetched separately since it needs the customer
+  // ids from the query above first.
+  const { data: heightRows } = await supabase
+    .from("wellness_health_profiles")
+    .select("customer_id, height_cm")
+    .in("customer_id", rows.length > 0 ? rows.map((c) => c.id) : [""]);
+  const heightByCustomerId = new Map((heightRows ?? []).map((r) => [r.customer_id, r.height_cm]));
+
   const rowsWithInvitedByCustomer = rows.map((c) => ({
     ...c,
+    height_cm: heightByCustomerId.get(c.id) ?? null,
     invited_by_customer: c.invited_by_customer_id
       ? { id: c.invited_by_customer_id, name: nameById.get(c.invited_by_customer_id) ?? "—" }
       : null,
