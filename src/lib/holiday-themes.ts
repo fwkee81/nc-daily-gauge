@@ -136,13 +136,6 @@ export const HOLIDAY_THEME_REGISTRY = {
     colors: { primary: "#1D4ED8", primaryForeground: "#FFFFFF", secondary: "#93C5FD", background: "linear-gradient(180deg, #EDF2FE 0%, #E1E9FD 45%, #EFF6FE 100%)" },
     rule: { kind: "fixed", month: 11, day: 14 },
   },
-  christmas: {
-    name: "Christmas",
-    emoji: "🎄",
-    greeting: "Merry Christmas from all of us at the club!",
-    colors: { primary: "#1B5E3A", primaryForeground: "#FFF6EC", secondary: "#C9142E", background: "linear-gradient(180deg, #F3FAF5 0%, #EAF6EE 45%, #F6EFE9 100%)" },
-    rule: { kind: "fixed", month: 12, day: 25 },
-  },
   boxing_day: {
     name: "Boxing Day",
     emoji: "🎁",
@@ -152,6 +145,17 @@ export const HOLIDAY_THEME_REGISTRY = {
   },
 
   // --- Manual (date set each year on /admin/holiday-themes) ---
+  // Christmas lives here too, not with the other fixed dates above — the
+  // actual day is fixed (25 Dec) but the admin wants the theme running for
+  // several days beforehand, and how many is their call, adjustable
+  // without a code change.
+  christmas: {
+    name: "Christmas",
+    emoji: "🎄",
+    greeting: "Merry Christmas from all of us at the club!",
+    colors: { primary: "#1B5E3A", primaryForeground: "#FFF6EC", secondary: "#C9142E", background: "linear-gradient(180deg, #F3FAF5 0%, #EAF6EE 45%, #F6EFE9 100%)" },
+    rule: { kind: "manual" },
+  },
   chinese_new_year: {
     name: "Chinese New Year",
     emoji: "🧧",
