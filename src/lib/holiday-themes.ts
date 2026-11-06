@@ -270,12 +270,22 @@ export function describeHolidayRule(rule: HolidayRule): string {
   return "Date set manually below";
 }
 
-// today defaults to the server's current date — pass one explicitly in
-// tests. Dates are plain "YYYY-MM-DD" strings compared lexically, which
-// works fine since they're already zero-padded ISO dates.
+// Malaysia is a fixed UTC+8 offset year-round (no DST), so this is safe as
+// a plain offset rather than needing a timezone library. Without this, the
+// server's raw UTC date lags Malaysia's actual date by a day for the first
+// 8 hours of every Malaysia day (e.g. at 7am MYT the server is still on
+// "yesterday" in UTC) — a theme due to start "today" wouldn't show until
+// the afternoon.
+function todayInMalaysia(): string {
+  return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+// today defaults to the current date in Malaysia time — pass one
+// explicitly in tests. Dates are plain "YYYY-MM-DD" strings compared
+// lexically, which works fine since they're already zero-padded ISO dates.
 export function getActiveHolidayTheme(
   rows: HolidayTheme[],
-  today: string = new Date().toISOString().slice(0, 10)
+  today: string = todayInMalaysia()
 ): ActiveHolidayTheme | null {
   const year = Number(today.slice(0, 4));
   const manualRowBySlug = new Map(rows.map((r) => [r.slug, r]));
