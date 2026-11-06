@@ -141,6 +141,26 @@ export function FriendshipPassClient({
     return [...byCustomer.values()].sort((a, b) => a.soonestExpiresAt.localeCompare(b.soonestExpiresAt));
   }, [scoped]);
 
+  // Several passes awarded in the same Award call share source/reason/
+  // issued_at/expires_at — in this flat table they're separate, identical-
+  // looking rows with nothing to show the original batch size, same issue
+  // as the per-customer dialog. Computed from the full unfiltered passes
+  // list so the count reflects what was actually awarded regardless of the
+  // "only mine" toggle or the name search below.
+  const batchTotalByPassId = useMemo(() => {
+    const groups = new Map<string, number>();
+    for (const p of passes) {
+      const key = `${p.customer_id}|${p.source}|${p.reason}|${p.issued_at}|${p.expires_at}`;
+      groups.set(key, (groups.get(key) ?? 0) + 1);
+    }
+    const result = new Map<string, number>();
+    for (const p of passes) {
+      const key = `${p.customer_id}|${p.source}|${p.reason}|${p.issued_at}|${p.expires_at}`;
+      result.set(p.id, groups.get(key)!);
+    }
+    return result;
+  }, [passes]);
+
   const [viewingCustomer, setViewingCustomer] = useState<{ id: string; name: string } | null>(null);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PASSES_PAGE_SIZE));
@@ -227,6 +247,7 @@ export function FriendshipPassClient({
                 <TableHead>Customer</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Reason</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
                 <TableHead>Issued by</TableHead>
                 <TableHead>Issued</TableHead>
                 <TableHead>Expires</TableHead>
@@ -258,6 +279,7 @@ export function FriendshipPassClient({
                     <TableCell className="max-w-[200px] truncate" title={p.reason}>
                       {p.reason}
                     </TableCell>
+                    <TableCell className="text-right">{batchTotalByPassId.get(p.id) ?? 1}</TableCell>
                     <TableCell>{p.issued_by_coach?.name ?? "—"}</TableCell>
                     <TableCell className="whitespace-nowrap">{fmtDate(p.issued_at)}</TableCell>
                     <TableCell className="whitespace-nowrap">{fmtDate(p.expires_at)}</TableCell>
@@ -280,7 +302,7 @@ export function FriendshipPassClient({
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground">
                     No Friendship Passes found.
                   </TableCell>
                 </TableRow>
