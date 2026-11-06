@@ -352,12 +352,57 @@ function CustomerPassesDialog({
     [passes]
   );
 
+  // Each "Award" call creates one row per pass (e.g. count=2 inserts 2 rows
+  // sharing the same source/reason/issued_at/expires_at), so when the same
+  // batch has several passes they look identical in the list below with
+  // nothing to count them by — group by that shared key so a total is
+  // visible up front instead of having to count matching cards by eye.
+  const summary = useMemo(() => {
+    const groups = new Map<
+      string,
+      { source: FriendshipPassSource; reason: string; expiresAt: string; passes: FriendshipPassRow[] }
+    >();
+    for (const p of sorted) {
+      const key = `${p.source}|${p.reason}|${p.issued_at}|${p.expires_at}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.passes.push(p);
+      } else {
+        groups.set(key, { source: p.source, reason: p.reason, expiresAt: p.expires_at, passes: [p] });
+      }
+    }
+    return Array.from(groups.values());
+  }, [sorted]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{customerName}&apos;s Friendship Passes</DialogTitle>
         </DialogHeader>
+        {summary.length > 0 && (
+          <div className="space-y-1.5 rounded-md border bg-muted/40 p-3 text-sm">
+            {summary.map((g, i) => {
+              const counts: Record<PassStatus, number> = { active: 0, used: 0, voided: 0, expired: 0 };
+              for (const p of g.passes) counts[statusOf(p)]++;
+              const parts = (
+                ["active", "used", "voided", "expired"] as PassStatus[]
+              )
+                .filter((s) => counts[s] > 0)
+                .map((s) => `${counts[s]} ${STATUS_BADGE[s].label.toLowerCase()}`);
+              return (
+                <div key={i} className="flex items-baseline justify-between gap-2">
+                  <span>
+                    {SOURCE_LABEL[g.source]} — {g.reason}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">
+                    {g.passes.length} total ({parts.join(", ")})
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div className="max-h-[70vh] space-y-3 overflow-y-auto">
           {sorted.map((p) => {
             const status = statusOf(p);
