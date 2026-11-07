@@ -51,7 +51,7 @@ export default async function DailyReportPage({
     supabase
       .from("checkins")
       .select(
-        "id, customer_id, cups, consumption_type, voided, is_birthday_shake, created_at, customer:customers(name, nc_level, consumption_balance, coach:coaches!customers_coach_id_fkey(id, name)), member:customer_members(name)"
+        "id, customer_id, cups, consumption_type, voided, is_birthday_shake, created_at, customer:customers(name, nc_level, consumption_balance, linked_to_customer_id, coach:coaches!customers_coach_id_fkey(id, name)), member:customer_members(name)"
       )
       .eq("checkin_date", date)
       .eq("nc_club_id", clubId)
@@ -239,6 +239,43 @@ export default async function DailyReportPage({
     createdAt: c.created_at,
   }));
 
+  // A linked (family/spouse) customer's own consumption_balance is always
+  // kept at 0 — the real number lives on whoever they're linked to (see the
+  // comment on customers.linked_to_customer_id in supabase/schema.sql).
+  // checkins' embedded customer:customers(...) only has their own row, so
+  // without this it shows 0 for every linked customer's check-in, same
+  // balance the check-in page already resolves via resolveBalance().
+  interface RawCheckinCustomer {
+    linked_to_customer_id: string | null;
+    consumption_balance: number;
+  }
+  const rawCheckins = (checkinsRes.data ?? []) as unknown as (CheckinRow & {
+    customer: RawCheckinCustomer | null;
+  })[];
+  const linkedToIds = [
+    ...new Set(
+      rawCheckins
+        .map((c) => c.customer?.linked_to_customer_id)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+  const { data: primaryBalances } =
+    linkedToIds.length > 0
+      ? await supabase.from("customers").select("id, consumption_balance").in("id", linkedToIds)
+      : { data: [] as { id: string; consumption_balance: number }[] };
+  const primaryBalanceById = new Map((primaryBalances ?? []).map((c) => [c.id, c.consumption_balance]));
+  const checkins: CheckinRow[] = rawCheckins.map((c) => ({
+    ...c,
+    customer: c.customer
+      ? {
+          ...c.customer,
+          consumption_balance: c.customer.linked_to_customer_id
+            ? (primaryBalanceById.get(c.customer.linked_to_customer_id) ?? c.customer.consumption_balance)
+            : c.customer.consumption_balance,
+        }
+      : null,
+  }));
+
   return (
     <DailyReportClient
       date={date}
@@ -261,7 +298,7 @@ export default async function DailyReportPage({
       coachCups={coachCupsRes.data ?? []}
       branchCoachCups={branchCoachCupsRes.data ?? []}
       birthdays={birthdaysRes.data ?? []}
-      checkins={(checkinsRes.data ?? []) as unknown as CheckinRow[]}
+      checkins={checkins}
       excludedCustomerIds={(excludedCustomersRes.data ?? []).map((c) => c.customer_id)}
       pluginCustomerIds={(pluginLineageRes.data ?? []).map((c) => c.customer_id)}
       ledger={ledger}
