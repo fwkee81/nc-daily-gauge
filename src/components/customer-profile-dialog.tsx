@@ -314,8 +314,19 @@ export function CustomerProfileDialog({
             )}
 
             {tab === "renewals" && (
-              <div className="pt-1">
-                <RecentRenewals customerId={profile.id} />
+              <div className="space-y-1 pt-1">
+                {/* A linked customer can't be renewed directly (Renew is
+                    disabled for them on the Customers page) — every top-up
+                    that funds the shared balance happened on the primary
+                    account, so that's whose history is actually useful
+                    here; their own would always be empty. */}
+                {profile.linked_to_customer_id && (
+                  <p className="text-xs text-muted-foreground">
+                    Showing {profile.linkedToCustomerName ?? "—"}&apos;s renewals — this account shares
+                    their balance.
+                  </p>
+                )}
+                <RecentRenewals customerId={profile.linked_to_customer_id ?? profile.id} />
               </div>
             )}
 
