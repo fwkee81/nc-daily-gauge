@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +22,7 @@ export function InvoiceSettingsClient({
   phone: string;
   ssmNo: string;
 }) {
+  const router = useRouter();
   const [form, setForm] = useState({ companyName, address, phone, ssmNo });
   const [isPending, setIsPending] = useState(false);
 
@@ -38,10 +42,18 @@ export function InvoiceSettingsClient({
       return;
     }
     toast.success("Invoice settings saved.");
+    router.push("/finance");
   }
 
   return (
     <form onSubmit={handleSubmit} className="max-w-md space-y-4">
+      <Link
+        href="/finance"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ChevronLeft className="size-4" /> Back to Finance
+      </Link>
+
       <div>
         <h1 className="text-2xl font-semibold">Invoice Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
