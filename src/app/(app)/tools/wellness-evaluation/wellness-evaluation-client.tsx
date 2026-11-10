@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { buildPdfFromElement, downloadFile } from "@/lib/pdf";
 import type { ScannedForm } from "@/app/api/wellness-evaluation/read-form/route";
 import {
   GOAL_LABELS,
@@ -138,38 +139,6 @@ function compressImage(file: File): Promise<{ dataUrl: string; base64: string; m
 
 function pdfFilename(meta: ReportMeta) {
   return `Wellness_Evaluation_${meta.name || "Report"}_${meta.date}`.replace(/[\\/:*?"<>|\s]+/g, "_") + ".pdf";
-}
-
-async function buildPdf(el: HTMLElement, filename: string): Promise<File> {
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas-pro"), import("jspdf")]);
-  if (document.fonts?.ready) await document.fonts.ready;
-  const canvas = await html2canvas(el, {
-    scale: 2,
-    useCORS: true,
-    ignoreElements: (node) => node instanceof HTMLElement && node.dataset.pdfHide !== undefined,
-    onclone: (doc) => {
-      // the cards' soft gradient renders as a smudge — use a flat background in the PDF
-      doc.querySelectorAll<HTMLElement>("[data-pdf-flat]").forEach((n) => {
-        n.style.background = "var(--card)";
-      });
-    },
-  });
-  // one tall page (no awkward page breaks) — easy to scroll on a phone
-  const w = 210;
-  const h = (canvas.height * w) / canvas.width;
-  const pdf = new jsPDF({ unit: "mm", format: [w, h], orientation: h > w ? "portrait" : "landscape" });
-  pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, w, h);
-  return new File([pdf.output("blob")], filename, { type: "application/pdf" });
-}
-
-function downloadFile(file: File) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(file);
-  a.download = file.name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
 }
 
 export function WellnessEvaluationClient() {
@@ -372,7 +341,7 @@ export function WellnessEvaluationClient() {
     const el = reportRef.current;
     const filename = pdfFilename(meta);
     const p = new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 50))).then(() =>
-      buildPdf(el, filename)
+      buildPdfFromElement(el, filename)
     );
     pdfPromiseRef.current = p;
     p.then(

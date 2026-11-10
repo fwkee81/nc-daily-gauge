@@ -4,7 +4,7 @@
 // it. Returns null for anything too short to be a real number (placeholder
 // values like "0" from legacy walk-in records — see isRealContact in
 // checkin/walkin-dialog.tsx for the same guard applied elsewhere).
-export function whatsappLink(contact: string): string | null {
+export function whatsappLink(contact: string, text?: string): string | null {
   const digits = contact.replace(/\D/g, "");
   if (digits.length < 8) return null;
 
@@ -14,5 +14,6 @@ export function whatsappLink(contact: string): string | null {
       ? `60${digits.slice(1)}`
       : `60${digits}`;
 
-  return `https://wa.me/${withCountryCode}`;
+  const base = `https://wa.me/${withCountryCode}`;
+  return text ? `${base}?text=${encodeURIComponent(text)}` : base;
 }
