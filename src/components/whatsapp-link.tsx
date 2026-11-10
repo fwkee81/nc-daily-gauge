@@ -12,8 +12,16 @@ function WhatsAppIcon({ className }: { className?: string }) {
 // Renders a contact number as a wa.me deep link so a coach can tap straight
 // into a WhatsApp chat. Falls back to plain text when the number is too
 // short to be real (legacy placeholder values like "0").
-export function WhatsAppLink({ contact, className }: { contact: string; className?: string }) {
-  const href = whatsappLink(contact);
+export function WhatsAppLink({
+  contact,
+  text,
+  className,
+}: {
+  contact: string;
+  text?: string;
+  className?: string;
+}) {
+  const href = whatsappLink(contact, text);
   if (!href) return <span className={className}>{contact}</span>;
 
   return (

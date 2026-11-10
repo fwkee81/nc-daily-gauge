@@ -37,7 +37,29 @@ export type InvitedByType = "coach" | "customer" | "plugin";
 export type NcClub = {
   id: string;
   name: string;
+  invoice_company_name: string | null;
+  invoice_address: string | null;
+  invoice_phone: string | null;
+  invoice_ssm_no: string | null;
+  invoices_next_number: number;
   created_at: string;
+};
+
+export type Invoice = {
+  id: string;
+  nc_club_id: string;
+  invoice_number: number;
+  finance_transaction_id: string;
+  customer_name: string;
+  customer_contact: string | null;
+  category: string;
+  detail: string | null;
+  amount: number;
+  payment_method: string;
+  txn_date: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Coach = {
@@ -727,6 +749,7 @@ export type Database = {
   public: {
     Tables: {
       nc_clubs: { Row: NcClub; Insert: Partial<NcClub>; Update: Partial<NcClub> } & NoRelationships;
+      invoices: { Row: Invoice; Insert: Partial<Invoice>; Update: Partial<Invoice> } & NoRelationships;
       coaches: { Row: Coach; Insert: Partial<Coach>; Update: Partial<Coach> } & NoRelationships;
       customers: { Row: Customer; Insert: Partial<Customer>; Update: Partial<Customer> } & NoRelationships;
       checkins: { Row: Checkin; Insert: Partial<Checkin>; Update: Partial<Checkin> } & NoRelationships;
@@ -855,6 +878,10 @@ export type Database = {
           p_reason?: string | null;
         };
         Returns: Customer;
+      };
+      create_invoice: {
+        Args: { p_finance_transaction_id: string };
+        Returns: Invoice;
       };
       correct_customer_balance: {
         Args: { p_customer_id: string; p_new_balance: number; p_reason: string };

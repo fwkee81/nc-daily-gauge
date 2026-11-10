@@ -36,7 +36,7 @@ export default async function FinancePage({
   const nextMonthStart = format(addMonths(parseISO(monthStart), 1), "yyyy-MM-dd");
 
   const supabase = await createClient();
-  const [txnsRes, coachesRes, monthlyRes] = await Promise.all([
+  const [txnsRes, coachesRes, monthlyRes, clubRes] = await Promise.all([
     supabase
       .from("finance_transactions")
       .select(
@@ -59,6 +59,11 @@ export default async function FinancePage({
           .gte("txn_date", monthStart)
           .lt("txn_date", nextMonthStart)
       : Promise.resolve({ data: null }),
+    supabase
+      .from("nc_clubs")
+      .select("name, invoice_company_name, invoice_address, invoice_phone, invoice_ssm_no")
+      .eq("id", coach.nc_club_id)
+      .maybeSingle(),
   ]);
 
   interface RawTxn {
@@ -153,6 +158,13 @@ export default async function FinancePage({
       coaches={coachesRes.data ?? []}
       isOwner={isOwner}
       isAdmin={coach.is_admin}
+      clubName={clubRes.data?.name ?? "—"}
+      invoiceLetterhead={{
+        companyName: clubRes.data?.invoice_company_name ?? null,
+        address: clubRes.data?.invoice_address ?? null,
+        phone: clubRes.data?.invoice_phone ?? null,
+        ssmNo: clubRes.data?.invoice_ssm_no ?? null,
+      }}
     />
   );
 }

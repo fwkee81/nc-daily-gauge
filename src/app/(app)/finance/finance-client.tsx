@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addDays, format, parse, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ import {
 } from "@/lib/constants";
 import type { FinanceCategory, FinanceDirection, FinancePaymentMethod } from "@/lib/types/database";
 import { addFinanceTransaction, voidFinanceTransaction } from "./actions";
+import { InvoiceDialog } from "./invoice-dialog";
 
 export interface FinanceTxnRow {
   id: string;
@@ -197,6 +199,8 @@ export function FinanceClient({
   coaches,
   isOwner,
   isAdmin,
+  clubName,
+  invoiceLetterhead,
 }: {
   date: string;
   hasExplicitDate: boolean;
@@ -208,6 +212,13 @@ export function FinanceClient({
   coaches: CoachOption[];
   isOwner: boolean;
   isAdmin: boolean;
+  clubName: string;
+  invoiceLetterhead: {
+    companyName: string | null;
+    address: string | null;
+    phone: string | null;
+    ssmNo: string | null;
+  };
 }) {
   const router = useRouter();
   const [direction, setDirection] = useState<FinanceDirection>("in");
@@ -221,6 +232,7 @@ export function FinanceClient({
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [voidTarget, setVoidTarget] = useState<FinanceTxnRow | null>(null);
+  const [invoiceTarget, setInvoiceTarget] = useState<FinanceTxnRow | null>(null);
 
   // The server defaults "today"/"this month" using its own clock (Vercel
   // runs in UTC), which can be off from the club's actual local date for
@@ -338,12 +350,22 @@ export function FinanceClient({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Finance</h1>
-        <Tabs value={view} onValueChange={(v) => goToView(v as "daily" | "monthly")}>
-          <TabsList>
-            <TabsTrigger value="daily">Daily</TabsTrigger>
-            {isOwner && <TabsTrigger value="monthly">Monthly</TabsTrigger>}
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Link
+              href="/finance/invoice-settings"
+              className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Invoice Settings
+            </Link>
+          )}
+          <Tabs value={view} onValueChange={(v) => goToView(v as "daily" | "monthly")}>
+            <TabsList>
+              <TabsTrigger value="daily">Daily</TabsTrigger>
+              {isOwner && <TabsTrigger value="monthly">Monthly</TabsTrigger>}
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       {view === "daily" ? (
@@ -612,9 +634,16 @@ export function FinanceClient({
                       {isAdmin && (
                         <TableCell>
                           {!t.voided && (
-                            <Button variant="ghost" size="sm" onClick={() => setVoidTarget(t)}>
-                              Void
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              {t.direction === "in" && (
+                                <Button variant="ghost" size="sm" onClick={() => setInvoiceTarget(t)}>
+                                  Invoice
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="sm" onClick={() => setVoidTarget(t)}>
+                                Void
+                              </Button>
+                            </div>
                           )}
                         </TableCell>
                       )}
@@ -729,6 +758,16 @@ export function FinanceClient({
           transaction={voidTarget}
           open={Boolean(voidTarget)}
           onOpenChange={(open) => !open && setVoidTarget(null)}
+        />
+      )}
+
+      {invoiceTarget && (
+        <InvoiceDialog
+          financeTransactionId={invoiceTarget.id}
+          clubName={clubName}
+          letterhead={invoiceLetterhead}
+          open={Boolean(invoiceTarget)}
+          onOpenChange={(open) => !open && setInvoiceTarget(null)}
         />
       )}
     </div>
