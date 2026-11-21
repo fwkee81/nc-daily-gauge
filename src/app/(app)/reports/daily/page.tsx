@@ -47,7 +47,11 @@ export default async function DailyReportPage({
     supabase.rpc("daily_totals", { p_date: date, p_club_id: clubId }),
     supabase.rpc("daily_coach_cups", { p_date: date, p_club_id: clubId }),
     supabase.rpc("daily_branch_coach_cups", { p_date: date, p_club_id: clubId }),
-    supabase.rpc("upcoming_birthdays", { p_club_id: clubId }),
+    // p_as_of ties the reminder to the day this report is showing, not the
+    // real "today" — every other section here is scoped to `date`, and the
+    // reminder was the one exception (see the comment on upcoming_birthdays
+    // in supabase/schema.sql).
+    supabase.rpc("upcoming_birthdays", { p_club_id: clubId, p_as_of: date }),
     supabase
       .from("checkins")
       .select(
