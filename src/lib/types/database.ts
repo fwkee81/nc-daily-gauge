@@ -973,7 +973,7 @@ export type Database = {
         Returns: { record_date: string; cups: number }[];
       };
       upcoming_birthdays: {
-        Args: { p_club_id?: string | null };
+        Args: { p_club_id?: string | null; p_as_of?: string };
         Returns: UpcomingBirthdayRow[];
       };
       monthly_totals: {
